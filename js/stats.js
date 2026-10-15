@@ -9,7 +9,9 @@
 // dev drawer's SAVE STATS and `tools/stats.html` can read them; sent only once the player said yes
 // (`game.settings.stats`), only with the worker's `TUNING.stats.url` set, never a god-mode, LEVELS or SHOWROOM
 // life, and off the itch build only with `sendDev`. What did not go out (offline, a closed tab) is
-// tried again the next time the page loads. Nothing personal: a random id made here, and the run.
+// tried again the next time the page loads. A life still being played goes out as it stands too
+// (`live`, 13 Oct 2026), at every floor cleared and when its tab is put away, and the worker keeps the
+// fullest copy of it, so the ending replaces those. Nothing personal: a random id made here, and the run.
 // Pure bookkeeping: never touches the simulation, and every hook is wrapped so a throw here can
 // never cost a frame.
 const STATS_KEY = 'goatout.stats.v1';
@@ -56,7 +58,7 @@ const Stats = {
   who(e) {
     if (!e) return '?';
     if (typeof e === 'string') return e;
-    const k = e.kind === 'bearer' ? (e.champion ? 'butcher' : e.shieldman ? 'shieldman' : e.thrower ? 'thrower' : e.shaman ? 'shaman' : 'clubman') : e.kind === 'butcher' ? 'ogre' : e.kind;
+    const k = e.kind === 'bearer' ? (e.champion ? 'butcher' : e.shieldman ? 'shieldman' : e.thrower ? 'thrower' : e.shaman ? 'shaman' : e.automaton ? 'automaton' : e.welder ? 'welder' : e.sawbot ? 'sawbot' : e.arm ? 'arm' : e.coward ? 'coward' : 'clubman') : e.kind === 'butcher' ? 'ogre' : e.kind;
     return e.boss ? k + '*' : k;
   },
   // Only the run itself: the JUICE tab's stage is `Object.create(game)`, the tools lend stubs.
@@ -79,6 +81,8 @@ const Stats = {
         // Escape out of the opening scene opens a life too, and both counted as a start or a return to play.
         // What was bought at the mirror in heaven since the last life closed, in the order he bought it ("id:rank").
         if (d.mirror && d.mirror.length) { Stats.life.mirror = d.mirror.slice(0, 40); d.mirror = []; Stats.store(); }
+        // The visits to heaven since the last life closed (12 Oct 2026, "track the average time in heaven"): [visits, seconds].
+        if (d.heaven && d.heaven[0]) { Stats.life.heaven = d.heaven.slice(0, 2); d.heaven = null; Stats.store(); }
         Stats.life.pend = ['start'].concat(d.steps && d.steps.death ? ['restart'] : []);
       } else Stats.played(game);
       for (const n of TUNING.stats.reach) if (game.levelIndex + 1 >= n) Stats.step(game, 'reach' + n);
@@ -134,6 +138,7 @@ const Stats = {
     Stats.safe(() => {
       const F = Stats.floor(game); if (!F || Stats.off(game)) return; Stats.stamp(game); F.cleared = true; Stats.played(game);
       if (game.levelIndex === 0) Stats.step(game, 'clear1');
+      Stats.live(game, 'floor');
     });
   },
   // `how`: 'death' (the loop: the send), 'win', 'quit', 'closed'.
@@ -174,7 +179,8 @@ const Stats = {
     try { return game.level && game.runCode ? game.runCode(null) : null; } catch (e) { return null; }
   },
   // The open life written down as it is, for a tab that may never come back to close it (`load`).
-  park(game) {
+  // `hide`: the tab was put away (not the page going), which is also when the life so far goes out (`live`).
+  park(game, hide) {
     Stats.safe(() => {
       const d = Stats.load(), L = Stats.life;
       if (L && game) { Stats.stamp(game); L.parked = Date.now(); L.ok = !!(game.settings && game.settings.stats); d.open = L; }
@@ -183,7 +189,41 @@ const Stats = {
       if (typeof Unlocks !== 'undefined' && Unlocks.data) { Unlocks.dirty = true; Unlocks.flush(); }   // the novelty clock with it
       // A tab going away is where the funnel loses people: what this life owes goes out now (`keepalive`).
       if (L && game) { Stats.played(game); Stats.flushSteps(game); }
+      // A phone throws a backgrounded tab away without a word, and a friend who closes the itch page may never load
+      // it again to send what was parked: what he has played so far goes now. On `pagehide` the game closes the life
+      // itself straight after (`Stats.close(this, 'closed')`), so only the tab put away sends it here.
+      if (L && game && hide) Stats.live(game, 'hide');
     });
+  },
+  // The open life as it stands (13 Oct 2026: "maybe send the stats after each floor? my friend definitely passed the
+  // second floor a second time, and I see one run and one death"): a report went out only when its life ended, so a
+  // life still under way, or one whose tab died without `pagehide`, never arrived. This sends a copy marked
+  // `end.how` 'on' (the worker's `check` knows it) with `seq` one higher each time and `upto` the moment, at every
+  // floor cleared and, past `TUNING.stats.live.gap` s of new play, when the tab is put away. The worker keeps the
+  // fullest copy of a life by its id (an ending over any 'on', then the higher `seq`), so the ending's own send,
+  // which goes as it always did, replaces it. Never retried and never marks the life sent; the same guards as
+  // `flush` (`sendable`: the answer, the build, no X J T), and nothing while one is already on its way.
+  live(game, why) {
+    const L = Stats.life, C = TUNING.stats;
+    if (!L || !C.live || Stats.off(game) || Stats.liveGoing) return;
+    const play = L.floors.reduce((n, f) => n + (f.time || 0), 0);
+    if (why !== 'floor' && play - (L.liveAt || 0) < C.live.gap) return;   // an alt-tab with nothing new played is not a send
+    Stats.mark(game);
+    const R = Stats.clean(L), F = Stats.floor(game);
+    R.ok = !!(game.settings && game.settings.stats);
+    if (!Stats.sendable(game, R)) return;
+    L.seq = (L.seq || 0) + 1; L.liveAt = play;
+    R.seq = L.seq; R.upto = Date.now();
+    R.end = { how: 'on', f: F ? F.f : null, room: game.goatRoom || 0, t: Stats.t(game), by: null, code: Stats.code(game, 'on'),
+      kills: L.floors.reduce((n, f) => n + (f.kills || 0), 0) };
+    const body = JSON.stringify(R);
+    if (body.length >= 60000) return;   // the worker would refuse it as too big; the ending still goes through `flush`
+    Stats.liveGoing = true;
+    const done = () => { Stats.liveGoing = false; };
+    try {
+      fetch(C.url.replace(/\/$/, '') + '/report', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body, keepalive: true })
+        .then(done, done);
+    } catch (e) { done(); }
   },
 
   // ---------- what happens on a floor ----------
@@ -307,6 +347,14 @@ const Stats = {
       const d = Stats.load(); (d.mirror = d.mirror || []).push(id + ':' + rank); if (d.mirror.length > 40) d.mirror.shift(); Stats.store();
     });
   },
+  // A visit to heaven ended (`Heaven.leave`, a quit from up there): its seconds, kept until the next life opens.
+  heaven(game, secs) {
+    Stats.safe(() => {
+      if (game !== window.game || game.showroomOn || !(secs > 0)) return;
+      const d = Stats.load(), h = d.heaven || [0, 0];
+      d.heaven = [Math.min(99, h[0] + 1), Math.round(Math.min(36000, h[1] + Math.min(3600, secs)))]; Stats.store();
+    });
+  },
   // A life that ends with an animal alive beside him (a death, a quit) used to leave its row with no ending
   // at all, so freed and agreed animals looked stuck in the table: `with`, still his when it ended.
   beastsWith(game) {
@@ -378,8 +426,12 @@ const Stats = {
   flush(game) {
     Stats.flushSteps(game);
     const d = Stats.load(), url = (TUNING.stats.url || '').replace(/\/$/, '') + '/report';
+    // At most `burst` at once: a browser that was offline for a while would post its whole backlog in one go and
+    // run into the worker's limit (`RATE` a minute an address); what is left goes at the next flush.
+    let n = 0;
     for (const L of d.log) {
       if (L.sent || L.sending || !Stats.sendable(game, L)) continue;
+      if (++n > TUNING.stats.burst) break;
       L.sending = true;
       const body = JSON.stringify(Stats.clean(L));
       fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body, keepalive: body.length < 60000 })
@@ -388,7 +440,7 @@ const Stats = {
     }
   },
   // The report as it goes out: without this browser's own bookkeeping.
-  clean(L) { const o = Object.assign({}, L); delete o.sent; delete o.sending; delete o.pend; return o; },
+  clean(L) { const o = Object.assign({}, L); delete o.sent; delete o.sending; delete o.pend; delete o.liveAt; return o; },
   // The dev drawer's SAVE STATS: every report this browser holds, as one file `tools/stats.html` reads.
   async save(game) {
     const d = Stats.load();
@@ -511,6 +563,6 @@ const Novelty = {
 // A tab put away (a phone's home button, another tab) may be killed without another word, and a page
 // kept in the back/forward cache may be evicted from it: the open life is written down each time.
 if (typeof document !== 'undefined') {
-  document.addEventListener('visibilitychange', () => { if (document.hidden && window.game) Stats.park(window.game); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && window.game) Stats.park(window.game, true); });
   window.addEventListener('pagehide', () => { if (window.game) Stats.park(window.game); });
 }

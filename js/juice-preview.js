@@ -371,7 +371,7 @@ const JuicePreview = {
       // What `startLevel` lays and the title never has: named here, so a preview opened from the
       // title reads empty lists of its own rather than nothing.
       enemies: [], props: [], bullets: [], parts: [], floats: [], rings: [], puffs: [], flares: [], souls: [], globs: [], fallers: [], tossed: [],
-      hazards: [], sightBlockers: [], runes: [], niches: [], sealedRooms: [], soulGates: [], liveEnemies: [], beastSaved: [], wallArt: [],
+      hazards: [], machines: [], beltAt: new Map(), sightBlockers: [], runes: [], niches: [], sealedRooms: [], soulGates: [], liveEnemies: [], beastSaved: [], wallArt: [],
       pathTrail: [], heartLog: [], killMarks: [], crowMarks: [],
       fx: null, scatter: null, audio: this.audioFor(game),
     });

@@ -3,7 +3,7 @@ const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else, bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on. Counted 0.001, 0.002,
 // ... since 9 Oct 2026 (his word: "big numbers confuse me"); the line before it ended at 2.07.
-const BUILD = '0.015';
+const BUILD = '0.019';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -104,9 +104,18 @@ const TUNING = {
     // The stakes under a hole (1 Oct 2026, "sharper, and without movement"): `stakeW` px at the foot,
     // narrowing by `stakeTaper` (over 1: a needle sooner), a lit `stakeTip`, laid fixed to the floor,
     // only the sky through a window lags behind the lip now (`DEPTH.night`).
-    pit: { lip: 4, face: 12, rim: 4, edge: 'rgba(236,214,170,0.55)', sheet: 144, spikeGap: 12, spikeSkip: 0.22, spikeH: 12,
-      stakeW: 4, stakeTaper: 1.7, stakeTip: '#f4ead2',
-      dirt: '#1a1512', stake: '#cdbd9c', stakeShade: '#6f604c', blood: '#6e1414', sky: '#1d3160', cloud: 'rgba(150,170,214,0.3)' },
+    // 14 Oct 2026 playtest ("the spikes blend with where the press will strike; less visual noise, as other games do"):
+    // a stake every 24 px, not 12, more of them missing, darker, and `veil` of dark over the sheet, so a drop reads as a
+    // dark hole with points in it (Gungeon's pits are black) and the amber of a tell over it stands clear.
+    pit: { lip: 4, face: 12, rim: 4, edge: 'rgba(236,214,170,0.55)', sheet: 144, spikeGap: 24, spikeSkip: 0.4, spikeH: 13,
+      stakeW: 4, stakeTaper: 1.7, stakeTip: '#d8cbae', veil: 0.38,
+      dirt: '#120f0d', stake: '#9a8b70', stakeShade: '#4a3f33', blood: '#5a1212', sky: '#1d3160', cloud: 'rgba(150,170,214,0.3)' },
+    // A sawbot or a welder coming apart (`CombatFX.scrap`): `pieces` and `head` are crops [x, y, w, h] of the 96 px
+    // snapshot of its front view, feet at (48, 74); the head flies `headScale` its size, thrown `headLift` × `lift` up and
+    // `headSpeed` px/s along the blow (drag slows it more), turning at most `headSpin` rad/s, and lands upright.
+    scrap: { headScale: 1.5, headLift: 2.1, headSpeed: 90, headSpin: 4,
+      sawbot: { head: [40, 38, 20, 13], pieces: [[13, 60, 26, 16], [29, 49, 19, 12], [48, 49, 19, 12], [32, 61, 16, 13], [48, 61, 16, 13]] },
+      welder: { head: [39, 21, 15, 13], pieces: [[28, 34, 20, 16], [48, 34, 22, 16], [26, 50, 22, 14], [48, 50, 22, 14], [30, 63, 18, 11], [48, 63, 18, 11]] } },
     maxAir: 220, maxGround: 180, maxBursts: 24, spareCanvases: 48,
     stainTile: 256, maxStainTiles: 96,
     gravity: 460, drag: 2.8, lift: 145, fragmentSpeed: 145, bloodSpeed: 210,
@@ -256,7 +265,7 @@ const TUNING = {
     // `per`: how many souls a kind leaves (the big men two, the ogre three; a champion, a boss, one
     // more), spread `spread` px across the body. Each is paid on its own (`pay.kill`).
     motes: { near: 1, rise: 26, riseT: 1.3, bob: 2, bobRate: 1.1, sway: 1.5, alpha: 0.7, delay: 0.55, wait: 1.5, ghostFor: 2.4, speed: 120, accel: 900, max: 520, catchR: 12, cell: 2, stagger: 0.07,
-      per: { champion: 2, seer: 2, hunter: 2, shield: 2, thrower: 2, butcher: 3, ratogre: 3, boss: 1 }, spread: 9 },
+      per: { champion: 2, seer: 2, hunter: 2, shield: 2, thrower: 2, butcher: 3, ratogre: 3, boss: 1, welder: 2, automaton: 4 }, spread: 9 },
     // SECOND CHANCE (a mirror rank, `MIRROR`): once a floor, a killing blow lifts his soul half out
     // of him and puts it back (`Motes.revive`), `time` s of it, the world held, and he stands where he
     // fell on `hearts` hearts, untouchable `invuln` s, every man within `push` tiles thrown back at
@@ -429,6 +438,10 @@ const TUNING = {
     speed: 0.8 * 0.8 * 1.1 * 1.1 * PACE,
     accel: 0.15,            // s to top speed
     decel: 0.25,            // s to stop
+    // In a room with machines or a drop in it (`game.trapRooms`, 14 Oct 2026 playtest: "in the trap room the stop is
+    // critical"): `decel` s to stop from a run (four frames, under a fifth of a tile), `accel` to top speed, and a
+    // reversal at `turn` × the rate. The ordinary run keeps its little carry elsewhere.
+    trapGrip: { accel: 0.1, decel: 0.07, turn: 2 },
     hp: 4,
     // The lunge carries him a short way and no further: a headbutt is a step into a man, not a
     // charge across the room, and closing the distance yourself is the part you are paid for.
@@ -631,10 +644,16 @@ const TUNING = {
       // (atlas px), `cell` the grid. The gazelle's beam swept back by `bend` and its tip turned in to `tipIn` of that,
       // ringed `rings` times along its first `ringTo`; the moose's beam `beam` of the length out (`out`) and up (`rise`),
       // its palm `palm` of the length across, opening from `from` to `to` (how far up, how far out; "out" × `sideOut` on a side view, where out is over his back), `points` tines on its rim `pointLen` of the length, `pointW` wide.
+      // `grow`: the shape with the LONG HORNS soul on it as well (13 Oct 2026, his: "BIG HORNS and then LONG HORNS, show it
+      // better"): `len` × as long, `tines` bone tines off the gazelle's lyre (`tineAt` along it, `tineLen` of its length), the
+      // moose's palm `points` more points `pointLen` × as long, the last `tip` of each in bone; the soul's own tines in `bone`,
+      // the antlers' pale ramp.
       gazelle: { cell: 3, len: 2.7, w0: 7, w1: 3, bend: 0.32, tipIn: 0.15, rings: 7, ringTo: 0.72, outline: '#120c0a',
-        ramp: ['#16110f', '#2e2420', '#4c3d34', '#786558', '#ad9a88'] },
+        ramp: ['#16110f', '#2e2420', '#4c3d34', '#786558', '#ad9a88'],
+        grow: { len: 1.22, tines: 3, tineAt: [0.38, 0.58, 0.78], tineLen: 0.2, bone: ['#8a7c66', '#c4b8a0', '#efe6d2'] } },
       moose: { cell: 3, len: 1.5, w0: 8, w1: 6, beam: 0.4, out: 1, rise: 0.7, palm: 0.72, from: 0.25, to: 0.3, sideOut: 0.35, points: 4, pointLen: 0.3, pointW: 5, outline: '#1e130c',
-        ramp: ['#2e1f12', '#4d3620', '#6e5233', '#9a7a50', '#c9ab7c'] },
+        ramp: ['#2e1f12', '#4d3620', '#6e5233', '#9a7a50', '#c9ab7c'],
+        grow: { len: 1.28, points: 3, pointLen: 1.45, tip: 0.4, bone: ['#8a7c66', '#c4b8a0', '#efe6d2'] } },
       lava: { ramp: ['#3a0d06', '#8f1e0a', '#e0521a', '#ffb43a', '#fff0a0'], glow: 'rgba(255,110,30,0.9)', blur: 5 },
       venom: { ramp: ['#12260e', '#2f5a1c', '#5c9a2a', '#9fd84a', '#e4ffa0'], glow: 'rgba(140,220,70,0.9)', blur: 4, drip: 1.6 } },
     // The title's pair (`Renderer.titleHorns`), drawn as his own horns are: pixels on a grid `cells` square a horn,
@@ -1070,10 +1089,15 @@ const TUNING = {
     // tiles past the two of them), which the goat cannot pass until the last of his men is down.
     supper: { seat: 1.55, gap: 1.6, inset: 0.9, head: 1.5, chair: 1.1, slide: 0.9, slideBy: 0.8, lineGap: 3.2, sink: 10,
       scene: { seal: 0.35, pan: 0.6, raise: 2.0, box: 2.9, back: 0.9, zoom: 1.0, cap: 40,
-        lines: ['WE HAVE BEEN WAITING FOR YOU, LITTLE GOAT.', 'COME IN. SIT. EAT WITH US.'] },
+        lines: ['YOUR BELOVED AND I HAVE BEEN WAITING FOR YOU, LITTLE GOAT.', 'COME IN. SIT. EAT WITH US.'] },
       slow: 0.42, grass: 0.55, grassAt: 0.8, dome: { pad: 1.1 },
       lines: ['SIT.', 'EAT.', 'SHE IS WARM STILL.'], laugh: 'NOT YET.', laughs: ['HA HA HA!', 'HAAA HA HA!', 'HEH HEH HEH.'],
-      drop: { wait: 1.6, line: 'SHE WAS NEVER HERE.' } },
+      // the last of his men down (12 Oct 2026 playtest): his word in the box, then `wait` s and the fight; `platter`: the dish
+      // drawn that much over its sprite, big enough that she could be under it
+      drop: { wait: 1.2, lines: ["GOOD, LITTLE ONE. NOW, LET'S DANCE."] }, platter: 1.9,
+      // THE FLAYED down (13 Oct 2026, his ask, the Breaking Bad line): `wait` s after it, the goat has his say in the box,
+      // `lines` a page each, the bleat first and what it means under it
+      knock: { wait: 1.6, lines: ['BAAH. BAAH.', '(I AM THE DANGER. I AM THE ONE WHO KNOCKS.)'] } },
   },
   // The rat ogre: what the mouse in the wall turns into on the third blow. He is not on the curve,
   // nobody meets him who did not go and make him, and he is built to be dear rather than to be
@@ -1365,7 +1389,7 @@ const TUNING = {
     // The bowl burns the goat only when he walks into it: his push (or a knock that carries him) has
     // to point at it at least `into` (the cosine), from no further than `touch` px past the two rims.
     // Brushing past one, shouldering by it in a doorway, it used to burn him every time it touched.
-    brazier: { r: 13, roastR: 9, spillAt: 1.1, spill: 1.05, spillTime: 1.7, spillCd: 3.0, roast: 0.02, roastTurn: 0.8, roastThin: 0.45, into: 0.55, touch: 3 },
+    brazier: { r: 13, behind: 3, roastR: 9, spillAt: 1.1, spill: 1.05, spillTime: 1.7, spillCd: 3.0, roast: 0.02, roastTurn: 0.8, roastThin: 0.45, into: 0.55, touch: 3 },
     // A patch of sprouted grass is not a lucky find. `every` is how many rooms a level may go
     // without offering one; the level's own `heals` is a floor under that, and the generator spaces
     // them rather than scattering them, so a run never opens six doors in a row on nothing.
@@ -1463,6 +1487,9 @@ const TUNING = {
     // take. It is never in the way of the only way through: the generator only sets one down on
     // open floor with a clear tile all round it (`GEN_RULES.rocks`).
     rock: { r: 14, hits: 2 },
+    // THE FACTORY's machines (14 Oct 2026, js/factory-props.js): a thing thrown at one past `hit` px/s cracks it (a body
+    // past `physics.knockHitSpeed`, as a boulder); the blows each look takes are its own (`FACTORY_PROPS.MACHINES`).
+    machine: { hit: 4 * TILE },
     // `ring`: the lit fuse drawn as the blast's own reach on the floor (`Renderer.drawBombFuse`), a
     // yellow rim closing round from the top that is a whole circle the moment it goes off (playtest,
     // 25 Sep 2026: "it explodes when the circle is complete"). `cell` is its grid in world px, `track`
@@ -1554,6 +1581,9 @@ const TUNING = {
     // still waits out the whole rest, or he could stand on one and have it bite on every beat.
     spike: { r: 16, arm: 0.5, armMan: 0.1, up: 0.95, down: 0.4, rest: 1.7, restMan: 0.25, lead: 0.3, damage: 1,
       run: [9, 15],
+      // THE FACTORY's grate is a burner (`p.flame`, 13 Oct 2026 playtest: "here it is not teeth, it is fire"): the same
+      // trip and beats, and while it is up its tile is the floor's own fire, held `burn` s past the beat.
+      flame: { burn: 0.5 },
       // A grate with something standing on it (30 Sep 2026: "sometimes a crate or a barrel stands on
       // the trap, hidden"; `gen.js`, `p.hidden`): it is not drawn while its cover stands on its tile.
       // `cover` is the chance a room's laid patch has a crate on one of its grates (a barrel instead at
@@ -1875,7 +1905,11 @@ const TUNING = {
   // heels. `invuln` is longer than an ordinary hit's, coming back up a floor short is not a fight
   // he was ready for, and he is entitled to a couple of seconds to notice that before anything else
   // is allowed to touch him.
-  fall: { time: 0.5, back: 0.3, damage: 1, showFor: 0.75, setback: 0.35, invuln: 1.5 },
+  // Floor within `ledge` px of his middle still holds him; past it he goes down after `coyote` s, and with no floor within
+  // `deep` px at once (under half a tile, so a one-tile gap stays the roll's). 13 Oct 2026 playtest: "coyote time at an edge".
+  // `coyoteRoll` (14 Oct 2026 playtest, "the coyote jump"): a roll pressed that many s into a fall puts him back on the lip
+  // and rolls him from there (`Goat.update`'s falling branch); the heart is only taken once he has gone all the way down.
+  fall: { time: 0.5, back: 0.3, damage: 1, showFor: 0.75, setback: 0.35, invuln: 1.5, ledge: 7, deep: 13, coyote: 0.15, coyoteRoll: 0.14 },
   // The Mill: a ritual grinding wheel with two sweeping arms. It does not care whose side you are on.
   // Slow enough to read and to time, and its room leaves a lane past it at the top and the bottom.
   // `armLen` is half what it was: a shorter reach asks for a tighter room around it rather than the
@@ -1978,7 +2012,15 @@ const TUNING = {
     roll: { range: 5, min: 1.6, goatSpeed: 3, cone: 0.4, dist: 2.6, time: 0.32, recover: 0.2, cd: 2.4, first: 1 },
     gun: { min: 4, max: 9, aimTime: 0.8, reload: 2.6, recover: 0.9, first: 1.5, pellets: 3, spread: 0.2 },
     barrier: { r: 1.7, laughEvery: 2.8 },
-    monster: { hp: 5, speedMul: 1.15, meet: 3, emerge: 2.2, pulse: 0.45, fists: { rate: 40, speed: 50, low: 22, up: 62 } } },
+    monster: { hp: 5, speedMul: 1.15, meet: 3, emerge: 2.2, pulse: 0.45, fists: { rate: 40, speed: 50, low: 22, up: 62 } },
+    // The turn (12 Oct 2026 playtest, js/warden.js `beginTurn`): a held scene, the camera on him at `zoom`; his `lines` in the box
+    // `box` s in, then `gather` s of the violet drawn in to him from `from` tiles off (`motes` a second, a thud every `beat` s,
+    // quicker toward the end), THE FLAYED out of him, and `hold` s on it before the floor is the goat's again, the monster
+    // standing up for `emergeAfter` s more. `cap` s at most.
+    turn: { box: 0.7, gather: 2.4, from: 5, motes: 90, beat: 0.42, hold: 1.3, emergeAfter: 0.5, zoom: 1.3, cap: 30,
+      lines: ['SO YOU ARE A STUBBORN ONE, IT TURNS OUT...', 'NO MATTER. WE WILL FIX THAT.'] },
+    // The goat killed in his room (`Game.onGoatDied`): he laughs, and says it over the soul going up.
+    gloat: { laugh: 'HA HA HA HA!', line: 'YOU WERE NOT AS TOUGH AS I THOUGHT.', life: 7 } },
   shieldman: { uses: 2, arc: 1.2, speedMul: 0.86, turn: 2.4, brace: 0.3, push: 3 * TILE, bounce: 3 * TILE, jolt: 0.2,
     // (2 Oct 2026, the user's: "a little bigger, two hearts, the dangerous one") `hp` hearts, the second
     // kind after the seer to carry two without the outline; drawn `scale` the size of a clubman.
@@ -2076,6 +2118,142 @@ const TUNING = {
     // as the windup runs; when the cast goes off it flashes out to `burst` tiles.
     // `runes` signs round it, turning at `turn` rad/s, each blinking on its own beat (Enter the Gungeon's wizards).
     aura: { r: 2.6, burst: 3.4, runes: 9, turn: 0.35 } },
+  // THE COWARD (13 Oct 2026, the user's: "like the base clubman but with an open face and the robe in a slightly different
+  // light, and he begs to be spared; spare him and now and then he turns up in a room and offers grass, just like that;
+  // he hides in a corner and asks not to be hit; on the first three floors"). js/coward.js. Never bought off `THREAT`: the
+  // generator gives him a corner (`placeCowards`) on the floors in `levels` at that floor's `chance`, in a room the cult
+  // fights in, and he is off that room's count, its seals, its clamp and its cleared door (`e.room` -1). He never lifts
+  // his club. `plea`: with the goat within `r` tiles and in sight he begs, a line every `gap` s, and inside `close` he
+  // flinches. SPARED: the goat walks `leave` rooms on past his with him alive and never thrown, butted, carried, lit or
+  // hurt (`e.wronged`); the run keeps it (`game.spared`). `gift`: from floor `from` of the same run, at `chance` + `per`
+  // for each one spared past the first (at most `max`), one of them waits in a quiet corner with a tuft of grass laid
+  // before him, and says so within `r` tiles. Wronged then, he is no longer counted. `corner`: tiles off a doorway, clear
+  // of props, and of men (`men`, the gift's `giftMen`). `speed` × his kind's walk back to his corner after a shove.
+  coward: { levels: [0, 1, 2], chance: [0.45, 0.6, 0.6], minRoom: 2, speed: 0.55, home: 6, tremble: 0.7, crouch: 0.92,
+    plea: { r: 5, gap: 3.4, close: 1.8 }, leave: 1,
+    gift: { chance: 0.4, per: 0.15, max: 0.85, from: 1, r: 4.5 },
+    corner: { door: 3, props: 1.3, men: 2.5, giftMen: 2.5 } },
+  // THANK YOU FOR PLAYING (13 Oct 2026, the user's, Cult of the Lamb's last card): the black card a won run opens on,
+  // before its own (`Renderer.drawThanks`, `game.thanks`). The sign `THANKS_SIGIL` is `cell` of the screen's short side
+  // tall, its middle at `y` of the height, in `red` with `hot` flecks over a `halo`; it fades in over `fade` s, its brushed
+  // edge crawls `crawl` times a second, it breathes at `pulse` rad/s; the words come at `textAt` s, a press at `pressAt`.
+  thanks: { fade: 1.4, cell: 0.34, y: 0.36, pulse: 2.2, crawl: 3, textAt: 1.8, pressAt: 3.2,
+    red: '#d01c1c', hot: '#ff4a32', halo: '#5a0608',
+    lines: ['Thank you for playing, little goat. Please spread the word near and far,', 'so that no other goat is ever led to the altar.'] },
+  // THE FACTORY (12 Oct 2026, js/factory.js). THE SAWBOT: the user's "like clubmen, only immune to fire and poison, two
+  // hearts"; its blow is the club's shape with its own numbers (`strike`, read by `Enemy.atk`).
+  // `shrug`: s between its IRON words when fire or poison finds nothing in it (`Sawbot.shrug`).
+  // 13 Oct 2026 playtest: fire does not burn it, it heats it (`heat`): red-hot for `time` s after the last flame touched
+  // it, and while hot anything of it that touches the goat but his horns costs `hurt` hearts, once every `cd` s. Poison
+  // does not sicken it, it soaks it (`soak` s): soaked and hot at once, it goes off like a puddle (`Sawbot.burst`).
+  sawbot: { hp: 2, speedMul: 1.05, flingMul: 1.1, scale: 1, shrug: 2.5,
+    heat: { time: 3.5, hurt: 1, cd: 0.9, touch: 3 }, soak: 6,
+    // the chainsaw on its arm (js/factory-pixels.js, "the saw arm bigger"): `len` texels of bar, `w` thick, the chain at `run`
+    saw: { len: 15, w: 4, run: 30 },
+    immune: { fire: true, witch: true, poison: true, blunder: true },
+    strike: { reach: 0.75 * TILE, windup: 0.5, swing: 0.14, recover: 0.65, damage: 1, knock: 1 * TILE } },
+  // THE ARM (14 Oct 2026, his ask, js/factory.js `Arm`): an industrial arm bolted to the floor. Whoever stands inside
+  // `reach` tiles of its base is grabbed on the spot (no windup, his: the ring on the floor is the tell), hoisted `lift`
+  // s (the goat's window to roll out or BAAH), slammed down in `slam` s at the ring's edge: the goat loses `hurt`, is
+  // thrown `throw` tiles/s and lies stunned `daze` s; a man dies on the floor. `recover` s after, `cd` s before the next
+  // grab. BAAH or THE FULL THROAT reels it `stunBy` s. `hp` hearts (a blast, a blade); fire heats it and poison soaks
+  // it like the sawbot, both and it goes off. `look`: the claw's rise in screen px at full hoist, the arm's `w` texels,
+  // the elbow's `bend`, the turret's height; `watch` × reach is where it turns to him, `sweep` rad/s the idle sweep,
+  // `turn` how fast it swings to him. First guesses, his to tune.
+  // `reach` 2.2 → 3.2 and the arm beefier the same day (his: "the arm straight-up longer, and its radius bigger"), then 4.2 ("a bigger radius").
+  // `slamR` (15 Oct 2026): the slam's own ring, tiles round where the claw lands, every living one of flesh in it hit.
+  arm: { hp: 2, r: 15, reach: 4.2, slamR: 1.1, lift: 0.75, slam: 0.14, recover: 0.8, cd: 1.3, hurt: 1, throw: 7, daze: 0.45, stunBy: 1.6,
+    immune: { fire: true, witch: true, poison: true, blunder: true },
+    look: { lift: 60, w: 7, bend: 30, turret: 14, watch: 1.8, sweep: 0.7, turn: 7, rest: 0.5, out: 0.88 } },
+  // THE WELDER: a torso on tracks that drives forward and back along one axis only (`waxis`, set where he is laid) and
+  // sprays fire ahead: `range` tiles, `half` rad either side of his facing, the tiles lit `burn` s and re-lit every `tick`
+  // s for `time` s, after `wind` s of aiming, then `cool` s still and `cd` s before the next; the goat in the jet takes `hurt`
+  // hearts once a burst, thrown `knock` tiles/s. He stops `probe` tiles short of a burning tile (he burns like a man) or of
+  // the edge of his room. On the goat's line (`lineSlack`) he holds `hold` tiles off him and backs off at `backMul` of his
+  // pace closer than `back`; `slack` is how far behind him the goat may be before he turns.
+  // 15 Oct 2026 playtest ("the flamethrower men should spot you sooner and open up sooner"): `sightMul` on his sight,
+  // `notice` on his beat of doubt, the aim from further (`aim` 3.4 → 4.0), a shorter windup (`wind` 0.7 → 0.5), the
+  // first burst sooner after he wakes (`wake` 1.2 → 0.5).
+  welder: { hp: 2, speedMul: 0.8, r: 14, flingMul: 0.5, scale: 1, immune: { blunder: true }, sightMul: 1.4, notice: 0.35,
+    // `aim` 2.6 → 2.0 (13 Oct 2026 playtest: "they aim from too far"); the jet hurts only where its own fire lies (it
+    // reached a tile past it). Second playtest the same day: a longer, wider jet (`range` 3.2 → 4.3, `half` 0.62 → 0.66,
+    // "a bigger radius of damage"), fired from further off (`aim` 3.4, `hold` 2.9, `back` 2.1: "he need not come so
+    // close"), and his own in the cone no longer hold it ("their mates must not stop them firing"): they burn.
+    fire: { range: 4.3, aim: 4.0, half: 0.66, startAt: 0.5, wind: 0.5, time: 1.3, tick: 0.18, burn: 1.7, cool: 1.2, cd: 2.2, wake: 0.5, hurt: 1, knock: 5 },
+    drive: { probe: 1.1, slack: 0.35, turnWait: 0.45, hold: 2.9, back: 2.1, backMul: 0.7, lineSlack: 0.3 }, patrol: { len: 5, mul: 0.6 } },
+  // THE AUTOMATON: the boss. `hp` hearts on the body, open only while he is down. `legs.spread` are the four feet off the
+  // body (tiles: back-left, front-left, front-right, back-right); a foot is hit within `hitR` tiles of it (`hitZ` px up at
+  // most). A foot just stomped is `stuck` s in the floor and one blow knocks that leg out; any other planted foot takes
+  // `hits` blows landed within `heal` s of each other. A leg out stays out `out` s, swinging off its hip (`swing`).
+  // `fall.legs` out at once and he falls in `fall.time` s, crushing `fall.r` tiles round him (the one place his weight kills
+  // a man), lies at most `fall.down` s, and `fall.hearts` hearts taken heave him up early: `rise` s, the goat within
+  // `shoveR` tiles thrown off at `shove` tiles/s (no heart). The stomp: within `range` tiles a run of `chain[legs out]`
+  // stomps, the nearest leg lifting `wind` s (the next ones `chainWind`), led `lead` s of the goat's run, `reach` tiles at
+  // most, coming down on a ring of `r` tiles (`damage`, `knock`; a man in it is thrown at `menFling`); after the run he
+  // stands `hold` s and waits `cd` s (× `angry` with a leg out). (8 Oct playtest of the first cut: two legs out before his
+  // first stomp, four butts, dead in five seconds, no heart lost; the run, the stuck foot and the hearts a fall answer it.)
+  // `look` is the picture: how high the body stands (`lift` px), the two bones of a leg in texels, the bob on the walk.
+  automaton: { hp: 5, speed: 55, r: 12, bodyR: 42, limp: 0.3, immune: { fire: true, witch: true, poison: true, stun: true, blunder: true },
+    // spread wider and the shins longer (13 Oct 2026 playtest: "a bit more room under its legs")
+    // 13 Oct 2026, second playtest ("the legs a bit better"): a foot is found from further (`hitR` 0.7 → 0.85, `hitZ` 14 →
+    // 22, a foot just lifting still counts), the second blow may come later (`heal` 2.5 → 4), and a foot that took a blow
+    // buckles: it stays planted `brace` s (it used to step away from under the second blow) while the body sags `sag` px.
+    legs: { spread: [[-2.75, -1.45], [-1.9, 1.55], [1.9, 1.55], [2.75, -1.45]], hitR: 0.85, hitZ: 22, footR: 10, hits: 2, heal: 4, stuck: 1.2, out: 6, brace: 1.4, sag: 10,
+      step: { far: 0.9, home: 0.35, time: 0.32, lift: 24, lead: 0.3 }, swing: { out: 1.45, amp: 0.35, rate: 2.4, z: 62, zAmp: 9 } },
+    // `down` 4.5 → 7.5, `rise` 1.1 → 1.6 (13 Oct 2026, second playtest: "he got up very fast"); the hearts taken, he still
+    // lies `after` s before he heaves (he used to rise on the blow that took the last).
+    fall: { legs: 2, time: 0.55, r: 1.8, damage: 1, knock: 7, down: 7.5, hearts: 2, after: 1.2, rise: 1.6, shoveR: 2.2, shove: 7, splay: 1.75 },
+    stomp: { range: 3.8, near: 2.4, reach: 3.2, wind: 0.8, chainWind: 0.5, chain: [2, 3, 3], lift: 58, r: 1.1, damage: 1, knock: 6, menFling: 9,
+      hold: 0.6, cd: 1.5, angry: 0.65, first: 0.6, lead: 0.35 },
+    // `blastFall`: a blast that reaches a planted foot or the body brings him down at once, no heart (13 Oct 2026, the
+    // bomb machine's whole point). `wreck`: what is left of him lies `dark` darker.
+    blastFall: true, wreck: { dark: 0.45 },
+    // `open`: the fallen body while it can be struck (14 Oct 2026, js/factory-pixels.js `bakeAutomaton`): a pale gold rim
+    // round the frame flashing at `rate`, and four chevrons of `arm` + 1 two-texel cells `gap` cells off its sides,
+    // closing `bob` cells in on the beat; the floor ring flashes with it (js/factory.js `drawTell`)
+    look: { lift: 100, downLift: 9, thigh: 46, shin: 74, bob: 2.5, open: { rate: 7, arm: 3, gap: 3, bob: 1.5 } } },
+  // THE BOMB MACHINE (13 Oct 2026 playtest: "a machine that hands out bombs, with fire traps round it; press its button,
+  // wait or run while it makes one, throw it at the automaton and he falls"): a cabinet (`kind: 'dispenser'`, js/machines.js).
+  // A headbutt on it presses its button: it rattles `wind` s and drops a bomb `out` px in front of it, unlit. One of its
+  // bombs at a time: while the last is still lying whole it only buzzes. Burners round it are laid by hand.
+  dispenser: { r: 15, wind: 1.6, out: 26, cd: 0.6 },
+  // THE FACTORY's traps (13 Oct 2026, js/machines.js, art in output/factory-art-2026-10-12), laid by hand (`level.machines`):
+  // none is dealt by the generator yet. First guesses, his to tune.
+  // THE PRESS: two jaws on rods closing on the line between them. Open `open` s, then `warn` s shaking `shake` px with the
+  // strip it will close on laid in amber cells (pillar 4: the tell), shut in `slam` s, held `shut` s, back open over `back`
+  // s. What is between the faces when they meet (pillar 3: the press is a wall that moves): a man takes a killing blow (a
+  // kind with more hearts loses one and is thrown out of the line at `eject` tiles/s), the goat loses `goatHurt`, a crate or
+  // a barrel breaks, a bomb goes off. A man reads it as a trap through the warning and the slam (`hazardAt`). `rodMin`
+  // texels of rod show while it is open. A press's own `phase` offsets its clock.
+  // A press laid `quick` (13 Oct 2026, second playtest: "this press more often", THE LINE's) opens `quick.open` s and pulls
+  // back in `quick.back`; its warning stays the warning.
+  press: { open: 1.8, warn: 0.8, slam: 0.14, shut: 0.45, back: 0.9, goatHurt: 1, rodMin: 3, shake: 1.5, eject: 9, cell: 4,
+    quick: { open: 0.6, back: 0.5 } },
+  // THE RAM (13 Oct 2026, second playtest: "and walls that hit", THE CATWALK): one jaw of a small press bolted to stone,
+  // resting `open` s, shaking `warn` s over its strip (`shake` px), punching `reach` tiles past its rest in `punch` s, held
+  // out `hold` s, pulled back over `back` s. What it meets is thrown along the punch: a man flung at `shove` tiles/s, the
+  // goat knocked off his feet `daze` s at `goatShove` tiles/s, no heart (the drop it throws him into costs that).
+  ram: { open: 1.5, warn: 0.6, punch: 0.1, hold: 0.35, back: 0.7, reach: 2.6, shake: 1.5, shove: 10, goatShove: 7, daze: 0.35 },
+  // THE BELT: a run of tiles carrying what stands on it at `speed` px/s along its way: the goat, a man, a crate, a barrel,
+  // a bomb, a blade. Nothing in the air, rolling, flung or held is carried.
+  belt: { speed: 2.8 * TILE * SLOW },
+  // THE BURNER: a grate in the floor, cold `off` s, glowing `warn` s (the tell; a man reads it as a trap), catching `ignite`
+  // s, then a column of flame `fire` s that is the floor's own fire on its tile (`world.fire`), so it does everything fire
+  // does (a man alight, the goat's burn, the welder's caution, a barrel's oil), and a sawbot shrugs it off. `phase` offsets.
+  burner: { off: 1.6, warn: 0.7, ignite: 0.15, fire: 1.4 },
+  // How the machines read and feel (14 Oct 2026, the trap-room references: Gungeon, Hades, Spelunky, Mega Man's Metal Man,
+  // Into the Breach). `tape`: a press's band and a ram's strip are marked on the floor at rest, hazard tape `rows` cells of `cell` px deep
+  // cells along both edges (`alpha`), so the lane that will close is read before it moves, from the doorway (Spelunky's
+  // "spotted ahead of time"). `lamp`: a light on every mount, green open, amber blinking through the warning, red shut,
+  // dark once stopped, `cell` px a square. `steam`: puffs off the mounts as the jaws draw back. `sparks` off the jaws
+  // when they meet. `blood`: a man crushed leaves the jaws red, up to `max` stains, for the rest of the floor.
+  // `stop`: a room's presses, rams and burners run down for good once every man put in it at the start is dead (the
+  // references' commonest complaint: a timing gate still live after its room is solved); they finish the stroke they
+  // are in and stop open and cold. `gasGap`: a room of burners hisses at most once in that many s.
+  // `floor`: every factory floor pulled toward its mean colour (js/factory-pixels.js `quiet`; 14 Oct 2026, his: "the riveted
+  // floor flickers, too much visual noise"): lighter than the mean kept at `hi` of its contrast, darker at `lo`.
+  machine: { tape: { cell: 4, rows: 2, alpha: 0.3 }, lamp: { cell: 4 }, steam: 4, sparks: 7, blood: { max: 3 }, stop: true, gasGap: 0.35,
+    floor: { hi: 0.25, lo: 0.5 } },
   // A man's club (`Game.meleeHit`): the goat is knocked `knockMul` × the kind's `knock`; a man of his own
   // in the arc goes down `floorChance` of the time for `floorFor` s (the clumsiness pillar 4 asks of both
   // sides); an ogre's arm throws one at `ogreFling` px/s. Were literals in the call until 2 Oct 2026.
@@ -2148,23 +2326,23 @@ const TUNING = {
   // breaks: every unaware man in reach turns to it and goes to look, which is the distraction.
   // Third pass (5 Oct 2026 playtest): ALT is a switch, not a held key (`Game.toggleSneak`, `game.sneakOn`).
   // An aware man who sees him, or a heart lost, ends the sneak and shuts it for `deny` s after the last
-  // such moment (`Game.breakSneak`, the HUD's draining ring of cells round his feet, `look.deny`); the
+  // such moment (`Game.breakSneak`; a press refused meanwhile shows `denyText` by the hearts for `look.refuse` s); the
   // room is told `spotted`. While he sneaks an unaware man turns at no more than `turn` rad/s and stops
   // walking until he faces his way (`Enemy.act`); `cover` kinds block a man's sight of him (`Enemy.covered`,
   // the cells cut the same), and in tall grass he is seen only inside `grass` tiles, nor past grass further
   // off than that. A man who came to a noise looks round `search.looks` times, `search.every` s apart, and
   // walks home (`Enemy.investigate`, `e.homeward`). In THE DARK (`game.goatLit` false) his sight is
   // `dark.sight` of `dark.ai.sight` and he hears every noise `dark.ear` × as far.
-  stealth: { fightR: 14, speed: 0.8, sight: 0.8, step: 4.5, knock: 1.5, floor: 1.5, stop: 0.06, text: 'UNSEEN', statusText: 'STEALTH', ease: 6, alarm: 0.7,
+  stealth: { fightR: 14, speed: 0.8, sight: 0.8, step: 4.5, knock: 1.5, floor: 1.5, stop: 0.06, text: 'UNSEEN', statusText: 'STEALTH', denyText: 'NOT IN A FIGHT', ease: 6, alarm: 0.7,
     deny: 6, spotted: 'SPOTTED', turn: 1.6, grass: 1.5,
-    cover: { kinds: ['crate', 'rock', 'barrel'], grow: 2 },
+    cover: { kinds: ['crate', 'rock', 'barrel', 'machine'], grow: 2 },   // `machine`: THE FACTORY's furniture hides him too
     search: { looks: 3, every: 1.1 },
     dark: { sight: 0.7, ear: 1.4 },
     notice: { noticeNear: 1.2, noticeFar: 12, noticeMin: 0.7, noticeMax: 1.5 },
     idle: { tries: 12, far: 6, keep: 0.75, wall: 1, wake: 0.4 },
     crouch: { wide: 0.07, low: 0.12 },
     look: { px: 4, ray: 0.03, keep: 0.25, turn: 0.06, budget: 3, cone: 'rgba(196,48,36,0.2)', rim: 'rgba(226,70,50,0.6)',
-      seen: 'rgba(238,64,42,0.34)', ear: 'rgba(214,160,72,0.4)', deny: 'rgba(226,150,60,0.7)', denyR: 20, status: '#9fc7e8', statusDeny: '#e0a040' } },
+      seen: 'rgba(238,64,42,0.34)', ear: 'rgba(214,160,72,0.4)', status: '#9fc7e8', statusDeny: '#e0a040', refuse: 1 } },
   juice: {
     // The master dials, over every call site at once: `screen` multiplies every shake, kick, lens
     // punch and flash, `stop` every hitstop. 1.37 stacked a hit flash, a ring, sparks, dust and a
@@ -2236,7 +2414,7 @@ const TUNING = {
     // `pop`: past this share of the windup the tint jumps to `popMax` (9 Oct 2026): the last beat before the blow is
     // one bright frame or three, the moment to move, not the end of a slow fade.
     windupTint: { max: 0.4, curve: 1.6, warm: 2.6, pop: 0.88, popMax: 0.85,
-      states: ['windup', 'hookwind', 'slamwind', 'hopwind', 'cast', 'aim'] },
+      states: ['windup', 'hookwind', 'slamwind', 'hopwind', 'cast', 'aim', 'wdaim'] },
     // `impact`: a quick ring and a star of sparks where a blow lands. `ring` is tiles across at its
     // widest, `life` seconds; `killRing` the same for a kill, wider and slower.
     impact: { ring: 0.7, life: 0.16, sparks: 3, killRing: 1.2, killLife: 0.26 },
@@ -2860,11 +3038,15 @@ const TUNING = {
     // mark), `heavy` the kinds that fall as `death`'s `big` take (by `Enemy` flag or `kind`).
     spotlight: { gain: 1.1, near: 0.55, key: 1.15, attack: 0.012, hold: 0.18, release: 0.55,
       big: 1.4, chain: 1.15, quiet: 0.8, floor: 0.05, deepest: 1.4, gainMax: 1.3, takes: 6,
-      heavy: ['butcher', 'ratogre', 'champion', 'thrower', 'shieldman'],
+      heavy: ['butcher', 'ratogre', 'champion', 'thrower', 'shieldman', 'welder', 'automaton'],
       duck: { score: 0.42, sfx: 0.48, amb: 0.2 } },
     // How a sound that knows where it came from falls off, in tiles from the goat: whole inside
     // `near`, down to `floor` of itself at `far`, and all the way to one side at `pan`.
-    space: { near: 4, far: 20, floor: 0.12, pan: 14 } },
+    space: { near: 4, far: 20, floor: 0.12, pan: 14 },
+    // THE FACTORY's machines (14 Oct 2026, the trap-room references: every lethal tell is heard as well as seen): each one's
+    // level. `build` the press's and the ram's warning, `vent` the jaws drawn back, `gas` a burner's glow, `down` a room's
+    // machines stopping once it is cleared. Only a machine within `far` tiles of the goat sounds at all.
+    machines: { build: 0.16, vent: 0.07, gas: 0.06, down: 0.2, far: 14 } },
   // The lead point is carried rather than read: on a mouse the aim flips the instant the pointer
   // crosses the goat, and a lead that flips with it throws the whole picture across the screen.
   // `leadLerp` is how fast the camera agrees to the new side, `leadStill` how much of the lead a
@@ -2903,7 +3085,9 @@ const TUNING = {
     // is from the room's nearest way out: none within `blendIn` px of a doorway, all of it `blend`
     // tiles further in, smoothstepped, eased at `holdLerp`/s. So a doorway is the goat's own framing
     // on both sides of it, and walking in slides the picture to the room's middle.
-    blend: 1.6, blendIn: 0.4 * TILE, holdLerp: 2.0 },
+    blend: 1.6, blendIn: 0.4 * TILE, holdLerp: 2.0,
+    // How fast the lens eases between a room that fits under `lens` and one that does not (`Game.updateCamera`, `camLens`).
+    lensLerp: 1.2 },
   // A score is time first and bodies second, so that running is never the wrong answer: pace against
   // par is the whole of it and kills only multiply. Par for a level is its rooms times `perRoom`.
   // Dev only. A death is a burst when its last two hearts went inside `burstGap` seconds of each
@@ -3144,6 +3328,9 @@ const ROOM_LEVELS = {
   // THE FLANK (7 Oct 2026): a trench with a squad on its far lip, from THE CAVE on (where the roll across a chasm is
   // taught), never THE DARK (its lamps need the walls) or THE TRIP.
   ditchcut: '0001111100', ditchtee: '0001111100', ditchisland: '0001111100',   // from THE ROAD (8 Oct 2026: not on THE CAVE)
+  // THE MECHANICS' ROOMS (13 Oct 2026, js/rooms.js): the gong's and the furnace's never in THE DARK, whose ladder stands a
+  // hair under THE CAVE's and went over it with them in its mix (`GEN_RULES` via balance.js).
+  belfry: '1111111101', furnace: '1111111101',
 };
 
 const SETTINGS = [
@@ -3204,6 +3391,9 @@ TUNING.stats = {
   // floor, so a long life's report stays well under the worker's 60 KB. `fight`: the share of a room's men he
   // left dead for the room to count as fought through.
   roomCap: 40, pathCap: 80, fight: 0.5,
+  // The life so far (`Stats.live`, 13 Oct 2026): sent at every floor cleared, and when the tab is put away once `live.gap`
+  // s of play have passed since the last one. `burst`: reports `flush` posts at once (the worker takes 20 a minute an address).
+  live: { gap: 20 }, burst: 8,
   title: 'HELP THE GOAT?',
   // 6 Oct 2026: "shorter: can we send info about your run?"
   // 9 Oct 2026 playtest: "can we anonymously send info about your run? No name, email or other personal data"
@@ -3267,14 +3457,16 @@ const DOORS = { far: 0.7 };
 // three hearts, a fist, and whatever in his room he can lift and throw, the goat included.
 // `shaman`: a man of the old cult (`TUNING.shaman`, 6 Oct 2026), met first on THE THRESHING FLOOR (9 Oct 2026; THE ROAD, THE CAVE before) with the clubmen his spirit
 // goes into: one heart, but every clubman near him a heart, a stride and a blow more, and his call drags the goat.
-const THREAT = { bearer: 1, dog: 1.7, hunter: 2.4, wraith: 2.6, seer: 2.4, champion: 3.2, butcher: 5, shield: 2.6, thrower: 3, shaman: 2.6 };
+// THE FACTORY's machines (12 Oct 2026, js/factory.js): `sawbot` a two-hearted clubman of iron, `welder` the tracked torch,
+// `automaton` the four-legged boss. None in a LEVELS pool yet: the test floor lays them (`FACTORY_LEVEL`).
+const THREAT = { bearer: 1, dog: 1.7, hunter: 2.4, wraith: 2.6, seer: 2.4, champion: 3.2, butcher: 5, shield: 2.6, thrower: 3, shaman: 2.6, sawbot: 1.6, welder: 2.8, automaton: 7, arm: 2.2 };
 
 const ENCOUNTER = {
   // How often a kind is drawn once it is available. Clubmen stay the backbone of every crowd.
-  weight: { bearer: 6, dog: 3, champion: 2, hunter: 3, seer: 2, wraith: 3, shield: 1, thrower: 1, shaman: 1 },
+  weight: { bearer: 6, dog: 3, champion: 2, hunter: 3, seer: 2, wraith: 3, shield: 1, thrower: 1, shaman: 1, sawbot: 3, welder: 1, automaton: 0, arm: 0 },
   // What no single room may exceed, whatever threat it was handed. Two mages in one room is a coin
   // toss, not a fight; eight of anything is a wall of bodies rather than a room you can read.
-  cap: { seer: 1, champion: 1, hunter: 2, dog: 2, wraith: 3, men: 7, shield: 1, thrower: 1, shaman: 1 },
+  cap: { seer: 1, champion: 1, hunter: 2, dog: 2, wraith: 3, men: 7, shield: 1, thrower: 1, shaman: 1, sawbot: 3, welder: 2, automaton: 1, arm: 4 },
   // Who stands with a kind the first time it is met (`planEncounters`), when what it does needs them: the shaman's
   // spirit goes into clubmen, and alone he would teach half of himself. Only kinds already known; `GEN_RULES.alone`
   // allows exactly these.
@@ -3959,7 +4151,7 @@ const DEV_SPAWN_AS = ['PLAIN', 'CHAMPION', 'CORRUPTED · 1ST', 'CORRUPTED · 2ND
 // drawer, and of them the ones that hand him something (a life given any of those is flagged `T`, js/stats.js).
 const TESTER_IDS = new Set(['toggle', 'god', 'heal', 'lvl-prev', 'lvl-next', 'lvl-last', 'next', 'lastroom', 'soul', 'soulpick', 'soulpick-miss', 'mouse', 'sacrifices', 'addkey', 'tester-pets']);
 const TESTER_GIFTS = new Set(['heal', 'lvl-prev', 'lvl-next', 'lvl-last', 'next', 'lastroom', 'soul', 'soulpick', 'mouse', 'sacrifices', 'addkey']);
-const DEV_SPAWN_POP = new Set(['bearer', 'enemy-spawn=shield', 'enemy-spawn=thrower', 'enemy-spawn=shaman', 'hunter', 'dog', 'seer', 'wraith', 'butcher']);
+const DEV_SPAWN_POP = new Set(['bearer', 'enemy-spawn=shield', 'enemy-spawn=thrower', 'enemy-spawn=shaman', 'hunter', 'dog', 'seer', 'wraith', 'butcher', 'enemy-spawn=sawbot', 'enemy-spawn=welder', 'enemy-spawn=automaton', 'enemy-spawn=arm']);
 // What each kind of man does beside another (the dev drawer's LINKS tab): `what` is read live off the numbers, `where` is the code.
 const LINKS = [
   { id: 'rifleHound', men: ['RIFLEMAN', 'HOUND'], name: 'THE RIFLE OVER THE PACK',
@@ -4099,6 +4291,10 @@ const BOSS_HINTS = {
   warden: { name: 'THE WARDEN', hint: 'THE BOARD TURNS HORNS · HIS BACK IS OPEN' },
   flayed: { name: 'THE FLAYED', hint: 'THE HORNS DO NOTHING · BLADES, FIRE, BODIES' },
   keeper: { hint: 'HIS SWING LIGHTS WITCHFIRE · HE WALKS INTO IT' },
+  sawbot: { name: 'THE SAWBOT', hint: 'FIRE HEATS IT RED · POISON, THEN FIRE: IT BLOWS' },
+  arm: { name: 'THE ARM', hint: 'INSIDE THE RING IT HAS YOU · ROLL OUT, OR BAAH' },
+  welder: { name: 'THE WELDER', hint: 'IT DRIVES ONE LINE · STEP OFF IT, COME AT ITS SIDE' },
+  automaton: { name: 'THE AUTOMATON', hint: 'TWO LEGS OUT, OR A BOMB · THEN THE MEAT' },
   tags: { soul: 'A SOUL IN HIM', keeper: 'KEEPER OF THE GATE', champion: 'CHAMPION', down: 'DOWN' },
 };
 
@@ -4108,9 +4304,39 @@ const KILLED_BY = {
   thrower: 'THE THROWER', toss: 'THE THROWER', shaman: 'THE SHAMAN',
   fall: 'THE DROP', rifle: 'A STRAY BULLET', spire: 'THE ROCK', chandelier: 'A CHANDELIER', powder: 'SPILT POWDER',
   abandon: 'GIVING UP', altar: 'THE ALTAR',
+  sawbot: 'SAWBOT', welder: 'THE WELDER', automaton: 'THE AUTOMATON', stomp: 'THE AUTOMATON', crush: 'THE AUTOMATON', arm: 'THE ARM',
+  press: 'THE PRESS',
 };
 
 // Short things the cult shouts. A few words each: they have to read at a glance while you run.
+// The cult's sign on THANK YOU FOR PLAYING (`TUNING.thanks`, `Renderer.drawThanks`): a goat's head in one stroke, its
+// horns up and out, one eye in the brow. Hand-laid; each X is a cell of the stroke.
+const THANKS_SIGIL = [
+  'X....................X',
+  'XX..................XX',
+  '.X..................X.',
+  '.XX................XX.',
+  '..X................X..',
+  '..XX..............XX..',
+  '...X..............X...',
+  '...XX............XX...',
+  '....XXXXXXXXXXXXXX....',
+  '....X............X....',
+  '...X..............X...',
+  '...X...XXXXXXXX...X...',
+  '...X..X...XX...X..X...',
+  '...X..X...XX...X..X...',
+  '...X...XXXXXXXX...X...',
+  '....X............X....',
+  '....X............X....',
+  '.....X..........X.....',
+  '.....X..........X.....',
+  '......X........X......',
+  '......X........X......',
+  '.......X......X.......',
+  '........X....X........',
+  '.........XXXX.........',
+];
 const BARKS = {
   // first sight of the goat
   spot: {
@@ -4118,6 +4344,18 @@ const BARKS = {
     hunter: ['CLEAR SHOT', 'HOLD STILL', 'I SEE IT', 'IN THE OPEN'],
     seer: ['THE LAMB RUNS', 'I MARK YOU', 'THE GROUND WILL EAT IT', 'STAND THERE'],
     butcher: ['MINE', 'COME TO THE BLOCK', 'LITTLE GOAT', 'NO FURTHER'],
+  },
+  // THE COWARD (js/coward.js, `TUNING.coward`): `beg` in his corner with the goat near, `flinch` when he is right on him,
+  // `thanks` as the goat walks on and leaves him be, `hit` when the goat throws or butts him after all; the one he spared,
+  // met again with a tuft laid before him: `gift`, `ate` once it is grazed, `betray` if he is hit anyway.
+  coward: {
+    beg: ['PLEASE, NOT ME', 'I NEVER WANTED THIS', 'DON\'T HIT ME', 'I HAVE A MOTHER', 'THEY MADE ME WEAR IT', 'I WON\'T TELL', 'MERCY, LITTLE GOAT', 'I DIDN\'T EVEN SWING'],
+    flinch: ['AAH!', 'NOT THE HORNS', 'PLEASE PLEASE', 'I\'M NOBODY'],
+    thanks: ['THANK YOU... THANK YOU', 'I WON\'T FORGET THIS', 'GO, GO, I SAW NOTHING'],
+    hit: ['WHY?!', 'I SAID PLEASE', 'I KNEW IT'],
+    gift: ['YOU SPARED ME. EAT.', 'FOR YOU, GOAT. I PICKED IT', 'I KEPT THIS FOR YOU', 'IT\'S GOOD GRASS, I CHECKED'],
+    ate: ['GO, BEFORE THEY SEE', 'NOW WE\'RE EVEN', 'RUN, GOAT. RUN FAR'],
+    betray: ['I BROUGHT YOU GRASS!', 'AFTER ALL THAT?', 'THEY WERE RIGHT ABOUT YOU'],
   },
   // the shaman and the mage standing side by side, one elbowing the other (`TUNING.links`, js/shaman.js `crowd`)
   crowd: ['MOVE OVER', 'YOU ARE IN MY LIGHT', 'MIND MY STAFF', 'ELBOWS!', 'GIVE ME ROOM'],
@@ -4937,6 +5175,20 @@ DARK_LEVEL.met = new Set(LEVELS[DARK_LEVEL.darkOf].met);
 DARK_LEVEL.known = new Set(LEVELS[DARK_LEVEL.darkOf].known);
 // THE DARK wherever the run asks for it. There is one: the index is only ever its own place.
 function darkLevel() { return DARK_LEVEL; }
+// THE FACTORY (12 Oct 2026, js/factory.js): the test floor of the factory zone, laid by `factoryLevel` (`factory`), a dev
+// floor like THE SHOWROOM (`showroom`: no save, no heaven, no stats, GOD on). Its canon has no templates yet: nothing rolls
+// it; `encounters` and `arenas` are what its gallery in THE SHOWROOM reads. Its colours are final here (never in `artPass`).
+const FACTORY_LEVEL = {
+  name: 'THE FACTORY', sub: 'Dev · test', rooms: 14, showroom: true, factory: true,
+  canon: { id: 'factory', name: 'IRON', idea: 'Plate floors, presses and belts. The cult\'s machines, with meat in them.' },
+  theme: 'The works under the compound, where the cult builds what it cannot breed.',
+  decor: 'Riveted plate, grating, boilers, belts, the welders\' torches.',
+  arenas: [{ at: 13, boss: 'automaton', with: ['sawbot', 'sawbot'] }], gates: [], rests: [],
+  encounters: { kinds: ['sawbot', 'welder', 'arm'], introduce: [], from: 4, to: 8, ease: 1.5 },
+  souls: 0, heals: 0, racks: 0, traps: 0, crates: 0, barrels: 0,
+  floor: '#6a6a70', floorAlt: '#62626a', wall: '#2a2a33', wallTop: '#55555f', fog: '#09090d',
+  hint: null, hintKey: null,
+};
 // Which floor of the run a level is: its place in LEVELS, or, for THE DARK, the place of the floor
 // it is played in place of. THE TRIP stays -1 on purpose (see `tripLevel`).
 function levelIndexOf(def) {

@@ -85,10 +85,85 @@ const Warden = {
     if (e.state === 'recover') { e.vx = 0; e.vy = 0; e.timer -= dt; if (e.timer <= 0) e.state = 'chase'; return true; }
     return false;
   },
+  // His last heart gone (12 Oct 2026 playtest: "a more epic transformation, and he says: so you're stubborn, it turns out...
+  // never mind, we'll fix that"): not the change at once but a held scene, `game.endScene` kind 'turn' (`TUNING.warden.turn`).
+  // The floor stops, the camera goes whole to him; he is rocked down, his words come in the animals' box, then the soul in him
+  // pulls the violet in off the whole room (`gather` s, the floor heavier and heavier under it) and THE FLAYED breaks out of
+  // him (`transform`). Nothing lands on him through it (`e.barrier`). Skipped once seen: straight to the change.
+  beginTurn(game, e) {
+    if (e.turning || e.wardenGone) return;
+    const g = game.goat;
+    e.turning = true; e.barrier = true; e.hp = 1; e.state = 'idle'; e.timer = 0; e.vx = 0; e.vy = 0; e.path = null; e.pose = 'idle';
+    e.endActor = true; e.flash = 0.35;
+    if (g.holding === e) g.holding = null;
+    g.state = 'idle'; g.timer = 0; g.vx = 0; g.vy = 0; g.leap = null; g.runT = 0; g.buttBuf = 0; g.rollBuf = 0; g.path = null;
+    game.endScene = { kind: 'turn', t: 0, bars: 0, flags: {}, seen: !!EndBoss.load().seen.turn, camAt: e, actor: e };
+    game.flash(PALETTE.blood, 0.18); game.hitstop(0.14); game.audio.sfxThud(); game.audio.sfxSteel(); game.dust(e.x, e.y, 10, 0, 0);
+    game.floatText(e.x, e.y - 64, 'HNNGH...', PALETTE.blood);
+  },
+  // The scene's step (`EndBoss.update`): his words, the gathering, the break.
+  stepTurn(game, dt) {
+    const S = game.endScene, C = TUNING.warden.turn, e = S.actor;
+    if (!e) { EndBoss.end(game); return null; }
+    if (!S.flags.box && S.t >= C.box) {
+      S.flags.box = true;
+      Beast.talk(game, { kind: 'warden', x: e.x, y: e.y }, C.lines, false, { name: 'THE WARDEN', sound: () => game.audio.sfxGrowl(), portrait: (R, ctx, k) => EndBoss.wardenPortrait(R, ctx, k) });
+      return e;
+    }
+    if (!S.flags.box || game.beastTalk) return e;
+    if (S.gatherAt === undefined) { S.gatherAt = S.t; e.pose = 'raise'; game.audio.sfxRune(); game.audio.sfxToll(); game.floatText(e.x, e.y - 70, 'HA... HA HA...', PALETTE.witchHi); }
+    if (!S.flags.burst) {
+      const k = clamp((S.t - S.gatherAt) / C.gather, 0, 1);
+      // the violet drawn in to him off the whole room, thicker and faster the nearer the break
+      const n = Math.floor(dt * C.motes * (0.4 + k * 1.6) + Math.random());
+      for (let i = 0; i < n; i++) {
+        const a = Math.random() * Math.PI * 2, R = (C.from - k * C.from * 0.5) * TILE * (0.6 + Math.random() * 0.4), sp = R / (0.35 + Math.random() * 0.25);
+        game.parts.push({ x: e.x + Math.cos(a) * R, y: e.y - 26 + Math.sin(a) * R, vx: -Math.cos(a) * sp, vy: -Math.sin(a) * sp, life: R / sp, color: Math.random() < 0.6 ? PALETTE.witch : PALETTE.witchHi, size: 2 });
+      }
+      S.beat = (S.beat || 0) - dt;
+      if (S.beat <= 0) {
+        S.beat = C.beat * (1 - k * 0.6);
+        e.flash = 0.12; game.thud(e.x, e.y, 2 + k * 8); game.audio.sfxThud();
+        if (Math.random() < 0.5) game.particles(e.x, e.y - 20, 4 + Math.floor(k * 10), PALETTE.blood, 80 + k * 120);
+      }
+      if (k >= 1) {
+        S.flags.burst = true; S.burstAt = S.t;
+        const m = this.transform(game, e);
+        m.timer = C.emergeAfter; m.endActor = true;
+        S.actor = m; S.camAt = m;
+        game.flash(PALETTE.bone, 0.32); game.hitstop(0.2); game.zoomPunch(1.6);
+        for (let i = 0; i < 4; i++) game.ring(m.x, m.y, (1.5 + i * 1.3) * TILE, i % 2 ? PALETTE.witch : PALETTE.witchHi, 0.5 + i * 0.15, 4);
+        game.particles(m.x, m.y - 30, 30, PALETTE.blood, 320); game.particles(m.x, m.y - 30, 30, PALETTE.witchHi, 360);
+        game.world.scorch(m.x, m.y, TILE * 1.4);
+        game.floatText(m.x, m.y - 96, 'RRRAAAGH!', PALETTE.blood);
+      }
+      return e;
+    }
+    if (S.t >= S.burstAt + C.hold * 0.6) S.done = true;
+    if (S.t >= S.burstAt + C.hold) EndBoss.end(game);
+    return S.actor;
+  },
+  // Played out or skipped: if the break has not come, it comes now.
+  endTurn(game, S) {
+    const e = S.actor;
+    if (!S.flags.burst && e && !e.wardenGone) { const m = this.transform(game, e); m.timer = TUNING.warden.turn.emergeAfter; }
+    for (const o of game.enemies) o.endActor = false;
+  },
+  // Over the floor through the gathering: rings of violet closing in on him, a beat faster as the break nears.
+  drawTurn(R, game) {
+    const S = game.endScene; if (!S || S.kind !== 'turn' || S.flags.burst || S.gatherAt === undefined || !S.actor) return;
+    const C = TUNING.warden.turn, e = S.actor, k = clamp((S.t - S.gatherAt) / C.gather, 0, 1), ctx = R.ctx;
+    ctx.save();
+    for (let i = 0; i < 3; i++) {
+      const q = ((S.t * (1 + k * 2) + i / 3) % 1), r = (1 - q) * C.from * TILE * (1 - k * 0.4);
+      ctx.globalAlpha = 0.2 + 0.5 * q; CombatFX.pixelRing(ctx, e.x, e.y, Math.max(2, r), 2, i % 2 ? PALETTE.witchHi : PALETTE.witch);
+    }
+    ctx.restore();
+  },
   // His last heart gone: the soul in him swallowed, and THE FLAYED stands where he stood.
   transform(game, e, quiet) {
     const M = TUNING.warden.monster;
-    e.wardenGone = true;
+    e.wardenGone = true; e.turning = false; e.barrier = false;
     const m = new Enemy(e.x, e.y, 'butcher');
     m.boss = true; m.elite = false; m.flayed = true; m.room = e.room; m.aware = true; m.woke = true; m.facing = e.facing;
     game.ensoul(m); m.soulGate = e.soulGate; m.soulMeet = M.meet;

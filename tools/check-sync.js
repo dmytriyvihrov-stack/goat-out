@@ -1,7 +1,9 @@
 // Checks that the three copies of the game agree: the working tree, origin/main,
 // and the published artifact. Local things are checked outright; the artifact is
-// checked by size against the listing Claude gets from `action: "list_files"`
-// (paste it into a file and pass --artifact <file>), or printed for eyeballing.
+// checked by size against the listing Claude gets from the Artifact tool, `action: "list"` with
+// `scope: "files"` (save it to a file and pass --artifact <file>), or printed for eyeballing.
+// A published file is held against the working tree first and then against main as committed, in
+// either line ending: with other sessions' edits in the tree, "the artifact is main" is the question.
 //
 //   node tools/check-sync.js
 //   node tools/check-sync.js --artifact listing.txt
@@ -68,7 +70,7 @@ for (const f of onDisk) mine.set(f, fs.statSync(path.join(ROOT, f)).size);
 
 const arg = process.argv.indexOf('--artifact');
 if (arg === -1) {
-  console.log('  note  no listing given. Ask Claude for action "list_files" on');
+  console.log('  note  no listing given. Ask Claude for the Artifact tool\'s action "list", scope "files", on');
   console.log(`        ${ARTIFACT_URL}`);
   console.log('        and compare these byte counts, or save it and pass --artifact <file>:');
   for (const [f, n] of mine) if (n !== null) console.log(`          ${f.padEnd(16)} ${n}`);
@@ -78,13 +80,28 @@ if (arg === -1) {
   const published = new Map();
   for (const m of text.matchAll(/"([^"]+)"\s+\S+\s+(\d+) bytes/g)) published.set(m[1], Number(m[2]));
   if (!published.size) bad('no "<path>  <type>  <n> bytes" lines found in that file');
+  // main's copy of a file in both line endings: git keeps LF, the tree on Windows may hold CRLF, and a
+  // publish sends whichever the tree had.
+  const mainSizes = (f) => {
+    try {
+      const lf = execSync(`git show main:${f}`, { cwd: ROOT, maxBuffer: 1 << 26 }).toString('latin1').replace(/\r\n/g, '\n');
+      return [lf.length, lf.length + (lf.match(/\n/g) || []).length];
+    } catch (e) { return []; }
+  };
+  const asMain = [];
   for (const [f, n] of mine) {
     if (n === null) continue;
-    if (!published.has(f)) bad(`${f} is not published`, 'it is missing from the publish files map');
-    else if (published.get(f) !== n) bad(`${f} differs: ${n} bytes here, ${published.get(f)} published`, 'republish the artifact');
+    const p = published.get(f);
+    if (p === undefined) bad(`${f} is not published`, 'it is missing from the publish files map');
+    else if (p === n) continue;
+    else if (mainSizes(f).includes(p)) asMain.push(f);
+    else bad(`${f} differs: ${n} bytes here, ${p} published, and it is not main's copy either`, 'republish the artifact');
   }
+  if (asMain.length) console.log(`  note  ${asMain.length} published file${asMain.length === 1 ? ' is' : 's are'} main's copy and differ only by uncommitted edits here: ${asMain.join(', ')}`);
   for (const f of published.keys()) if (f !== 'index.html' && !mine.has(f)) bad(`${f} is published but gone from js/`, 'remove it with a null files entry');
-  if (failed === before) ok(`all ${published.size - 1} scripts match the published build byte for byte`);
+  if (failed === before) ok(asMain.length
+    ? `all ${published.size - 1} published scripts are main's copy (${asMain.length} edited here since)`
+    : `all ${published.size - 1} scripts match the published build byte for byte`);
 }
 
 console.log(failed ? `\n${failed} thing${failed === 1 ? '' : 's'} out of step.` : '\nlocal, main and the artifact are one build.');

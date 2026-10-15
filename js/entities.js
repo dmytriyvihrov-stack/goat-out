@@ -66,7 +66,15 @@ class Goat {
     const buttAsk = inp.lmbPressed || this.buttBuf > 0, rollAsk = inp.rollPressed || this.rollBuf > 0;
 
     // Over the edge. Nothing but the fall until the game puts him back on the boards.
-    if (this.state === 'falling') { this.vx *= 0.82; this.vy *= 0.82; this.timer -= dt; return; }
+    // But a roll pressed in its first `fall.coyoteRoll` s (14 Oct 2026 playtest: "add the coyote jump") is the roll he
+    // meant to make at the lip: he is put back on the last board he stood on (`lip`, `Game.goatFalls`) and rolls from it
+    // below, which carries him over a narrow drop as a roll pressed a beat earlier would have.
+    if (this.state === 'falling') {
+      this.coyoteT = Math.max(0, (this.coyoteT || 0) - dt);
+      if (!(rollAsk && canRoll && game.mods.roll && this.coyoteT > 0 && this.lip && !this.landed && !this.dead)) { this.vx *= 0.82; this.vy *= 0.82; this.timer -= dt; return; }
+      this.x = this.lip.x; this.y = this.lip.y; this.safeX = this.x; this.safeY = this.y; this.vx = 0; this.vy = 0;
+      this.state = 'idle'; this.timer = 0; this.coyoteT = 0; this.lip = null; this.landed = true;
+    }
     // Over the thrower's head, or thrown by him (js/thrower.js): nothing of his own until he is down.
     if (this.state === 'carried' || this.state === 'tossed') { Thrower.goatStep(this, dt, game); return; }
 
@@ -223,7 +231,9 @@ class Goat {
       const along = sp0 > 1 ? (this.vx * inp.mx + this.vy * inp.my) / (sp0 * mlen) : 1;
       // Only his own run: the drift of a recovery or a knockback is not his to brake (pillar 4).
       const reverse = moving && this.state === 'idle' && along <= F.skid.dot;
-      const rate = (moving ? base / g.accel : base / g.decel) * (reverse ? F.turnGrip : 1);
+      // A room of machines or drops grips harder (`game.trapRooms`, js/machines.js; `goat.trapGrip`)
+      const grip = game.trapRooms && game.trapRooms.has(game.goatRoom) ? g.trapGrip : null;
+      const rate = (moving ? base / (grip ? grip.accel : g.accel) : base / (grip ? grip.decel : g.decel)) * (reverse ? (grip ? grip.turn : F.turnGrip) : 1);
       this.skidCd = Math.max(0, (this.skidCd || 0) - dt);
       if (this.state === 'idle') {
         if (reverse && sp0 > top * F.skid.at && this.skidCd <= 0) {
@@ -722,6 +732,8 @@ class Goat {
     for (const e of foes) {
       if (HN.single && this.singleDone === this.lungeId) break;
       if (e.dead || e.held || e.lastLunge === this.lungeId) continue;
+      // THE AUTOMATON (js/factory.js): standing, the horns reach his feet and knock a leg out; down, the body is a man's.
+      if (e.automaton) { Automaton.horns(game, this, e, ax, ay, extra, HN); if (HN.single && e.lastLunge === this.lungeId) this.singleDone = this.lungeId; continue; }
       // Horns through mist. Saying so where it happened is the only tutorial this enemy gets.
       if (e.ghosted) {
         if (hyp(e.x - this.x, e.y - this.y) < this.r + e.r + 12 + extra) game.mistTold(e);
@@ -762,6 +774,15 @@ class Goat {
           e.flash = Math.max(e.flash, 0.05); e.aware = true;
           Shop.ogreShrug(game, e);
         }
+        continue;
+      }
+      // THE ARM (js/factory.js): bolted iron, the horns take no heart off it but knock it out a beat (`Arm.horns`); he
+      // is shoved back, never stunned (15 Oct 2026: stunned in its ring, it took him at once and it read as a freeze)
+      if (e.arm) {
+        const RB = TUNING.butcher.rebound;
+        Arm.horns(game, e, ax, ay);
+        this.state = 'recover'; this.timer = RB.daze; this.vx = -ax * RB.speed; this.vy = -ay * RB.speed;
+        game.shake(2); game.audio.sfxSteel(); game.squashGoat(TUNING.juice.squash.hit); game.hitstop(0.04); game.particles(this.x + ax * this.r, this.y + ay * this.r, 5, PALETTE.ash, 200);
         continue;
       }
       // In the air he is over your horns, not in front of them.
@@ -1134,6 +1155,8 @@ class Goat {
     const tx = h.x + this.aim.x * reach * 0.5, ty = h.y + this.aim.y * reach * 0.5;
     for (const e of game.enemies) {
       if (e.dead || e.held || e.ghosted) continue;
+      // THE AUTOMATON's feet (js/factory.js): the blade on one knocks the leg out; the body overhead is out of its reach.
+      if (e.automaton && e.aloft) { if (Automaton.bladeHits(game, this, h, e, tx, ty, reach)) return; continue; }
       if (hyp(e.x - tx, e.y - ty) > e.r + reach * 0.75) continue;
       if (!game.sees(this.x, this.y, e.x, e.y)) continue;   // not through a shut door
       // A shieldman's board from in front takes the cut: a use off the board and one off the blade.
@@ -1363,7 +1386,8 @@ class Prop {
       : kind === 'barrel' ? P.barrel.r : kind === 'cleat' ? P.cleat.r
       : kind === 'armor' ? P.armor.r : kind === 'trophy' ? P.trophy.r : kind === 'suit' ? P.suit.r : kind === 'poster' ? P.poster.r
       : kind === 'mouse' ? P.mouse.r : kind === 'ware' ? P.ware.r
-      : kind === 'key' ? TUNING.keys.r : kind === 'ironcage' ? TUNING.keys.iron.r : 13;
+      : kind === 'key' ? TUNING.keys.r : kind === 'ironcage' ? TUNING.keys.iron.r
+      : kind === 'dispenser' ? TUNING.dispenser.r : 13;   // THE BOMB MACHINE (js/machines.js)
     // The shop (js/shop.js). A mouse carries which room's shelf is hers (`shopId`), where the gap
     // in the wall is (`gap`, which is where the ogre comes out), how many blows she has taken and
     // what she is saying; a ware carries the artifact on it, `{ id, tier }`, and whether
@@ -1383,6 +1407,7 @@ class Prop {
     // A barrel of poison, not oil (`TUNING.prop.barrel.venom`). Not `venom`: that is VENOM JAW's mark
     // on a thing thrown dripping (`Status.markThrow`), and the barrel would drip where it stood.
     this.toxic = !!(opts && opts.toxic);
+    this.flame = !!(opts && opts.flame);   // a grate that is a burner (THE FACTORY's, `TUNING.prop.spike.flame`)
     this.firstGrass = !!(opts && opts.firstGrass);   // THE ALTAR's grass in the corridor, the one that says GRASS HEALS
     this.spillCd = 0;                         // a brazier building its coals back after a spill
     this.axis = (opts && opts.axis) || 'h';   // which way a cage bar's rail runs
@@ -1446,6 +1471,11 @@ class Prop {
     // furniture asks before it asks `r` (`Prop.boxPush`), and `r` the half-length for the rest.
     this.box = stallHalf(this);
     if (this.box) this.r = Math.max(this.box.hx, this.box.hy);
+    // THE FACTORY's furniture (js/factory-props.js): a machine is a box or a disc of its look's size and breaks in its
+    // look's blows (`wrecked`: flat, blocking nothing); junk lies turned `turn` quarter turns; a fixture hangs on the far wall.
+    if (kind === 'machine') { if (!(opts && opts.look)) this.look = 'boiler'; this.box = FACTORY_PROPS.boxOf(this.look); this.r = FACTORY_PROPS.rOf(this.look); this.wrecked = false; this.hits = 0; }
+    if (kind === 'junk') { if (!(opts && opts.look)) this.look = 'gears'; this.turn = (opts && opts.turn) || 0; }
+    if (kind === 'wallfix') { if (!(opts && opts.look)) this.look = 'gauge'; this.wall = { x: 0, y: -1 }; }
     this.slam = kind === 'clamp' ? TUNING.clamp.slam : 0;
     // A sealed arena's pair of doors: no hit points either, the same as the soul gate, but lifted by
     // clearing the room rather than by a soul. `sealRoom` names which room's fight has to end first.
@@ -1533,13 +1563,16 @@ class Prop {
     if (this.kind === 'armor') return false;
     // The suit that stands on the floor is furniture until something brings it down (`burstArmor`); the bare stand left is not.
     if (this.kind === 'suit') return !this.spilled;
+    // THE FACTORY's furniture (js/factory-props.js): a machine until it is wrecked; junk and a wall fixture never.
+    if (this.kind === 'machine') return !this.wrecked;
+    if (this.kind === 'junk' || this.kind === 'wallfix') return false;
     if (this.kind === 'door') return this.open < 0.5;
     // A SPADE body you cannot lift is still something men trip on, never a wall: pushed out to
     // touching, nobody ever got close enough to trip, and the thrown died on it as on stone.
     if (this.corpse) return false;
     return true;
   }
-  get stopsBullets() { return !this.broken && ((this.kind === 'tortoise' && !this.flying && !this.held && !(this.coolT > 0)) || this.kind === 'table' || this.kind === 'barrel' || this.kind === 'rock' || this.kind === 'brazier' || this.kind === 'bell' || this.kind === 'secret' || (this.kind === 'door' && this.open < 0.5)); }
+  get stopsBullets() { return !this.broken && ((this.kind === 'tortoise' && !this.flying && !this.held && !(this.coolT > 0)) || this.kind === 'table' || this.kind === 'barrel' || this.kind === 'rock' || this.kind === 'brazier' || this.kind === 'bell' || this.kind === 'secret' || (this.kind === 'machine' && !this.wrecked) || (this.kind === 'door' && this.open < 0.5)); }
   // What an eye stops at. A shut door is a wall with hinges, and a man on the far side of one used
   // to spot you straight through it and come round, which from where you were standing was being
   // seen through stone. The gong and the hub of the wheel are the only other two things in a room
@@ -1576,7 +1609,9 @@ class Prop {
       case 'bell': this.ring(game); break;
       case 'door': case 'secret': this.smash(game, ax, ay); break;
       case 'rock': this.crackRock(game); break;
+      case 'machine': FACTORY_PROPS.crack(game, this, ax, ay); break;   // THE FACTORY's furniture (js/factory-props.js)
       case 'cleat': this.cutRope(game); break;
+      case 'dispenser': Machines.press(game, this); break;   // THE BOMB MACHINE's button (js/machines.js)
       // A horn brings it down too (1 Oct 2026: "they fly apart when you butt them"), as a body landing by it does.
       case 'armor': case 'suit': if (!this.spilled) this.burstArmor(game, ax, ay, 0.9); else if (this.kind === 'suit') this.breakStand(game, ax, ay); break;
       case 'poster': this.tear(game, ax, ay); break;
@@ -1662,6 +1697,8 @@ class Prop {
       }
       if (!p.blocking) continue;
       let dx = this.x - p.x, dy = this.y - p.y, d = hyp(dx, dy), pen = p.r + this.r - d;
+      // A thing thrown hard enough at one of THE FACTORY's machines cracks it (js/factory-props.js), and still stops on it.
+      if (p.kind === 'machine' && hyp(this.vx, this.vy) > TUNING.prop.machine.hit && (p.box ? p.boxPush(this.x, this.y).d < this.r : pen > 0)) FACTORY_PROPS.crack(game, p, nx, ny, 0.8);
       if (p.box) { const o = p.boxPush(this.x, this.y); pen = this.r - o.d; dx = o.nx; dy = o.ny; d = 1; }
       if (pen <= 0) continue;
       if (p.kind === 'lamp') { p.topple(game, nx, ny); return p; }
@@ -1763,6 +1800,8 @@ class Prop {
     if (this.spikeState === 'armed') {
       if (this.spikeT <= 0) {
         this.spikeState = 'up'; this.spikeT = S.up; this.bit = [];
+        // THE FACTORY's grate is a burner: its tile is the floor's own fire while it is up (every rule fire has holds)
+        if (this.flame) { game.world.ignite(Math.floor(this.x / TILE), Math.floor(this.y / TILE), true, S.up + S.flame.burn); game.audio.sfxFire(); game.world.emitNoise(this.x, this.y, TUNING.noise.swing); return; }
         // Boards first, then the iron: the lid is what you hear go, and it is louder than the teeth.
         game.world.emitNoise(this.x, this.y, TUNING.noise.swing);
         game.audio.sfxCrack(); game.audio.sfxSteel(); game.shake(3);
@@ -1770,8 +1809,9 @@ class Prop {
         game.particles(this.x, this.y, 5, PALETTE.ash, 130);
       }
     } else if (this.spikeState === 'up') {
-      this.bite(game);
-      if (this.spikeT <= 0) { this.spikeState = 'down'; this.spikeT = S.down; }
+      if (this.flame) { const w = game.world, i = w.idx(Math.floor(this.x / TILE), Math.floor(this.y / TILE)); w.fire[i] = Math.max(w.fire[i], S.flame.burn); w.fireKind[i] = 0; w.noFlame && w.noFlame.add(i); }
+      else this.bite(game);
+      if (this.spikeT <= 0) { this.spikeState = 'down'; this.spikeT = S.down; if (this.flame && game.world.noFlame) game.world.noFlame.delete(game.world.idx(Math.floor(this.x / TILE), Math.floor(this.y / TILE))); }
     } else if (this.spikeState === 'down') {
       if (this.spikeT <= 0) { this.spikeState = 'rest'; this.spikeT = S.rest; }
     } else if (this.spikeT <= 0 || (this.spikeState === 'rest' && S.rest - this.spikeT >= S.restMan)) {
@@ -2439,6 +2479,7 @@ class Prop {
       return;
     }
     if (this.kind === 'armor' || this.kind === 'trophy' || this.kind === 'suit') { if (this.spent) this.bleedT += dt; return; }
+    if (this.kind === 'machine' || this.kind === 'junk' || this.kind === 'wallfix') return;   // THE FACTORY's furniture: nothing of its own to do
     if (this.kind === 'spike') { this.updateSpike(dt, game); return; }
     if (this.kind === 'spire') { this.updateSpire(dt, game); return; }
     if (this.kind === 'chicken') { this.updateBird(dt, game); return; }
@@ -2502,6 +2543,8 @@ class Prop {
     if (this.byCult && Thrower.thingHitsGoat(game, this)) { end(); return; }
     for (const e of game.enemies) {
       if (e.dead || e.held || e.ghosted || e === this.byCult) continue;
+      // THE AUTOMATON standing (js/factory.js): a crate into a foot knocks the leg out and breaks; the body overhead is passed under.
+      if (e.automaton && e.aloft) { this.passed = this.passed || []; if (Automaton.thingHits(game, this, e, spd)) { end(); return; } continue; }
       if (hyp(e.x - this.x, e.y - this.y) < e.r + this.r + (this.byCult ? 0 : TUNING.prop.throwHit)) {
         // A crate that catches a wraith in its window is as good as a horn.
         if (e.kind === 'wraith') { e.die(game, 'unmade', this.vx / 300, this.vy / 300); this.shatter(game); return; }
@@ -2660,6 +2703,8 @@ class Prop {
     // untouched (9 Oct 2026 playtest) was a blade that missed by those few px.
     for (const e of game.enemies) {
       if (e.dead || e.held || e.ghosted || this.passed.indexOf(e) >= 0) continue;
+      // THE AUTOMATON's feet (js/factory.js): a blade or a board into one knocks the leg out; his body overhead is passed under.
+      if (e.automaton && e.aloft) { if (Automaton.thingHits(game, this, e, spd) && (!this.flung || this.broken)) return; continue; }
       if (hyp(e.x - this.x, e.y - this.y) > e.r + this.r + Math.max(TUNING.status.jaw.touch, TUNING.prop.throwHit)) continue;
       this.hitMan(game, e, spd);
       if (!this.flung || this.broken) return;
@@ -2671,6 +2716,8 @@ class Prop {
   hitMan(game, e, spd) {
     const W = TUNING.prop.weapon, nx = this.vx / (spd || 1), ny = this.vy / (spd || 1);
     this.passed.push(e);
+    // a blade or a board burning (a firebrand's, or through a fire on the way) lights the man it meets (13 Oct 2026 playtest)
+    if ((this.alight || this.brand) && e.ignite) e.ignite(game, this.alight === 'witch' || !!(this.brand && this.brand.witch));
     game.world.emitNoise(this.x, this.y, TUNING.noise.steel);
     // A shieldman's board from in front: a blade sticks in it and is spent with a use of the board, a
     // thrown shield rings off it. Round its edge, the arm finds the man as it finds anybody.
@@ -2723,8 +2770,9 @@ class Prop {
       this.flyT = (this.flyT || 0) + dt;
       const armed = lit && this.flyT >= H.arm, v0 = hyp(this.vx, this.vy);
       this.x += this.vx * dt; this.y += this.vy * dt;
-      // Down a hole is not a room this bomb gets to finish: gone like anything else thrown over one.
-      if (game.world.isPitPx(this.x, this.y)) { this.fall(game); return; }
+      // Down a hole only once it comes down over one: thrown, it flies over a drop as a crate does (13 Oct 2026
+      // playtest: "a bomb and the rest can be thrown across the chasm"; it vanished the frame it crossed the lip).
+      if (v0 < 40 && game.world.isPitPx(this.x, this.y)) { this.fall(game); return; }
       const impact = game.world.collideCircle(this);
       const spd = hyp(this.vx, this.vy) || 1;
       const hit = this.hitProp(game, this.vx / spd, this.vy / spd);
@@ -2753,6 +2801,8 @@ class Prop {
   // row of barrels is a chain, which is what a barrel standing by a bomb is for (Enter the Gungeon's).
   static blastRoom(game, x, y, r, witch) {
     const w = game.world, BR = TUNING.prop.barrel;
+    // THE AUTOMATON's legs and fallen body (js/factory.js): every blast reaches him here and only here (the loops skip him)
+    if (typeof Automaton !== 'undefined') Automaton.blast(game, x, y, r);
     for (const p of game.props.slice()) {
       if (p.broken || p.dead || p.held || p.inStand) continue;
       const dx = p.x - x, dy = p.y - y, d = hyp(dx, dy);
@@ -2769,6 +2819,7 @@ class Prop {
       else if (p.kind === 'bell') { if (!(p.rung > 0)) p.ring(game); }   // once a chain, not once a link of it
       else if (p.kind === 'secret') { p.hits = Math.max(p.hits || 0, TUNING.prop.secret.hits - 1); p.crackWall(game); }   // a blast opens it outright
       else if (p.kind === 'rock') p.crackRock(game);
+      else if (p.kind === 'machine') FACTORY_PROPS.crack(game, p, nx, ny, 1.2);   // THE FACTORY's furniture (js/factory-props.js)
       else if (p.kind === 'cleat') p.cutRope(game);
     }
     // A wraith lying as a crate is no prop (`Enemy.hide`), so the loop above never saw it: it survived
@@ -2801,7 +2852,7 @@ class Prop {
     for (const e of game.enemies) {
       if (e.dead || e.held || e.ghosted) continue;
       const dx = e.x - this.x, dy = e.y - this.y, d = hyp(dx, dy);
-      if (d > B.blastR + e.r || !game.blastClear(this.x, this.y, e.x, e.y)) continue;
+      if (d > B.blastR + e.r || !game.blastClear(this.x, this.y, e.x, e.y) || e.automaton) continue;   // he is `blastRoom`'s (js/factory.js)
       const nx = dx / (d || 1), ny = dy / (d || 1);
       // The rat ogre and the ogre are never flung, so the whole of the blast is the one heart it takes
       // off them (the ogre was only hurt by a bomb all but under him: his body is wider than `nearR`).
@@ -2944,11 +2995,16 @@ class Prop {
   updateBarrel(dt, game) {
     const B = TUNING.prop.barrel, w = game.world;
     if (this.broken) return;
-    // A flame under it, or a burning man leaning on it: either lights the oil.
+    // A flame under it, or a burning man leaning on it: either lights the oil. So does a sawbot red-hot (js/factory.js
+    // `Sawbot.heat`, 14 Oct 2026 playtest: "poison barrels and poison go off against the hot ones"): a poison barrel
+    // touching one goes off (`light` → `toxicBurst`), rolling into it or standing where it walks.
     if (this.oilT < 0) {
-      if (w.isBurningPx(this.x, this.y)) this.light(game, w.isWitchPx(this.x, this.y));
+      // A burner's jet (THE FACTORY's grates and burners, the tiles in `world.noFlame`) does not catch a barrel rolling
+      // across it (15 Oct 2026 playtest: "a pushed barrel goes up when it reaches the grate"); one that stops on it does.
+      const tx = Math.floor(this.x / TILE), ty = Math.floor(this.y / TILE), jet = this.flung && w.noFlame && w.noFlame.has(w.idx(tx, ty));
+      if (w.isBurningPx(this.x, this.y) && !jet) this.light(game, w.isWitchPx(this.x, this.y));
       else for (const e of game.liveEnemies) {
-        if (e.dead || !(e.burning > 0) || hyp(e.x - this.x, e.y - this.y) > e.r + this.r + 2) continue;
+        if (e.dead || !(e.burning > 0 || ((e.sawbot || e.arm) && e.heat > 0)) || hyp(e.x - this.x, e.y - this.y) > e.r + this.r + 2) continue;
         this.light(game, e.witchBurn); break;
       }
     } else if ((this.oilT -= dt) <= 0) { this.oilBurst(game); return; }

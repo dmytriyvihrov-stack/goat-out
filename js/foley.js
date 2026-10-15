@@ -459,6 +459,51 @@ const Foley = (() => {
       crackle(x, sr, 0, dur, Math.floor(dur * 12), 2500, 6000, 0.5, 1);
       return env(x, sr, (t) => Math.min(1, t / 0.02, (dur - t) / 0.1));
     },
+    // THE FACTORY's machines (14 Oct 2026). A press or a ram about to go: the pump labouring under a load, its note
+    // climbing, air hissing out of a seal brighter and louder to the end, a creak of iron taking the strain halfway.
+    // `dur` is the warning's own length, so the sound ends where the blow lands (the tell and the blow are one event).
+    hydraulic(sr, { dur = 0.8 } = {}) {
+      const x = buf(sr, dur), n = x.length;
+      let ph = 0, ph2 = 0;
+      for (let i = 0; i < n; i++) {
+        const u = i / n, f = 70 + 75 * u * u;
+        ph += TAU * f / sr; ph2 += TAU * f * 2.01 / sr;
+        const a = (0.25 + 0.75 * u) * Math.min(1, i / (sr * 0.03));
+        x[i] += a * (0.55 * Math.sin(ph) + 0.25 * Math.sin(ph2) * (0.6 + 0.4 * Math.sin(ph * 0.11)));
+      }
+      const hiss = white(n);
+      filter(hiss, sr, 'bp', (t) => 1400 + 4200 * (t / dur), 0.8);
+      add(x, env(hiss, sr, (t) => 0.1 + 0.9 * Math.pow(t / dur, 1.6)), sr, 0, 0.55);
+      modes(x, sr, rnd(150, 190), [[1, 0.06, 0.5], [2.4, 0.04, 0.3], [4.1, 0.02, 0.2]], { at: dur * rnd(0.4, 0.55), gain: 0.35, bend: -0.15, bendT: 0.08 });
+      return env(x, sr, (t) => Math.min(1, (dur - t) / 0.012));
+    },
+    // The jaws drawn back: the pressure let go, a burst of air out of the valve falling away, a knock in the line.
+    vent(sr) {
+      const x = buf(sr, 0.6);
+      const air = noiseBand(x.length, sr, 'hp', 900, 0.7, white);
+      filter(air, sr, 'lp', (t) => 7000 * Math.exp(-t / 0.22) + 900, 0.8);
+      add(x, env(air, sr, (t) => hit(t, 0.008, 0.16)), sr, 0, 0.8);
+      click(x, sr, 0.004, rnd(1400, 1900), 0.5, 0.001);
+      return modes(x, sr, rnd(110, 140), [[1, 0.05, 0.4], [2.2, 0.03, 0.2]], { at: 0.01 });
+    },
+    // A burner about to catch: the gas let in with a soft hiss, a tick of the igniter and another.
+    gas(sr) {
+      const x = buf(sr, 0.55);
+      const g = noiseBand(x.length, sr, 'bp', 2600, 0.6, white);
+      add(x, env(g, sr, (t) => swell(t, 0.55, 0.75, 1)), sr, 0, 0.5);
+      click(x, sr, 0.12, rnd(3800, 4800), 0.6, 0.0004); click(x, sr, 0.33, rnd(3800, 4800), 0.8, 0.0004);
+      return x;
+    },
+    // A machine stopping for good: its hum falling and slowing, a clunk of the brake, the last of the air.
+    winddown(sr) {
+      const d = 1.1, x = buf(sr, d), n = x.length;
+      let ph = 0;
+      for (let i = 0; i < n; i++) { const t = i / sr, f = 40 + 120 * Math.exp(-t / 0.3); ph += TAU * f / sr; x[i] += 0.6 * Math.exp(-t / 0.5) * Math.sin(ph) * (0.7 + 0.3 * Math.sin(ph * 3.01)); }
+      modes(x, sr, rnd(95, 120), [[1, 0.05, 0.7], [1.7, 0.03, 0.3]], { at: 0.42, bend: 0.3 });
+      click(x, sr, 0.42, 2200, 0.6, 0.001);
+      const air = noiseBand(n, sr, 'bp', 1800, 0.7, white);
+      return add(x, env(air, sr, (t) => (t < 0.45 ? 0 : hit(t - 0.45, 0.01, 0.2))), sr, 0, 0.3);
+    },
     // The goat going over: a soft thump or two of his body, fur and dust on stone, his hooves again.
     roll(sr) {
       const x = buf(sr, 0.46);
@@ -997,7 +1042,7 @@ const Foley = (() => {
   }
 
   // Everything that needs no arguments, for `GameAudio.warm` to render ahead of the first use.
-  const plain = Object.keys(R).filter((k) => !['bleat', 'fuse'].includes(k));
+  const plain = Object.keys(R).filter((k) => !['bleat', 'fuse', 'hydraulic'].includes(k));
   // The rate each recipe is rendered at; the context resamples on playback. Nothing here needs the
   // top octave of a 48 kHz buffer, and the low, long ones (a blast, a lorry, a throat) have nothing
   // above 12 kHz at all, so they render at half the cost of the rest.

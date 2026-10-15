@@ -863,8 +863,8 @@ const Heaven = {
     // Laid again off heaven's own def, so what a floor alone lays (THE TORTOISE'S PACE on its floor) stays down there.
     game.applyBoons(); this.heavenMods(game);
     game.goat.maxHp = game.goat.hp = game.mods.maxHp;
-    game.cam.x = L.start.x; game.cam.y = L.start.y - 2 * TILE; game.cam.zoom = game.renderer.zoomFit;
-    game.camLead.x = game.camLead.y = 0; game.camFollow = null; game.camTrack = null; game.camHold = undefined; game.camRoomMid = null; game.camFight = 0;
+    game.cam.x = L.start.x; game.cam.y = L.start.y - 2 * TILE; game.cam.zoom = game.renderer.zoomFit / (game.renderer.lens || 1);
+    game.camLead.x = game.camLead.y = 0; game.camFollow = null; game.camTrack = null; game.camHold = undefined; game.camRoomMid = null; game.camLens = game.camLensGoal = null; game.camFight = 0;
     game.card = null; game.state = 'heaven';
     game.audio.duck(1, 0.4); game.audio.heavenMusic = true; game.audio.sfxAscend();
     // The god's first line is over his head, not in your way: what he has to say at length waits for
@@ -882,6 +882,7 @@ const Heaven = {
   // the floor he died on, rebuilt; either way he drops into it.
   leave(game) {
     this.seeNews(game);   // a rank bought, a bell heard: what he saw up here is not news next time
+    Stats.heaven(game, game.heaven.t);   // how long he stayed up here, for the next life's report
     game.heaven = null; game.audio.heavenMusic = false;
     game.fromHeaven = true;
     game.restartLevel(true);
@@ -2944,14 +2945,21 @@ Object.assign(Heaven, {
       ctx.fillStyle = r ? '#fff4c2' : 'rgba(255,244,194,0.6)';
       const v = u.value ? u.value(u.params, r) : String(r); ctx.fillText(v, valX + sh, my + 6 * s);
       this.glyph(ctx, u.glyph, valX + sh + textW(ctx, v) + 8 * s, my, gc);
-      // the pointer on the value explains it (`hint`), drawn after the rows
-      if (mouse) { const G = MIRROR_GLYPHS[u.glyph], vw = textW(ctx, v) + 8 * s + (G ? G.rows[0].length * gc : 0);
-        if (mouse.x >= valX - 6 * s && mouse.x <= valX + vw + 6 * s && mouse.y >= y && mouse.y <= y + h) tip = { u, r, x: mouse.x, y: mouse.y }; }
+      // the pointer anywhere on the row explains it (`hint`), drawn after the rows (13 Oct 2026, his: "the hover in the
+      // mirror works on the whole row"; it was the value alone)
+      if (over) tip = { u, r, x: mouse.x, y: mouse.y };
+      // What can be bought now lights up (13 Oct 2026, his: "a brighter light when you can buy it"): a band of gold behind
+      // the + and the price, beating slowly, so a glance down the glass finds what the heap pays for.
+      if (afford) {
+        const pulse = 0.5 + 0.5 * Math.sin(t * 3.2 + i * 0.7), bx0 = plusX - 10 * s + sh, bx1 = costX + 8 * s + sh;
+        ctx.fillStyle = `rgba(247,215,116,${0.12 + 0.12 * pulse})`; ctx.fillRect(Math.round(bx0), Math.round(y), Math.round(bx1 - bx0), Math.round(h));
+        ctx.fillStyle = `rgba(255,244,194,${0.5 + 0.4 * pulse})`; ctx.fillRect(Math.round(bx0), Math.round(y + h - cell / 2), Math.round(bx1 - bx0), Math.max(1, Math.round(cell / 2)));
+      }
       // the + box: lit when it can be bought, a hollow frame when not, gone once whole
       if (!whole) {
         const bs = 22 * s, bx = Math.round(plusX + sh), by = Math.round(my - bs / 2), on = afford && (sel || hk);
-        ctx.fillStyle = on ? 'rgba(190,150,255,0.55)' : afford ? 'rgba(150,120,200,0.35)' : 'rgba(255,255,255,0.06)'; ctx.fillRect(bx, by, bs, bs);
-        ctx.strokeStyle = afford ? '#d9ccff' : 'rgba(217,204,255,0.3)'; ctx.lineWidth = Math.max(1, s); ctx.strokeRect(bx + 0.5, by + 0.5, bs - 1, bs - 1);
+        ctx.fillStyle = on ? 'rgba(206,170,255,0.8)' : afford ? 'rgba(180,140,240,0.6)' : 'rgba(255,255,255,0.06)'; ctx.fillRect(bx, by, bs, bs);
+        ctx.strokeStyle = afford ? '#fff4c2' : 'rgba(217,204,255,0.3)'; ctx.lineWidth = Math.max(1, s); ctx.strokeRect(bx + 0.5, by + 0.5, bs - 1, bs - 1);
         const pc = Math.max(2, Math.round(2.5 * s)), cx = Math.round(bx + bs / 2), cy = Math.round(by + bs / 2);
         ctx.fillStyle = afford ? '#fff' : 'rgba(255,255,255,0.35)'; ctx.fillRect(cx - pc / 2, cy - pc * 2.5, pc, pc * 5); ctx.fillRect(cx - pc * 2.5, cy - pc / 2, pc * 5, pc);
       }
@@ -2959,7 +2967,7 @@ Object.assign(Heaven, {
       ctx.textAlign = 'right';
       if (whole) { ctx.fillStyle = '#f7d774'; ctx.fillText('MAX', costX + sh, my + 6 * s); }
       else {
-        ctx.fillStyle = M.sacrifices >= cost ? '#f7d774' : '#fff4c2'; ctx.fillText(String(cost), costX - 30 * s + sh, my + 6 * s);
+        ctx.fillStyle = afford ? '#fffbe8' : M.sacrifices >= cost ? '#f7d774' : 'rgba(255,244,194,0.7)'; ctx.fillText(String(cost), costX - 30 * s + sh, my + 6 * s);
         this.skull(ctx, costX - 22 * s + sh, my - 10 * s, 1.6 * s, M.sacrifices < cost);
         if (sc) { const ok = (M.souls || 0) >= sc; ctx.fillStyle = ok ? '#d9ccff' : 'rgba(217,204,255,0.45)'; ctx.fillText(String(sc), soulX - 26 * s + sh, my + 6 * s); this.soulIcon(R, soulX - 10 * s + sh, my, 16 * s, !ok); }
       }

@@ -167,6 +167,22 @@ const PROP_PIXELS = (() => {
       return this;
     }
     copy() { const g = new Grid(this.w, this.h); g.p = this.p.slice(); return g; }
+    // ONE STYLE (12 Oct 2026, `ART_PASS.ink`): the outer ring of outline `ol` retinted the way the atlas and the shaman
+    // are outlined, each pixel of it the dark step (× `k`) of the darkest body colour it touches, so a red hood is
+    // ringed in dark red and bone in brown. Only the pixels of `ol` that touch nothing change; an inner seam drawn in
+    // `ol` stays, and so does the silhouette. A new grid; the drawn one is never touched.
+    ink(ol = P.ol, k = 0.42) {
+      const g = this.copy(), lum = (c) => parseInt(c.substr(1, 2), 16) + parseInt(c.substr(3, 2), 16) + parseInt(c.substr(5, 2), 16);
+      const dark = (c) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(c.substr(i, 2), 16) * k).toString(16).padStart(2, '0')).join('');
+      const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]], N8 = N4.concat([[1, 1], [-1, 1], [1, -1], [-1, -1]]);
+      for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) {
+        if (this.get(x, y) !== ol || !N4.some(([dx, dy]) => !this.get(x + dx, y + dy))) continue;
+        let best = null;
+        for (const ring of [N4, N8]) { for (const [dx, dy] of ring) { const v = this.get(x + dx, y + dy); if (v && v !== ol && (!best || lum(v) < lum(best))) best = v; } if (best) break; }
+        if (best) g.set(x, y, dark(best));
+      }
+      return g;
+    }
     outline(c = P.ol, diag = false) {
       const add = [];
       for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) {
@@ -1321,17 +1337,20 @@ const PROP_PIXELS = (() => {
       return g.outline();
     }
     g.vl(cx, 30, 8, P.w1);
+    // Every piece of the body is polished steel lit as the helm is (13 Oct 2026, his: "the body in the same granular fill as the
+    // head, on the wall and standing"): each greave, arm and lame laid in `STEEL` and shaded as its own long dome, a cylinder's
+    // glint down its lit side and its core shadow down the other; the far limb a step down the ramp.
     for (const [x, d] of [[8, 0], [14, 1]]) {                                                          // greaves, boots, knee cops
-      [P.i3, P.i4, P.i2, P.i1].forEach((c, i) => g.vl(x + i, 29, 8, down(c, d)));
+      g.rect(x, 29, 4, 8, STEEL); steel(g, x + 1.3, 32, 2.6, 6.5, d);
       g.rect(x - 1, 36, 5, 2, down(P.i1, d)); g.hl(x - 1, 36, 5, down(P.i2, d)); g.set(x - 1, 36, down(P.i3, d));
       g.ell(x + 1.5, 30, 2.4, 1.8, STEEL); steel(g, x + 1.5, 30, 2.4, 1.8, d);
     }
-    for (const [y, d] of [[25, 0], [27, 1]]) { g.hl(7, y, 11, down(P.i4, d)); g.hl(7, y + 1, 11, down(P.i3, d)); }
-    for (let y = 25; y < 30; y++) for (let x = 7; x < 18; x++) if (x >= cx) g.set(x, y, down(g.get(x, y), 1));
+    for (const [y, d] of [[25, 0], [27, 1]]) { g.rect(7, y, 11, 2, STEEL); steel(g, 10.5, y + 0.6, 7, 2.4, d); }
+    for (let y = 25; y < 30; y++) for (let x = 7; x < 18; x++) if (x >= cx + 2 && g.get(x, y) && g.get(x, y) !== P.i0 && g.get(x, y) !== P.ic) g.set(x, y, down(g.get(x, y), 1));
     g.hl(7, 29, 11, P.i1); g.hl(cx, 29, 18 - cx, P.i0); g.set(17, 26, P.ic); g.set(17, 28, P.ic);       // the tassets, lame over lame
-    for (const [x, d] of [[4, 0], [17, 1]]) { [P.i3, P.i4, P.i2].forEach((c, i) => g.vl(x + i, 17, 8, down(c, d))); g.rect(x, 25, 3, 2, down(P.i1, d)); g.set(x, 25, down(P.i2, d)); }   // the arms and gauntlets
-    g.poly([[cx - 4, 14], [cx + 4, 14], [cx + 5, 20], [cx + 3, 25], [cx - 3, 25], [cx - 5, 20]], STEEL); steel(g, cx - 0.5, 19, 5.5, 6.5, 0.3);
-    crease(g, (x, y) => x >= cx && y >= 14 && y < 25);
+    for (const [x, d] of [[4, 0], [17, 1]]) { g.rect(x, 17, 3, 8, STEEL); steel(g, x + 1, 19.5, 2.3, 6, d); g.rect(x, 25, 3, 2, down(P.i1, d)); g.set(x, 25, down(P.i2, d)); }   // the arms and gauntlets
+    g.poly([[cx - 4, 14], [cx + 4, 14], [cx + 5, 20], [cx + 3, 25], [cx - 3, 25], [cx - 5, 20]], STEEL); steel(g, cx - 1, 18.5, 5, 6.2);
+    crease(g, (x, y) => x >= cx + 1 && y >= 14 && y < 25 && g.get(x, y) !== P.i0);
     g.vl(cx - 1, 15, 9, P.i4); g.set(cx - 1, 16, P.i5); g.hl(cx - 4, 24, 8, P.i1); g.set(cx - 1, 24, P.b3); g.set(cx, 24, P.b1);   // the breastplate, its ridge, its belt and buckle
     g.ell(cx - 7, 15.5, 3.6, 2.8, STEEL); steel(g, cx - 7, 15.5, 3.6, 2.8);
     g.ell(cx + 7, 15.5, 3.6, 2.8, STEEL); steel(g, cx + 7, 15.5, 3.6, 2.8, 1);                         // the pauldrons, the far one a step darker
@@ -1352,8 +1371,10 @@ const PROP_PIXELS = (() => {
     }
     g.rect(cx - 2, top + 5, 4, 5, P.i1); g.hl(cx - 2, top + 5, 4, P.i2); g.set(cx - 1, top + 7, P.i3); g.set(cx, top + 7, P.i3);   // the plate, its rivets
     if (empty) return g.outline();
+    // the breastplate lit as the helm is (13 Oct 2026, his: "the armour's body in the same granular fill as the head"): its own
+    // dome a step tighter and toward the light, so it carries the helm's glint, steps and core shadow, never a flat plate
     g.poly([[cx - 4.5, top + 10], [cx + 4.5, top + 10], [cx + 4.5, top + 16], [cx + 2.5, top + 19], [cx - 2.5, top + 19], [cx - 4.5, top + 16]], STEEL);
-    steel(g, cx - 0.5, top + 14, 5, 5.5, 0.3); crease(g, (x, y) => x >= cx && y >= top + 10 && y < top + 19);
+    steel(g, cx - 1, top + 13.5, 4.6, 5.4); crease(g, (x, y) => x >= cx + 1 && y >= top + 10 && y < top + 19 && g.get(x, y) !== P.i0);
     g.vl(cx - 1, top + 11, 6, P.i4); g.set(cx - 1, top + 12, P.i5);                                // the breastplate, its ridge
     g.ell(cx - 6, top + 11.5, 3.6, 2.6, STEEL); steel(g, cx - 6, top + 11.5, 3.6, 2.6);
     g.ell(cx + 6, top + 11.5, 3.6, 2.6, STEEL); steel(g, cx + 6, top + 11.5, 3.6, 2.6, 1);          // the pauldrons
@@ -1368,7 +1389,7 @@ const PROP_PIXELS = (() => {
     const g = new Grid(12, 13);
     if (kind === 'helm') { g.ell(5, 6, 3.6, 4.4, STEEL); steel(g, 5, 6, 3.6, 4.4); g.hl(2, 6, 6, P.d0); g.set(5, 1, P.r3); g.set(4, 1, P.r3); g.set(5, 0, P.r2); }
     else if (kind === 'plate') {
-      g.poly([[1, 1], [10, 1], [10, 7], [8, 10], [3, 10], [1, 7]], STEEL); steel(g, 5, 5, 5, 5.5, 0.3); crease(g, (x) => x >= 5.5);
+      g.poly([[1, 1], [10, 1], [10, 7], [8, 10], [3, 10], [1, 7]], STEEL); steel(g, 4.5, 4.5, 4.6, 5.4); crease(g, (x, y) => x >= 6.5 && g.get(x, y) !== P.i0);
       g.hl(4, 1, 3, null); g.vl(4, 2, 6, P.i4); g.set(4, 3, P.i5); g.rect(3, 10, 6, 2, P.i2); g.hl(3, 11, 6, P.i1);
     } else { g.ell(4, 3, 3.6, 2.6, STEEL); steel(g, 4, 3, 3.6, 2.6); }
     return g.outline();
@@ -1654,7 +1675,10 @@ const PROP_PIXELS = (() => {
   for (const k in sprites) if (!/^(rack|coop|stall|roast)-/.test(k)) sprites[k] = sprites[k].trim();
   // A lit sprite drawn in another frame than its own would move or resize the thing it stands for: never handed out.
   for (const k in sprites) { const m = /^(.+)@lit$/.exec(k), b = m && sprites[m[1]]; if (m && (!b || b.w !== sprites[k].w || b.h !== sprites[k].h)) { if (typeof console !== 'undefined') console.warn('lit sprite off its frame: ' + k); delete sprites[k]; } }
-  return { P, Grid, sprites, rng, SHIELD_LOOKS };
+  // ONE STYLE: a hand-built unit's grid with its outline retinted (`Grid.ink`), once a grid, for the units' bakes.
+  const inks = new WeakMap();
+  const inked = (g, ol) => { if (typeof ART_PASS === 'undefined' || !ART_PASS.ink) return g; let i = inks.get(g); if (!i) { i = g.ink(ol); inks.set(g, i); } return i; };
+  return { P, Grid, sprites, rng, SHIELD_LOOKS, inked };
 })();
 if (typeof module !== 'undefined') module.exports = PROP_PIXELS;
 
@@ -1676,8 +1700,10 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
   };
   const canvasOf = name => {
     name = pick(name);
+    // ONE STYLE: the outline retinted at bake time, over whichever drawing was picked, under its own key
+    const ink = typeof ART_PASS !== 'undefined' && ART_PASS.ink; if (ink) name += '@ink';
     if (baked[name]) return baked[name];
-    const g = S[name], c = document.createElement('canvas'), x = c.getContext('2d');
+    const g = ink ? S[name.slice(0, -4)].ink(PROP_PIXELS.P.ol) : S[name], c = document.createElement('canvas'), x = c.getContext('2d');
     c.width = g.w * UP; c.height = g.h * UP;
     for (let j = 0; j < g.h; j++) for (let i = 0; i < g.w; i++) { const v = g.get(i, j); if (v) { x.fillStyle = v; x.fillRect(i * UP, j * UP, UP, UP); } }
     return baked[name] = c;
@@ -1782,7 +1808,7 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
   A.pail = function (ctx, x, y, r) { const g = S.pail, k = r * 2 / (g.w - 2); put(ctx, 'pail', x - g.w * k / 2, y - g.h * k, k); return true; };
   // The ware's stool, under the talisman (render.js `drawWare` asks).
   // THE LAST SUPPER's platter over THE WARDEN's head on his way out (js/endboss.js `drawWorld`).
-  A.platter = function (ctx, x, y) { const g = S.platter, k = 1.2; put(ctx, 'platter', x - g.w * k / 2, y - g.h * k, k); return true; };
+  A.platter = function (ctx, x, y) { const g = S.platter, k = 1.2 * TUNING.endBoss.supper.platter; put(ctx, 'platter', x - g.w * k / 2, y - g.h * k, k); return true; };
   A.stool = function (ctx, p) { put(ctx, 'stool', p.x - S.stool.w * TX / 2, p.y + 9 - S.stool.h * TX); return true; };
   // THE DARK's lantern on the wall (`Prop.wall`), in the prop's own upright frame (`drawProp`): off a
   // side wall on its arm, the plate on the wall's edge a quarter tile past the prop and the lantern
@@ -2035,7 +2061,7 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
       ctx.restore(); return true;
     }
     if (p.kind === 'platter') {
-      const name = p.open ? 'platter-open' : 'platter', g = S[name], k = 1.2;
+      const name = p.open ? 'platter-open' : 'platter', g = S[name], k = 1.2 * TUNING.endBoss.supper.platter;   // big enough to hold her
       ctx.save(); ctx.translate(p.x, p.y);
       if (p.open) renderer.shadow(0, 4, g.w * k * 0.4, 3);
       put(ctx, name, -g.w * k / 2, -g.h * k + 2, k);

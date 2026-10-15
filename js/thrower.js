@@ -283,7 +283,7 @@ const Thrower = {
     e.carry = { o: g, type: 'goat' }; e.state = 'twhold'; e.timer = T.grab.hold * game.mods.enemySlow;
     e.twDir = Thrower.pick(e, game);
     game.audio.sfxThud(); game.hitstop(0.05); game.vibe(30);
-    game.floatText(g.x, g.y - 30, 'GRABBED', PALETTE.fireHi);
+    // no GRABBED in words (14 Oct 2026): `Arm.drawMark` draws the claw over him (js/factory.js)
     Thrower.hold(e, game);
   },
   // Which way he throws him: the worst thing within the throw's reach (`grab.pick` tiles), a drop before

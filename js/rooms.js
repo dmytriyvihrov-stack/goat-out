@@ -200,6 +200,70 @@ const ROOM_TEMPLATES = [
     '##############',
   ]},
 
+  // THE MECHANICS' ROOMS (13 Oct 2026, the user's: "a few rooms devoted to the mechanics"). Each is built round one
+  // thing the game does and nothing else to look at, each in the canon of the floor that teaches its thing (so it is
+  // drawn there and on every floor after it), the gong's in the mix. `mech` names the idea, for the reader.
+  // THE BELFRY: the gong in the middle of the floor and four pillars round it a step and a half off, so the walk to
+  // ring it is a walk past four things to put a man into.
+  { name: 'belfry', mech: 'the gong', rows: [
+    '################',
+    '#..............#',
+    '#..e........r..#',
+    '#....P....P....#',
+    '#..............#',
+    '#.......b......#',
+    '#..............#',
+    '#....P....P....#',
+    '#..e........o..#',
+    '#..............#',
+    '################',
+  ]},
+  // THE FURNACE: three braziers across the middle and the straw stacked either side of them; a man butted into a
+  // bowl catches, and a man alight in the straw lights the room.
+  { name: 'furnace', mech: 'fire', canon: 'fire', rows: [
+    '################',
+    '#..............#',
+    '#.hh..e....hh..#',
+    '#.hh.......hh..#',
+    '#..............#',
+    '#...B..B...B...#',
+    '#..............#',
+    '#..hh..r...hh..#',
+    '#..hh.....ehh..#',
+    '#..............#',
+    '################',
+  ]},
+  // THE PITFALL: two holes in the boards, floor all round both, and nothing else in the way of a man thrown at one.
+  // THE RAFTERS' (THE DROP), and every floor after.
+  { name: 'pitfall', mech: 'the drop', canon: 'drop', rows: [
+    '##################',
+    '#................#',
+    '#..e..........e..#',
+    '#................#',
+    '#....OO....OO....#',
+    '#....OO....OO....#',
+    '#................#',
+    '#..r.....o.....e.#',
+    '#................#',
+    '#................#',
+    '##################',
+  ]},
+  // THE GAUNTLET: two fields of grating either side of a lane two pillars mark; whoever comes for him across them
+  // springs the teeth. THE ROAD's (THE LINE), where grates are first laid, and only where a floor lays them (`needs`).
+  { name: 'gauntlet', mech: 'the grates', canon: 'line', needs: 'spikes', rows: [
+    '##################',
+    '#................#',
+    '#..e..P....P..e..#',
+    '#................#',
+    '#.PSSSS.PP.SSSSP.#',
+    '#.PSSSS.PP.SSSSP.#',
+    '#................#',
+    '#..r..P....P..o..#',
+    '#................#',
+    '#................#',
+    '##################',
+  ]},
+
   // A yard with almost nothing in it. Two braziers, one pillar block, and a great deal of floor:
   // out here a rifle or a mage owns the room and you have to cross it anyway.
   { name: 'yard', canon: 'line', rows: [

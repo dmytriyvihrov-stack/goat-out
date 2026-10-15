@@ -12,23 +12,25 @@ const GapCross = {
   step(e, dt, game) {
     if (e.gapHop) return this.fly(e, dt, game);
     const G = TUNING.gapCross, L = game.level;
-    if (!L || !L.gaps || !(L.gaps.size || L.gaps.length) || e.dead || e.held || !e.aware || e.scripted) return false;
+    if (!L || !L.gaps || !(L.gaps.size || L.gaps.length) || e.dead || e.held || !e.aware || e.scripted || e.coward) return false;
     e.gapT = (e.gapT || 0) - dt; if (e.gapT > 0) return false;
     e.gapT = G.every;
     if (!(e.state === 'chase' || e.state === 'orbit' || e.state === 'retreat')) { e.lipT = 0; return false; }
     const k = e.kind;
+    // THE FACTORY (15 Oct 2026, his): the welder on his tracks, the automaton and THE ARM never go near the lip; the sawbot jumps it
+    if (e.welder || e.automaton || e.arm) return false;
     // The seer does not need the lip: across from the goat with no way round, in sight, he blinks to the goat's side.
     if (k === 'seer' && !(e.blinkCd > 0) && game.world.flowDist(e.x, e.y) < 0 && hyp(game.goat.x - e.x, game.goat.y - e.y) < G.blinkR * TILE
       && game.sees(e.x, e.y, game.goat.x, game.goat.y)) { e.blink(game); return false; }
     const at = this.across(e, game); if (!at) { e.lipT = Math.max(0, (e.lipT || 0) - G.every * 0.5); return false; }
-    if ((k === 'dog' || k === 'hunter') && !(e.hopCd > game.timer)) {
+    if ((k === 'dog' || k === 'hunter' || e.sawbot) && !(e.hopCd > game.timer)) {
       e.gapHop = { from: { x: e.x, y: e.y }, to: at.land, t: 0, wind: G.hop.wind * game.mods.enemySlow, air: G.hop.air };
       e.vx = e.vy = 0; e.facing = Math.atan2(at.land.y - e.y, at.land.x - e.x);
       if (k === 'dog' && game.audio.sfxGrowl) game.audio.sfxGrowl();
       return true;
     }
     // the clubman: no jump in him; he waits at the lip, and a long wait may end in the drop
-    if (k === 'bearer' && !e.champion && !e.thrower && !e.shaman && !e.boss && !e.soul && !e.sentry) {
+    if (k === 'bearer' && !e.sawbot && !e.champion && !e.thrower && !e.shaman && !e.boss && !e.soul && !e.sentry) {
       e.lipT = (e.lipT || 0) + G.every;
       if (e.lipT > G.fall.after && Math.random() < G.fall.chance) {
         e.gapHop = { from: { x: e.x, y: e.y }, to: at.pit, t: 0, wind: G.hop.wind * G.fall.windMul, air: G.hop.air, falls: true };

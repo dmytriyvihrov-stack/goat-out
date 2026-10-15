@@ -5,6 +5,354 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 0.019, 15 Oct 2026: THE FACTORY playtest, eleven notes
+
+- **No ordinary men on the factory floor.** Any kind `factoryLevel` lays that is not the factory's own (`FACTORY_MEN`: sawbot,
+  welder, automaton, arm) is a sawbot: his "a wing of two or three floors of its own, no clubmen, stronger saw robots instead".
+- **The sawbot jumps a drop** (js/gapcross.js, as the hound and the rifleman); the welder, the automaton and THE ARM never go
+  to the lip, so none of them falls in waiting there.
+- **THE ARM.** The horns daze it `stunBy` s and it lets go (`Arm.horns`); the goat is shoved, never stunned in its ring (stunned,
+  it took him at once and it read as a freeze; a real frame drop did not reproduce, frames stayed at 60). The plain BAAH no
+  longer frees him: only with THE FULL THROAT (`mods.screamStun`), and the grip's mark shows the scream only then. Its slam
+  hits every living man of flesh within `arm.slamR` tiles of where it lands, iron and welders untouched.
+- **The welder spots and fires sooner**: `welder.sightMul` 1.4, `notice` 0.35 of the beat of doubt, `fire.aim` 3.4 → 4.0,
+  `wind` 0.7 → 0.5, `wake` 1.2 → 0.5.
+- **THE HAMMERS' rams punch to the far wall** (`to` on a ram, js/machines.js).
+- **A barrel rolling across a burner's jet does not catch** (`world.noFlame` tiles); stopped on one, it does.
+- **The boiler's red knob is a dull dial**: red on a thing that does nothing read as a button.
+- CONCEPT.md: the cult grows with him in new ways, not in numbers (his principle).
+- The whole factory as a keep / change / delete list: https://claude.ai/artifact/16BNTYy12rupcdqL4pjGeF
+  (`output/factory-inventory-2026-10-15/inventory.html`, his marks in its db `marks`).
+
+## 0.018, 14 Oct 2026: THE FACTORY's looks, its furniture, four rooms
+
+His ask: "four more kinds of wall and floor for the factory, so there is something to choose from; more objects that can
+stand in the space, so it looks more organic; three or four new room layouts, so they are interesting."
+
+- **SIX FLOORS, SIX WALLS** (`FACTORY_PIXELS.FLOORS` / `WALLS`, js/factory-pixels.js). Floors: PLATES (as before), CONCRETE,
+  GRATE and BRICK (the art pack's other three, packed at last), CHECKER (diamond plate, painted in texels) and RUST (rusted
+  sheet iron, painted). Walls: IRON (as before), BRICK (the pack's brick-and-pipe elevation), PLATE, CORRUGATED, PIPES and
+  GIRDER (painted: a cap sheet and a face strip each, seamless by construction). The ART tab has FACTORY FLOOR and FACTORY
+  WALL buttons (`ART_PASS.ffloor` / `fwall`; the rooms' bake keys on them), and a level's own `flook` / `wlook` wears one:
+  the test floor's four new rooms wear one combination each, THE SHOWROOM's furniture room the fifth, so every look is seen
+  in a room. `tools/factory-looks.js` lays all 36 on one sheet (`output/factory-looks-2026-10-14/factory-looks.png`). His
+  pick is not made: PLATES and IRON stay the default.
+- **THE FURNITURE** (js/factory-props.js, three kinds of Prop). `machine`: the pack's LATHE, BOILER and CABINET (intact,
+  cracked, a wreck) and, hand-drawn in cells, an ANVIL, a SCRAP HEAP, a CABLE REEL, GAS CYLINDERS, DRUMS, a WORKBENCH. Each
+  is a wall that stands in the room (pillar 3: a body thrown into one dies on it); a headbutt, a thing thrown past
+  `prop.machine.hit`, a body or a blast cracks it and the second blow wrecks it: its parts fly (`Scatter`, metal) and what
+  is left lies flat and blocks nothing, so breaking a boiler opens a lane. The anvil and the heap never break. They hide
+  him too (`stealth.cover.kinds`). `junk`: GEARS, BOLTS, a PIPE, a CHAIN, an OIL stain, a WRENCH, OFFAL, flat on the floor,
+  nothing to anybody. `wallfix`: on the far wall's face as THE DARK's lantern is, a GAUGE whose needle twitches, a red
+  VALVE, a caged LAMP that flickers, a hazard SIGN, a VENT breathing steam. All on the FIXTURES tab.
+- **FOUR ROOMS** as templates with the factory's own legend (`FACTORY_TEMPLATES` / `layFactoryRoom`, js/factory.js), on
+  the test floor after THE CATWALK and in THE SHOWROOM's new fourth row. THE SCRAPYARD (CONCRETE, BRICK): machines in
+  heaps, two welders driving the one clear row and column, every heap a wall and a lathe or boiler two blows from a lane.
+  THE WORKSHOP (BRICK, PLATE): the men at their lathes and benches with their backs to the way in (a spawn's `facing` is
+  kept), a belt of crates along the far wall riding into a burner. THE CAROUSEL (CHECKER, CORRUGATED): a ring of belts
+  clockwise round a slab of stone, two rams off the far wall into the slab across the top lane and a wide press across
+  the bottom one: a man chasing him across a lane rides it into the trap. THE GANTRY (GRATE, PIPES): walks over the drop,
+  the way through cut by a one-tile gap, four branches that are belts carrying UP toward the void with the bait at their
+  feet, a welder on the walk. The test world is 580 tiles wide for them.
+- The packer takes the pack's belt corner too.
+
+His three notes on the first cut, the same day, and what changed for them:
+
+- **"This kind of wall is bad, it must differ."** The PLATE wall (riveted sheets over a floor of riveted sheets) is
+  gone; FURNACE stands in its place (a dark iron coping over sooted fire brick, embers glowing behind a grate at its
+  foot). Every painted cap is now a step darker than any floor and every painted face another material than any floor
+  (CORRUGATED's ribs dark and warm, PIPES' panel dark); CHECKER is a step darker too. The rule is written over
+  `paintCap` in js/factory-pixels.js.
+- **"The objects are terrible and over-detailed, some kind of mess; fewer of them, and more in our pixel style."** The
+  pack's lathe, boiler and cabinet (and their cracked and wrecked states), the scrap heap and the workbench are gone.
+  What stands now is six things hand-placed on `PROP_PIXELS.Grid` at the props' own texel and palette (js/factory-props.js):
+  a BOILER, a CABINET, an ANVIL, DRUMS, GAS CYLINDERS, a CABLE REEL, each with its own flat wreck; the junk is four looks
+  (gears, a pipe, an oil stain, offal), the wall fixtures four (gauge, valve, lamp, vent); the templates lay about half as
+  many. The pillars of the factory's rooms are the hand-drawn boiler and cabinet now too (`FACTORY_PIXELS.pillar`); the
+  pack's cabinet stays for THE BOMB MACHINE only. The atlas is 255 KB (was 308).
+- **THE ARM** (his ask: "a carrier robot: it takes you, swings and slams you on the floor, with no windup at all, when
+  you are next to it; the only ways out are the roll or the scream; the run-up and the grab do nothing; it can be tied
+  to one spot with a reach, so you run round it, or poison and fire; the mechanised arm looks good"). A pseudo-kind of
+  `bearer` (`arm`, `TUNING.arm`, js/factory.js `Arm`, js/factory-pixels.js `drawArm`): an industrial arm bolted to the
+  floor, its base a sprite and the arm itself live cells (a yellow upper arm and forearm, iron joints, a claw with a
+  lamp) that sweep, swing to whoever comes near and reach out. Its ring on the floor is the tell, read from the doorway
+  (there is no windup, his one exception): whoever stands inside it, the goat or a man of the cult, is grabbed on the
+  spot, hoisted 0.75 s and slammed down at the ring's edge: the goat loses a heart, is thrown clear and lies stunned, a
+  man dies on the floor (pillar 3). Hoisted, the goat rolls out of the claw (E, the roll's own i-frames) or BAAHs (the
+  arm reels 1.6 s and lets go); THE FULL THROAT and the bare scream's balk make it let go too. A headbutt on it only
+  bounces him off (as off the ogre), the grab finds it TOO BIG, nothing throws it. Iron: fire heats it, poison soaks it,
+  both and it goes off (the sawbot's rule); a blast or a blade takes its two hearts; dead, it leaves a wreck. It steps in
+  place of a man's perception (`Enemy.update`): no beat of doubt, no sight cone, no club. On the ENEMIES tab's SPAWN,
+  in THE SHOWROOM's factory gallery, and in THE ARMS, the first of the test floor's five template rooms: four arms, the
+  way through winding between their rings, a barrel of poison and a bowl of coals for the ones in the way, men who
+  chase him into the rings.
+- **"The arm straight-up longer, and its radius bigger."** The ring 2.2 → 3.2 tiles, the arm a texel thicker, raised higher
+  and further out at rest (`TUNING.arm.look.rest` / `out`); THE ARMS laid again 26 x 15 so the bigger rings leave a way
+  through between them.
+- **"The riveted floor flickers, a lot of visual noise, the room is harder to read."** Every factory floor is pulled
+  toward its own mean colour before it is cut into tiles (`FACTORY_PIXELS.quiet`, `TUNING.machine.floor`): what is lighter
+  than the mean (a rivet's glint, a scratch, a rust fleck) keeps a quarter of its contrast, what is darker (the seams) half,
+  so the plates' joints read and the speckle does not.
+- **"No yellow walls, yellow was our threat. The arm's radius bigger. Do not write GRABBED, show it with a mark."** The PIPES
+  wall's pipes are steel, FURNACE's embers deep red, the pack's IRON and BRICK walls have their copper pulled to grey steel
+  when cut (`FACTORY_PIXELS.unyellow`); the wall lamp's glass is cool white, the drums and the cabinet's door drab green-grey.
+  Yellow on the factory floor now means THE ARM and the tells. The ring 3.2 → 4.2 tiles, the arm raised further; THE ARMS
+  laid again 30 x 17 with three arms. The grip says nothing in words any more (the thrower's too): `Arm.drawMark` draws a
+  claw of cells shut over him, red and shaking, and while THE ARM holds him the roll's and the voice's own skill-rail
+  pictures blink either side of it, the two ways out.
+
+## Unreleased, 14 Oct 2026: THE FACTORY, his third playtest (8 notes)
+
+- **POISON MEETS HOT IRON.** A barrel touching a red-hot sawbot goes up as it does against a burning man (a poison one
+  goes off, `Prop.updateBarrel`), rolling into it or standing where it walks; a hot sawbot in a puddle already went off.
+- **THE AUTOMATON DOWN READS AS OPEN.** While his body can be struck (down, a fall's hearts not yet taken) the frame
+  wears a pale gold rim and four chevrons of cells pointing in at it, closing on the beat, the meat throbs brighter and
+  the floor ring flashes (`look.open`). The floor marks alone hid under the body, which stands well above its floor point.
+- **THE SAW IN HIS RIGHT HAND.** The sawbot's front view is never mirrored any more (facing east it was, which put the
+  saw in his left); the back view carries it on the screen's right, the bar mirrored there.
+- **EVERY ROOM ITS OWN.** THE FACTORY's rooms had nearly the same size and the same two clubmen and a sawbot. Now: THE SAW
+  HALL tall and narrow (14 x 23), THE WELDERS' LANE long and low (30 x 8, blocks down its middle so the way through steps
+  into a lane), THE GRATES a ring round a block of stone (each way round crosses fire grates), THE DROP wide with a
+  rifleman and a hound across it, THE BOILER ROOM the biggest (26 x 21, a grid of boilers, a thrower), THE WORKS two
+  chambers, THE CRUSHER with a shieldman, THE BURNERS long and low with two hounds, THE PRESS GATE square with a thrower,
+  THE GRILL tall with a rifleman behind the fire (162 burners).
+- **THE HEAD.** A sawbot coming apart throws its head as a piece of its own, a size and a half up, straight up out of the
+  smoke, turning slowly, and it lands upright a tile or so off (`effects.scrap`); its plates were re-cut off the real
+  sprite (the old cuts missed the saw). The welder now comes apart the same way, with his mask, instead of bleeding.
+- **A SHARP STOP WHERE IT MATTERS.** In a room with machines or a drop in it (`game.trapRooms`) he stops in four frames
+  (8 px from a full run, against 34 elsewhere) and starts and turns sharper (`goat.trapGrip`); the ordinary run keeps
+  its little carry.
+- **THE COYOTE ROLL.** A roll pressed in the first 0.14 s of a fall (`fall.coyoteRoll`) puts him back on the lip and rolls
+  him from it, so a roll a beat late still carries him over a narrow drop.
+- **QUIETER STAKES.** Under a drop a stake every 24 px instead of 12, more of them missing, darker, and a deeper veil over
+  them (`effects.pit.veil`): the hole reads dark and the press's amber over it stands clear.
+
+## Unreleased, 14 Oct 2026: the machine rooms, polished off other games' trap rooms
+
+His ask: polish the rooms with mechanical traps, with references from other games. Three research passes (Enter the
+Gungeon, Isaac, Hades, Spelunky, Dead Cells, Mega Man 2's Metal Man, Into the Breach, Katana Zero and design writing)
+are in `output/trap-rooms-2026-10-14/REFERENCES.md`, with the rules that held across them and the ideas not built.
+
+- **HEARD AS WELL AS SEEN.** Every lethal tell is a sound too: a press's and a ram's warning is the pump labouring the
+  length of the warning and ending on the slam (`Foley.hydraulic`, `sfxHydraulic`), the jaws drawn back let the air out
+  (`vent`), a burner about to catch hisses with its igniter ticking (`gas`, a room of them once a beat). Placed where the
+  machine stands (`heard`), silent from a room he cannot see or past `audio.machines.far` tiles. On the SFX board.
+- **HAZARD TAPE.** A press's band and a ram's strip are marked on the floor while they run, two cells of amber and black
+  along each edge on the slant (`Machines.drawTape`, `TUNING.machine.tape`): the lane that will close is read from the
+  doorway, before it moves (Spelunky's "spotted ahead of time"). The warning's amber goes over it.
+- **A LAMP ON EVERY MOUNT** (`Machines.drawLamp`): green open, amber blinking through the warning, red on the blow, amber
+  drawing back, dark once stopped.
+- **SPARKS, STEAM, BLOOD.** Sparks fly off the seam when a press's jaws meet, steam puffs off the mounts as a press or a
+  ram draws back, and the jaws stay red with the men they have crushed (`m.blood`, up to three stains).
+- **A SOLVED ROOM STOPS ITS MACHINES** (`TUNING.machine.stop`, `Machines.halt`; the references' commonest complaint, a
+  timing gate still live after its fight): once every man put in a room is dead, its presses, rams and burners finish
+  the stroke they are in and stop open and cold, the tape gone and the lamps dark, and the room winds down once
+  (`winddown`). Belts keep running; a room laid with nobody in it (THE SHOWROOM's) keeps its machines going.
+- **ONE MACHINE FIRST.** THE FACTORY's trap rooms run THE CRUSHER (one press), THE BURNERS, then THE PRESS GATE (a press
+  and a belt), THE LINE, THE CATWALK (Isaac, Metal Man, Katana Zero teach one hazard before they mix). THE CRUSHER's
+  floor adds THEM DEAD, IT STOPS.
+- **FOUR MORE ROOMS** (his ask the same day: "a simple lesson room, and then rooms of their own: one with very many
+  belts, one at least half fire grates, something else"). THE FACTORY is eighteen rooms on a 470-wide world:
+  - **THE LESSON** before THE CRUSHER: nobody in it, so nothing stops; a belt (IT CARRIES), a column of burners (IT GLOWS,
+    THEN BURNS), a ram off a block of stone with a crate in its strip (IT SHOVES), a press across the way out (IT CRUSHES).
+  - **THE BELTS**: five lanes two tiles across, right and left in turn, every lane but his own (the middle one, to the way
+    out) ending in a pair of burners; barrels and crates ride them into the fire, the men stand on the strips between.
+  - **THE GRILL**: 150 of its 240 tiles are burners, lit in a wave from the way in to the way out, so the fire walks
+    across the room and the goat walks behind it; two cold pockets in it, a sawbot that walks the fire red-hot.
+  - **THE HAMMERS**: a hall seven tiles deep with rams in both long walls, staggered and fired in a rolling wave. They
+    throw a man at 20 tiles/s (a ram's own `shove`, `TUNING.ram.shove` is 10), which carries him into the far wall from
+    anywhere in the strip, and the wall kills him; the goat is only knocked off his feet.
+- **MACHINES SLEEP TWO ROOMS AWAY** (`Machines.asleep`, as the men do): a machine's clock is held and its belt carries
+  nothing while the goat is two rooms or more from it, so THE LINE's and THE BELTS' barrels are still there when he
+  arrives instead of long since fed to the fire. The cult's trap test asks the burners by tile (`game.burnerAt`) and
+  only the presses and rams one by one, so THE GRILL's 150 do not slow every man's step.
+
+## Unreleased, 13 Oct 2026: THE FACTORY, his second playtest of it (13 notes)
+
+- **THE ONE WHO KNOCKS.** THE FLAYED down, a beat later the goat has his say in the animals' box under his own
+  picture: BAAH. BAAH. and, on the next page, (I AM THE DANGER. I AM THE ONE WHO KNOCKS.) (`supper.knock`).
+- **A BURNING THROW LIGHTS WHO IT MEETS.** A blade, a board or anything else thrown through fire catches for the rest
+  of its flight (a crate always did), and a burning throw, caught or a firebrand's, sets the man it meets alight
+  (`Status.updateCarried`, `Prop.hitMan`). A sword thrown through the welder's jet used to reach the man behind it cold.
+- **THE WELDER.** His own in the cone no longer hold the jet: they burn. The jet reaches 4.3 tiles, not 3.2, and a
+  little wider; he fires from 3.4 tiles and keeps 2.9 off the goat, backing off inside 2.1 ("he need not come so close").
+- **NO STONE TEETH IN THE FACTORY.** THE WORKS' teeth at the wall are burners now; the teeth are the cave's.
+- **THE LINE.** Both belts two tiles across, the picture scaled with them (`w`), and THE PRESS GATE's belt too, its jaws
+  meeting on the belt's middle; the press over the crates' belt runs on a quick clock (`press.quick`: open 0.6 s, back
+  0.5 s, the warning as it was).
+- **THE RAM**, a new trap (`kind: 'ram'`, `TUNING.ram`, js/machines.js): one jaw of a small press bolted to stone, shaking
+  over its strip, then punching 2.6 tiles out and back. What it meets is thrown along the punch, a man flung, the goat off
+  his feet, no heart: on THE CATWALK, two of them at the start of the walk, one from above and one from below a beat
+  apart, so it is the drop that costs. The catwalk is four tiles longer for them. One in THE SHOWROOM's factory room.
+- **THE BRIDGE BURNS.** Three burners under the catwalk's bridge, lit end to end; the sawbot standing on it goes red-hot.
+- **COYOTE TIME AT AN EDGE.** Floor within 7 px of the goat's middle still holds him; past that he goes down after 0.15 s,
+  and with no floor within 13 px at once, so a one-tile gap is still the roll's to cross (`fall.ledge`, `coyote`, `deep`).
+- **THE AUTOMATON.** Down, he lies 7.5 s, not 4.5, and rises over 1.6 s; with a fall's two hearts taken he lies 1.2 s more
+  before he heaves (he rose on the blow itself), and blows meanwhile ring off. The legs: a foot is found from 0.85 tiles
+  (0.7) and while lifting a little, the second blow may come 4 s after the first (2.5), and the first blow buckles the
+  foot, planted 1.4 s and never lifted for a stomp while the body sags over it, so the second blow finds it there.
+
+## Unreleased, 13 Oct 2026: THE COWARD, THANK YOU FOR PLAYING, the mechanics' rooms
+
+- **THANK YOU FOR PLAYING** (his ask, Cult of the Lamb's last card): a won run opens on a black card before its own,
+  the cult's sign burning red in hand-laid cells (a goat's head, horns, one eye; `THANKS_SIGIL`), a brushed edge that
+  crawls and a halo breathing round it, then two lines under it and a quiet CONTINUE (`Renderer.drawThanks`,
+  `game.thanks`, `TUNING.thanks`). The run's ESCAPED card follows as before.
+- **THE COWARD** (his ask, js/coward.js, `TUNING.coward`, `BARKS.coward`): a clubman with his mask off, a frightened face
+  and a robe in a duller wine (`COWARD_STUDY` in js/pixel-art.js: the mask found on the packed colours and painted as
+  skin, wide eyes, worried brows, an open mouth), hiding in a corner of a fighting room on THE ALTAR, THE YARD and THE
+  CAVE (`placeCowards` in js/gen.js, about half the floors). He never lifts his club, faces the camera hunched and
+  shaking harder the nearer the goat, and begs (PLEASE, NOT ME · THEY MADE ME WEAR IT · I WON'T TELL). Off the room's
+  count, seal, clamp and cleared door (`e.room` -1). Walk on past his room with him never butted, thrown, carried, lit
+  or killed and he is SPARED (YOU SPARED HIM; `game.spared`, saved with the run). From THE YARD on, a floor may then lay
+  one of them in a quiet corner with a tuft of grass before him (FOR YOU, GOAT. I PICKED IT), at 40% and 15% more for
+  each one spared past the first; hit him and he is no longer counted. `GEN_RULES.coward`; THE SHOWROOM's first three
+  floor galleries stand him; SPAWN rows THE COWARD and COWARD + GRASS. `PIXEL_ART.studyFrame` now keys its bakes by
+  study, since two studies share the clubman's frames.
+- **THE MECHANICS' ROOMS** (his ask, js/rooms.js): four templates built each round one thing. THE BELFRY (the gong in
+  the middle, four pillars round it; the mix, any floor but THE DARK), THE FURNACE (three braziers across the middle,
+  straw either side; THE YARD's canon), THE GAUNTLET (two fields of grating either side of a pillared lane; THE ROAD's,
+  where grates are laid), THE PITFALL (two holes in the boards and floor all round them; THE RAFTERS'). All rules hold
+  over 25 seeds; the gong's and the furnace's rooms are kept out of THE DARK (`ROOM_LEVELS`), whose ladder they pushed
+  over THE CAVE's.
+
+## Unreleased, 13 Oct 2026: THE FACTORY, his first playtest of it (15 notes)
+
+- **IRON WALLS, MACHINES FOR PILLARS.** A factory wall is the art pack's iron wall: its riveted band laid as the cap, its
+  brick-and-pipe rows as the face (`FACTORY_PIXELS.wallCap` / `wallFace`, read by `PaintedArt.drawWall` for `def.factory`);
+  a lone wall tile in a factory room is a boiler or a cabinet, not a stone column (`FACTORY_PIXELS.pillar`). THE SHOWROOM's
+  factory room gets them too.
+- **THE GRATE IS FIRE.** A factory grate (`p.flame`) is a burner: the same trip and beats, its tile the floor's own fire while
+  it is up (`TUNING.prop.spike.flame`), drawn as the burner (`Machines.drawFlameGrate`).
+- **THE SAWBOT HEATS AND SOAKS.** Fire no longer slides off it: it goes red-hot for `sawbot.heat.time` s, and anything of it
+  touching the goat but his horns costs a heart (`Sawbot.tick`). Poison soaks it (`soak`); soaked and hot at once it goes
+  off as a puddle does (`Sawbot.burst`). Dead, it comes apart in plates with sparks, never a body (`CombatFX.scrap`). Its
+  chainsaw is a bar of cells twice the old blade, raised in the windup, down in the swing, its chain running
+  (`TUNING.sawbot.saw`).
+- **THE WELDER.** The jet hurts only where its own fire lies (it reached a tile past the flames); it aims from 2.0 tiles,
+  not 2.6; it holds while one of its own stands in the cone before the goat (`Welder.friendInCone`).
+- **BOMBS FLY OVER A DROP.** A thrown bomb went down the first hole it crossed; it now falls only once it comes down over
+  one, as a crate does.
+- **THE AUTOMATON.** Legs spread wider and shins longer, more room under him; a leg that took a blow shows it on its piston,
+  bone white to red (the red ring on the floor is gone); no words over the fight but one THE LEGS the first time a blow
+  finds the body standing; a blast that reaches a planted foot or the floor under him brings him down whole, no heart
+  (`automaton.blastFall`); dead, his wreck stays on the floor (`FACTORY_PIXELS.makeWreck`, `game.wrecks`).
+- **THE BOMB MACHINE** (`kind: 'dispenser'`, `TUNING.dispenser`, js/machines.js): a cabinet with a button; a headbutt
+  presses it, it rattles `wind` s and drops a bomb in front, one of its bombs at a time. In THE RING behind a fence of
+  burners lit in a wave, two more bombs on the ring's floor; one in THE SHOWROOM.
+- **THE CATWALK**, a fourteenth room before the breather: the room is a drop but a walk two tiles across, cut twice by a
+  gap to roll, narrowed to one tile over a bridge (`kind: 'bridge'`, picture only), and twice it runs between the jaws of a
+  wide press bolted to stone standing in the drop. A clubman, a sawbot on the bridge, a welder firing down the walk.
+
+## Unreleased, 13 Oct 2026: THE FACTORY test floor, thirteen rooms and its own traps
+
+- **THE PRESS, THE BELT, THE BURNER** (his ask: "ChatGPT made new assets for the traps, the press, the belt, the burning
+  grates; make them, things with them in"), `js/machines.js`, off the art pack's pictures (`tools/pack-factory.js` cuts the
+  press into mount, rod and jaw so the jaws slide, and keeps the belt's two ends so its middle scrolls at its real speed).
+  The press closes on a clock: it shakes and lays its strip in amber cells first, then slams; the jaws are walls that move,
+  and what is between them when they meet is crushed (a man dies, a two-heart one loses a heart and is thrown clear, the
+  goat loses a heart to THE PRESS, a crate, barrel, bomb or blade breaks). Bolted left and right or top and bottom, small
+  (two tiles) or wide (six). The belt carries the goat, men, crates, barrels and blades. The burner glows, catches, and
+  then is real fire on its tile, so a clubman burns, a sawbot shrugs it off, a welder will not drive into it and a barrel's
+  oil goes up. The cult reads a press about to shut and a glowing burner as traps. All numbers in `TUNING.press` / `belt`
+  / `burner`, first guesses.
+- **FOUR ROOMS OF THEM** on FACTORY (TEST), before the breather: THE PRESS GATE (a wall across the room with a press in its
+  one opening, a belt running back through it, a press in the corner and a crate to feed it), THE CRUSHER (the wide press
+  across the way: run it while it is open), THE BURNERS (three columns of burning grates lit in a wave), THE LINE (barrels
+  riding a belt into a burner, crates riding another under a press). THE SHOWROOM's factory room has one of each.
+
+- **MORE ROOMS ON FACTORY (TEST)** (his ask: "more rooms, to walk through and try the traps and check the enemies"): the
+  machines against the floor's traps, between the welders' lane and the ring. THE GRATES (a bending band of grating with the
+  sawbots behind it, one grate under a crate), THE DROP (a chasm wall to wall with E - ROLL before it, two holes, the sawbots
+  across it to butt in, a welder driving up and down the far wall), THE BOILER ROOM (red barrels, a poison one, bombs, a
+  chandelier on its cleat, a welder driving through the middle), THE WORKS (two welders crossing, three sawbots, a patch of
+  grating, teeth at the wall, pillars, blades), and a breather with grass before THE AUTOMATON. The factory's plates stay
+  plates round a hole (`floorSwatch`: a floor that is a picture is never swapped for boards).
+
+## Unreleased, 13 Oct 2026: RUN STATS that find the friend, builds you can read, a life sent while it is played
+
+- **THE DATES ONLY FILTER** (his note: "a friend played and I can't find him; load everything from the server and only then
+  cut it by the dates"): SERVER already fetched every page whatever the dates said; now it says so (ALL n IT HOLDS, and the
+  newest life a source has), keeps the server's copy in this browser (IndexedDB) and lays it in on opening, and asks the
+  server again by itself when its key is kept. What was found: the server holds 22 lives, the newest 11 Oct (a Sunday); his
+  friend's two lives that day are there, and THIS WEEK (Monday 12 Oct on) left them out. Nothing came in from 12 Oct at all.
+- **WHAT THE DATES CUT, FIXED**: the funnel kept only players whose first step fell in the dates, so a player who came back
+  vanished from it; it now counts every player who played in them (a box keeps the old reading). A life is in the dates by
+  any part of it, not only its first second. Players by day and the days a player played were UTC days; they are this
+  browser's, as FROM and TO are. Under the funnel: how many lives the dates, the build and the flags leave out.
+- **BUILDS BY DATE, AND WHAT WAS IN THEM** (his note): the build picker is a list newest first by the day its CHANGELOG
+  heading gives (the numbers began again at 0.001 after 2.07), with that day beside each, and the pointer on a build shows
+  its headings and their bold leads. Opened as a file, just the numbers and the day each was first seen.
+- **THE LIFE SO FAR GOES OUT** (his question: "send the stats after each floor? he passed the second floor a second time and
+  I see one run"): a report went out only when its life ended, so a life still being played, or a tab a phone threw away,
+  never arrived. The open life now goes as it stands at every floor cleared and when the tab is put away (`Stats.live`,
+  `end.how` 'on', STILL PLAYING on the page), under every guard the ending has. The worker keeps the fullest copy of a life
+  where it kept the first, so the ending replaces those (needs `npx wrangler deploy` in tools/stats-worker; until then it
+  refuses them, which costs nothing). The page keeps the fullest copy of a life from any source.
+
+## 0.017, 12 Oct 2026: THE FACTORY, three machines on a test floor
+
+- **THE FACTORY** (the user: a zone of one or two floors, an alternative round the fourth and fifth, with ChatGPT's art for it,
+  output/factory-art-2026-10-12): three new kinds of man, pseudo-kinds of `bearer` like the shieldman (js/factory.js,
+  `TUNING.sawbot` / `welder` / `automaton`), drawn off their own packed atlas (js/factory-assets.js, tools/pack-factory.js,
+  js/factory-pixels.js). Not in any LEVELS pool yet: the dev drawer's FACTORY (TEST) row (or `#factory` + NEW GAME) lays a floor
+  of four rooms, the way in, THE SAW HALL, THE WELDERS' LANE and THE RING, in its own riveted plate (`PIXEL_ROOMS.factory`, the
+  floor off the pack's picture), held like THE SHOWROOM (no save, its stairs lead back round) but with GOD as it was.
+- **THE SAWBOT** (the user: "like clubmen, only immune to fire and poison, two hearts"): the club's swing with its own numbers,
+  iron that no fire, witchfire or poison touches (`e.immune`, read by `Enemy.immunity`; `Status.poison` learned to refuse),
+  and no blunder. The wall still kills it.
+- **THE WELDER** (the user: "a torso on tracks, it drives one line only, forward and back, and sprays fire ahead; go round it"):
+  `waxis` is the line, its facing one of its two ends; after the goat it lines up along it and, with him in the cone ahead,
+  aims `fire.wind` s (an amber arc of cells on the floor) and lights the cone's tiles with real fire for `fire.time` s. Beside
+  its line it cannot reach you. It burns like a man and never drives into a burning tile. Too heavy to lift or push.
+- **THE AUTOMATON** (the user: "a huge automaton as the boss: knock two legs out from under it and it falls; a knocked leg swings
+  aside and dangles a while, then comes back; it attacks by stepping on you"): a square iron frame with the meat bulging out of
+  its sides high on four long legs, variant A of the art (the corner cage, his pick). The body is out of reach standing. He
+  stomps in runs (`stomp.chain`: two, three with a leg out): the nearest leg lifts over the goat's lead with a ring of where it
+  lands, comes down (a heart and a throw; a man in it is thrown, a crate breaks) and that foot is STUCK in the floor a beat
+  (`legs.stuck`, an amber ring under it): one blow knocks it out. Any other planted foot takes two blows close together
+  (`legs.hits`, `heal`; a red ring after the first). A leg out swings off its hip `legs.out` s, drawn dark with sparks, a red
+  meter on the floor filling where it comes back. `fall.legs` (two) out at once and he falls, the one place his weight kills a
+  man; down, the body is open (an amber ring round it, draining), `fall.hearts` (two) hearts a fall at most, then he heaves up
+  and throws the goat off. Five hearts: three falls. Every blast that goes through the room (`Prop.blastRoom`) knocks out the
+  planted feet in reach, or takes a heart off the fallen body. He keeps to his room. His legs are posed live off the body's hips
+  (two bones, bent outward) and the feet are posts the goat walks between; his body touches nobody (`e.aloft`). A boss bar
+  names him, `BOSS_HINTS.automaton`. Dies to a wreck, not a corpse.
+- **TWO ROUNDS OF PLAYTEST BY A BOT MODEL** (the user's ask): the first found the boss dead in five seconds with no heart lost,
+  the welder bulldozing a goat down the corridor and harmless nose to nose, the machines following the goat out of their rooms,
+  the bomb doing nothing to the boss, and no word when fire or poison meets iron. All answered above: measured after, a careless
+  goat that never dodges loses about seven hearts to him and a careful one about three, three falls in about twenty seconds.
+  The welder now holds `drive.hold` tiles off the goat on its line, backs off closer than `back`, aims only inside `fire.aim`,
+  and its jet costs a heart once a burst (`fire.hurt`); the sawbot says IRON (`Sawbot.shrug`). THE FACTORY no longer turns GOD on.
+- **THE SHOWROOM** has a factory room at the end of the floors' row (its plate, coals, a poison barrel, the automaton standing
+  in its top half, the sawbot and the welder in its gallery), and the SPAWN column has SAWBOT, WELDER and THE AUTOMATON.
+- Decided here, open to his tuning: one blow a stuck foot and two any other, two legs the fall, two hearts a fall, five on the
+  body; the welder two hearts. Nothing added to the goat's verbs. Not built: the factory's furniture (presses, belts, the grabber, the burners,
+  the boilers) and templates for the generator, so no run deals the floor yet.
+
+## 0.016, 12 Oct 2026: the Warden's turn, and the floor gives way to the goat
+
+- **THE WARDEN TURNS IN A SCENE** (the user: "a more epic transformation"): his last heart no longer swaps him for THE FLAYED on
+  the spot. The floor stops and the camera goes whole to him (`Warden.beginTurn`, `game.endScene` kind 'turn'); rocked down, his
+  words come in the box ("SO YOU ARE A STUBBORN ONE, IT TURNS OUT...", "NO MATTER. WE WILL FIX THAT."), then the violet is drawn
+  in to him off the whole room, rings closing on him and the floor thudding faster, and THE FLAYED breaks out with a white flash,
+  four rings and a roar. Skippable once seen. `TUNING.warden.turn`.
+- **HIS WORDS** (the user's): walking in, "YOUR BELOVED AND I HAVE BEEN WAITING FOR YOU, LITTLE GOAT."; the last of his men down,
+  "GOOD, LITTLE ONE. NOW, LET'S DANCE." in the box (it was a line over his head that went by unread); and the goat killed in his
+  room, he laughs and says "YOU WERE NOT AS TOUGH AS I THOUGHT." over the soul going up (`EndBoss.gloat`, `warden.gloat`).
+- **THE PLATTER IS BIG ENOUGH TO HOLD HER** (`supper.platter`, ×1.9 its sprite).
+- **WITCHFIRE AND POISON** (js/waves.js): a ring or a band of the corrupted ogre's witchfire running over a puddle sets it off
+  (`Status.blast`, which burns the puddle away round it), one a step as fire does it.
+- **A TABLE ON ITS SIDE BREAKS THE WAVE** (the user's): a flipped table cuts its own width out of a band, or its shadow out of a
+  ring, from there on, with a spray of violet off it; a table on its legs does not. A band cut across its whole width is spent.
+- **NO WRAITH INTO THE LAST ROOM** (the user: "a lot of ghosts flew in from past the edge of the screen", then: "the chase
+  between rooms and through walls is top, just don't let them fly into the final room"): a wraith not put in a floor's last
+  room stops at its walls and waits there; the chase everywhere else is as it was.
+- **A BRAZIER BY A WALL** (the user, with a screenshot: "when you place it, I have to be able to pass"): one in the tile against
+  a wall left a strip of floor between its feet and the stone that looked like a way through and was three pixels wide. It
+  stands off the wall far enough for a goat to go behind it where the tile it steps into is plain floor (`brazierOffWall`,
+  `brazier.behind`), else flush on the stone, never a strip; a plug in a one-tile gap stays. `GEN_RULES.braziers`.
+
 ## Unreleased, 12 Oct 2026: the first pen holds, and a marked thing looks marked
 
 - **THE LAST SUPPER IS A SCENE** (the user, with a screenshot of walking into THE OSSUARY's last room): the goat in the room no

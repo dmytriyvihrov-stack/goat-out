@@ -132,7 +132,7 @@ const FLAYED_PIXELS = (() => {
     const g = finish(kind === 'front' ? front(o, turn) : kind === 'side' ? side(o) : back(o, turn));
     v = { g, flip: !!flip }; cache.set(key, v); return v;
   }
-  return { W, H, FOOT, sprite, VIEWS };
+  return { W, H, FOOT, sprite, VIEWS, OL };
 })();
 if (typeof module !== 'undefined') module.exports = FLAYED_PIXELS;
 
@@ -141,11 +141,12 @@ if (typeof document !== 'undefined') {
   const UP = 4, baked = new Map();
   FLAYED_PIXELS.TX = 1.4;
   FLAYED_PIXELS.canvas = (sp) => {
-    let c = baked.get(sp); if (c) return c;
-    const g = sp.g; c = document.createElement('canvas'); c.width = g.w * UP; c.height = g.h * UP;
+    const g = PROP_PIXELS.inked(sp.g, FLAYED_PIXELS.OL);   // ONE STYLE (`ART_PASS.ink`): the outline retinted, the bake keyed by the grid it paints
+    let c = baked.get(g); if (c) return c;
+    c = document.createElement('canvas'); c.width = g.w * UP; c.height = g.h * UP;
     const x = c.getContext('2d');
     for (let j = 0; j < g.h; j++) for (let i = 0; i < g.w; i++) { const v = g.get(i, j); if (v) { x.fillStyle = v; x.fillRect(i * UP, j * UP, UP, UP); } }
-    baked.set(sp, c); return c;
+    baked.set(g, c); return c;
   };
   FLAYED_PIXELS.draw = (ctx, angle, moving, t, x, pose) => {
     const F = FLAYED_PIXELS, d = (Math.round(angle / (Math.PI / 4)) + 14) % 8;

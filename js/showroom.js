@@ -19,7 +19,7 @@ const SHOWROOM_LEVEL = {
 };
 // What each kind is called under his figure in a floor's gallery (the names the game's own text uses).
 const SHOWROOM_NAMES = { bearer: 'CLUBMAN', champion: 'BUTCHER', dog: 'HOUND', seer: 'MAGE', hunter: 'RIFLEMAN', butcher: 'OGRE',
-  shield: 'SHIELDMAN', thrower: 'THROWER', shaman: 'SHAMAN', wraith: 'WRAITH' };
+  shield: 'SHIELDMAN', thrower: 'THROWER', shaman: 'SHAMAN', wraith: 'WRAITH', sawbot: 'SAWBOT', welder: 'WELDER', automaton: 'THE AUTOMATON', arm: 'THE ARM', coward: 'THE COWARD' };
 // The galleries' figures (8 Oct 2026): each a man built the way `startLevel` builds a spawn, then kept as
 // `level.statueMen` and never handed to `game.enemies`, so nothing steps, sees, reaches, hurts or counts
 // him (no kill, soul, seal or clamp waits on him); `Renderer` stands them with the cast, facing the camera,
@@ -31,6 +31,11 @@ function showroomStatues(level) {
     if (s.shield) e.giveShield();
     if (s.thrower) Thrower.give(e);
     if (s.shaman) Shaman.give(e);
+    if (s.sawbot) Sawbot.give(e);   // THE FACTORY's machines (js/factory.js)
+    if (s.arm) Arm.give(e);
+    if (s.welder) Welder.give(e, 'x');
+    if (s.automaton) Automaton.give(e);
+    if (s.coward) e.coward = true;   // THE COWARD (js/coward.js), in his own robe and face
     if (s.warden) { e.warden = true; e.pose = 'idle'; }
     if (s.flayed) { e.flayed = true; e.boss = true; e.soul = true; }   // THE FLAYED (js/flayed-pixels.js), his second phase   // THE WARDEN (js/warden-pixels.js), the last floor's gallery
     e.statue = true; e.room = -1; e.facing = Math.PI / 2; e.solid = true;   // a wraith in his body, not his mist
@@ -40,8 +45,8 @@ function showroomStatues(level) {
 }
 
 function showroomLevel(def, seed) {
-  const W = 420, H = 78, tiles = new Uint8Array(W * H).fill(T.WALL), zones = new Uint8Array(W * H);
-  const floors = [...LEVELS, DARK_LEVEL];
+  const W = 420, H = 98, tiles = new Uint8Array(W * H).fill(T.WALL), zones = new Uint8Array(W * H);   // 98 rows since THE FACTORY's row (14 Oct 2026)
+  const floors = [...LEVELS, DARK_LEVEL, FACTORY_LEVEL];   // THE FACTORY's room last (js/factory.js), in its own plate
   // The level's own look is THE ALTAR's; every other floor is a zone.
   for (const k of ['floor', 'floorAlt', 'wall', 'wallTop', 'fog']) def[k] = LEVELS[0][k];
   def.met = new Set(Object.keys(THREAT)); def.known = new Set(floors.map((d) => d.canon && d.canon.id).filter(Boolean));
@@ -225,6 +230,21 @@ function showroomLevel(def, seed) {
     // THE DARK, the lamp: standing lamps, lanterns on the wall, straw.
     (x, y) => { put('lamp', x + 3, y + 3); put('lamp', x + 10, y + 3); put('lamp', x + 7, y + 6);
       put('sconce', x + 4, y, { wx: 0, wy: -1 }); put('sconce', x + 9, y, { wx: 0, wy: -1 }); fill(x, y + 1, x + 2, y + 2, T.HAY); },
+    // THE FACTORY (js/factory.js): a barrel of poison (nothing to its iron), a crate, and THE AUTOMATON standing in the top
+    // half on his four legs, too wide for the gallery's row; the sawbot and the welder stand there below. Its traps (13 Oct
+    // 2026, js/machines.js): a press bolted in the top corner between the wall and a stub, a belt, a burning grate.
+    // 13 Oct 2026: THE BOMB MACHINE in the top-right corner, the factory's fire grate, a catwalk's bridge.
+    (x, y) => { put('barrel', x + 10, y + 1, { toxic: true }); put('crate', x + 12, y + 5); put('weapon', x + 13, y + 5, { weapon: 'sword' });
+      put('dispenser', x + 12, y + 1); label('BOMB MACHINE', x + 12, y + 2.6, 4);
+      put('spike', x + 10, y + 3, { flame: true }); label('GRATE', x + 10, y + 3.9, 2);
+      machines.push({ kind: 'bridge', tx: x + 11, ty: y + 7, n: 3, dir: 'h' }); label('BRIDGE', x + 12, y + 7.9, 3);
+      fill(x + 6, y, x + 6, y + 1, T.WALL);
+      machines.push({ kind: 'press', size: 's', x0: x * TILE, x1: (x + 6) * TILE, y: (y + 1) * TILE, phase: 0 }); label('PRESS', x + 3, y + 2.3, 3);
+      machines.push({ kind: 'belt', tx: x + 1, ty: y + 3, n: 4, dir: 'r', w: 2 }); label('BELT', x + 3, y + 5.2, 3);
+      // the catwalk's ram (13 Oct 2026, second playtest), punching off the west wall along the row under the belt
+      machines.push({ kind: 'ram', axis: 'h', y: (y + 7) * TILE, a: x * TILE, dir: 1, phase: 0 }); label('RAM', x + 2, y + 8.3, 2);
+      machines.push({ kind: 'burner', tx: x + 8, ty: y + 1, phase: 0 }); label('BURNER', x + 8, y + 2.3, 3);
+      statues.push(Object.assign(P(x + 6.5, y + 4.5), spawnKind('automaton'))); label('THE AUTOMATON', x + 6.5, y + 6.2, 5); },
   ];
   // THE RULE (8 Oct 2026, the user's): each floor's room also stands a still figure of every kind of man that
   // floor can deal, his name under him: its crowd (`encounters.kinds`, the pseudo-kinds too) and the bosses of
@@ -233,9 +253,10 @@ function showroomLevel(def, seed) {
   // The tall ones first, so a second row never stands over the names of the first.
   const TALL = ['butcher', 'thrower', 'champion'];
   const kindsOf = (fd) => { const E = fd.encounters || {};
-    const ks = [...new Set([...(E.kinds || []), ...(E.introduce || []).map((n) => n[0]), ...(fd.arenas || []).map((a) => a.boss)])];
+    const ks = [...new Set([...(E.kinds || []), ...(E.introduce || []).map((n) => n[0]), ...(fd.arenas || []).map((a) => a.boss)])].filter((k) => k !== 'automaton')   // he stands by hand (above)
+      .concat(TUNING.coward.levels.includes(levelIndexOf(fd)) ? ['coward'] : []);   // THE COWARD: off the crowd, met on these floors (js/coward.js)
     return ks.filter((k) => TALL.includes(k)).sort((a, b) => TALL.indexOf(a) - TALL.indexOf(b)).concat(ks.filter((k) => !TALL.includes(k))); };
-  const statues = [];
+  const statues = [], machines = [];   // THE FACTORY's traps (js/machines.js)
   const gallery = (ks, ix, iy) => {
     const rowsN = ks.length > 5 ? 2 : 1, per = Math.ceil(ks.length / rowsN);
     ks.forEach((k, n) => {
@@ -244,7 +265,7 @@ function showroomLevel(def, seed) {
       // Never stood over a drop (THE CAVE's chasm runs wall to wall): stepped aside to the nearest floor.
       const clear = (d) => [-0.45, 0.45].every((o) => tiles[at(Math.floor(ix + d + 0.5 + o), Math.floor(iy + dy + 0.5))] === T.FLOOR);
       dx = [0, -1, 1, -1.5, 1.5].map((o) => dx + o).find(clear) ?? dx;
-      statues.push(Object.assign(P(ix + dx, iy + dy), spawnKind(k)));
+      statues.push(Object.assign(P(ix + dx, iy + dy), k === 'coward' ? { kind: 'bearer', coward: true } : spawnKind(k)));
       label(SHOWROOM_NAMES[k] || k.toUpperCase(), ix + dx, iy + dy + 1, 3);
     });
   };
@@ -321,8 +342,45 @@ function showroomLevel(def, seed) {
       prevR = r; px0 += w + 4;
     });
   }
+  // THE FACTORY'S FURNITURE AND ROOMS (14 Oct 2026, js/factory-props.js, js/factory.js `FACTORY_TEMPLATES`): a fourth row under
+  // THE ARENAS', reached by a shaft down out of the first arena's floor. First a room with every machine, junk and wall
+  // fixture named, in the RUST floor and the GIRDER wall (the two looks the test floor's rooms do not wear); then the four
+  // template rooms with nobody in them, each in its own floor and wall (SPAWN men into them from the dev drawer).
+  {
+    const rowMid = 87, firstArena = rooms.find((r) => r.name === ARENA_VARIANTS[0].tpl.name);
+    const fzone = (fl, wl) => { const z = floors.length; floors.push(Object.assign({}, FACTORY_LEVEL, { flook: fl, wlook: wl })); return z; };
+    const F = typeof FACTORY_PROPS !== 'undefined' ? FACTORY_PROPS : null;
+    // the furniture room
+    const fw = 28, fh = 13, fy = rowMid - Math.floor(fh / 2), fx = hall.x + hall.w + 4, zf = fzone('RUST', 'GIRDER');
+    const fr = room(fx, fy, fw, fh, 'factory furniture', zf); fr.role = 'canon';
+    label('THE FACTORY · FURNITURE', fx + fw / 2 - 0.5, fy + 3, fw - 2, true); label('RUST FLOOR · GIRDER WALL', fx + fw / 2 - 0.5, fy + 4.2, fw - 2);
+    if (F) {
+      let cx = fx + 2;
+      for (const [look, M] of Object.entries(F.MACHINES)) { const wide = M.box && M.box.hx > 20 ? 2 : 1; put('machine', cx + (wide === 2 ? 0.5 : 0), fy + 6, { look }); label(M.name, cx + (wide === 2 ? 0.5 : 0), fy + 7.3, 3); cx += wide + 1.5; }
+      F.JUNK.forEach((look, i) => { put('junk', fx + 3 + i * 3, fy + 9.5, { look, turn: i % 4 }); label(look.toUpperCase(), fx + 3 + i * 3, fy + 10.4, 3); });
+      F.FIXES.forEach((look, i) => { put('wallfix', fx + 3 + i * 4, fy + 1, { look }); label(look.toUpperCase(), fx + 3 + i * 4, fy + 1.9, 3); });
+      put('weapon', fx + fw - 3, fy + 10.5, { weapon: 'sword' }); put('crate', fx + fw - 5, fy + 10.5); put('bomb', fx + 24, fy + 9.5);
+    }
+    // the shaft down from the first arena: two columns of its bottom wall and the rock under it, at a place its floor is open
+    if (firstArena) {
+      const ay = firstArena.y + firstArena.h - 2;
+      let sc = -1; for (let c = fx + 2; c < fx + fw - 3 && sc < 0; c++) if (c > firstArena.x + 1 && c < firstArena.x + firstArena.w - 2 && tiles[at(c, ay)] === T.FLOOR && tiles[at(c + 1, ay)] === T.FLOOR) sc = c;
+      if (sc > 0) { fill(sc, ay + 1, sc + 1, fy, T.FLOOR); zone(sc - 1, ay + 1, sc + 2, fy, zf); }
+    }
+    // the four rooms, laid from their templates, centred on the row's way-through rows
+    let prevR = fr, px0 = fx + fw + 3;
+    for (const tpl of FACTORY_TEMPLATES) {
+      const h = tpl.rows.length, w = tpl.rows[0].length, y0 = rowMid - Math.floor(h / 2), z = fzone(tpl.flook, tpl.wlook);
+      const r = room(px0, y0, w, h, tpl.name, z); r.role = 'canon';
+      layFactoryRoom(tpl, px0, y0, { tiles, W, put, man: () => {}, machines, chasms, gaps, room: r, noMen: true });
+      fill(prevR.x + prevR.w - 1, rowMid, px0, rowMid + 2, T.FLOOR); zone(prevR.x + prevR.w, rowMid - 1, px0 - 1, rowMid + 3, z);
+      const ly = y0 + (tpl.name === 'gantry' ? 8.2 : 0.3);
+      label(tpl.title, px0 + w / 2 - 0.5, ly, w - 2, true); label(tpl.flook + ' · ' + tpl.wlook + ' WALL', px0 + w / 2 - 0.5, ly + 1.3, w - 2);
+      prevR = r; px0 += w + 3;
+    }
+  }
   return { W, H, tiles, rooms, spawns: [], props, start: P(hx + 2, hy + 13), exit: { x: (last.x + last.w) * TILE, y: (ey + 1) * TILE },
     exitTile: { x0: last.x + last.w - 1, y0: ey }, forkTile: null, entry: null, seed, def,
     hints, controls, chasms, gaps, cagePrompt: null, vault: null, windows, plan: null, gates: [], sealedArenas: [], shop: null,
-    grass: grass.filter((i) => tiles[i] === T.FLOOR), zones, zoneDefs: floors, carpets, statues, sacrifice };
+    grass: grass.filter((i) => tiles[i] === T.FLOOR), zones, zoneDefs: floors, carpets, statues, sacrifice, machines };
 }

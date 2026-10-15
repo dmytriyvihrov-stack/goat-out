@@ -42,6 +42,9 @@ const Waves = {
   },
   update(game, dt) {
     const W = TUNING.soulOgre, g = game.goat, w = game.world;
+    // What breaks it (12 Oct 2026 playtest): a table on its side is a wall to it, one standing on its legs is not.
+    const boards = game.props.filter((p) => p.kind === 'table' && p.flipped && !p.broken);
+    let venom = null;   // a puddle it runs over goes off (and is burnt away by its own blast), one a step as fire does it
     for (const v of game.waves) {
       if (v.delay > 0) {
         v.delay -= dt;
@@ -52,23 +55,59 @@ const Waves = {
       if (v.ring) {
         const C = v.cfg || W.ring;
         v.r += C.speed * TILE * dt;
-        if (v.r > C.max * TILE) v.dead = true;
-        else if (!v.hit && !(v.volley && v.volley.hit) && g && !g.dead) {
+        if (v.r > C.max * TILE) { v.dead = true; continue; }
+        for (const b of boards) {
+          const bd = hyp(b.x - v.x, b.y - v.y);
+          if (Math.abs(bd - v.r) > b.r + C.thick * TILE / 2 || (v.cuts && v.cuts.some((c) => c.b === b))) continue;
+          const a = Math.atan2(b.y - v.y, b.x - v.x);
+          if (this.open(v, a, C)) { (v.cuts = v.cuts || []).push({ b, a, w: Math.asin(Math.min(1, (b.r + 4) / Math.max(bd, 1))) }); this.breakOn(game, b, a); }
+        }
+        if (venom === null && w.poisonOn.size) for (const i of w.poisonOn) {
+          const x = (i % w.W + 0.5) * TILE, y = (((i / w.W) | 0) + 0.5) * TILE, d = hyp(x - v.x, y - v.y);
+          if (Math.abs(d - v.r) < C.thick * TILE / 2 + TILE * 0.35 && this.open(v, Math.atan2(y - v.y, x - v.x), C) && w.los(v.x, v.y, x, y)) { venom = i; break; }
+        }
+        if (!v.hit && !(v.volley && v.volley.hit) && g && !g.dead) {
           const dx = g.x - v.x, dy = g.y - v.y, d = hyp(dx, dy), a = Math.atan2(dy, dx);
-          if (Math.abs(d - v.r) < C.thick * TILE / 2 + g.r * 0.5 && !v.gaps.some((q) => Math.abs(angleDiff(a, q)) < C.gap)
+          if (Math.abs(d - v.r) < C.thick * TILE / 2 + g.r * 0.5 && this.open(v, a, C)
             && w.los(v.x, v.y, g.x, g.y)) this.hit(game, v, dx / (d || 1), dy / (d || 1));
         }
       } else {
         v.d += W.line.speed * TILE * dt;
         const fx = v.x + v.ux * v.d, fy = v.y + v.uy * v.d;
-        if (v.d > W.line.max * TILE || w.tileAtPx(fx, fy) === T.WALL) v.dead = true;
-        else if (!v.hit && !(v.volley && v.volley.hit) && g && !g.dead) {
-          const rx = g.x - v.x, ry = g.y - v.y, along = rx * v.ux + ry * v.uy, across = Math.abs(-rx * v.uy + ry * v.ux);
-          if (Math.abs(along - v.d) < W.line.depth * TILE / 2 + g.r * 0.5 && across < W.line.w * TILE / 2) this.hit(game, v, v.ux, v.uy);
+        if (v.d > W.line.max * TILE || w.tileAtPx(fx, fy) === T.WALL) { v.dead = true; continue; }
+        const hw = W.line.w * TILE / 2, dep = W.line.depth * TILE / 2;
+        // a board met cuts its own width out of the band from there on; the whole width cut, the band is spent
+        for (const b of boards) {
+          const rx = b.x - v.x, ry = b.y - v.y, along = rx * v.ux + ry * v.uy, s = -rx * v.uy + ry * v.ux;
+          if (Math.abs(along - v.d) > dep + b.r || Math.abs(s) > hw + b.r || (v.cuts && v.cuts.some((c) => c.b === b))) continue;
+          (v.cuts = v.cuts || []).push({ b, s0: s - b.r - 4, s1: s + b.r + 4 }); this.breakOn(game, b, Math.atan2(v.uy, v.ux) + Math.PI);
+        }
+        if (v.cuts) { let s = -hw; for (let c = v.cuts.find((q) => s >= q.s0 && s <= q.s1); c; c = v.cuts.find((q) => s >= q.s0 && s <= q.s1)) s = c.s1 + 1; if (s > hw) { v.dead = true; continue; } }
+        if (venom === null && w.poisonOn.size) for (const i of w.poisonOn) {
+          const x = (i % w.W + 0.5) * TILE, y = (((i / w.W) | 0) + 0.5) * TILE, rx = x - v.x, ry = y - v.y, along = rx * v.ux + ry * v.uy, s = -rx * v.uy + ry * v.ux;
+          if (Math.abs(along - v.d) < dep + TILE * 0.35 && Math.abs(s) < hw && this.across(v, s)) { venom = i; break; }
+        }
+        if (!v.hit && !(v.volley && v.volley.hit) && g && !g.dead) {
+          const rx = g.x - v.x, ry = g.y - v.y, along = rx * v.ux + ry * v.uy, s = -rx * v.uy + ry * v.ux;
+          if (Math.abs(along - v.d) < dep + g.r * 0.5 && Math.abs(s) < hw && this.across(v, s)) this.hit(game, v, v.ux, v.uy);
         }
       }
     }
     game.waves = game.waves.filter((v) => !v.dead);
+    if (venom !== null) Status.blast(game, (venom % w.W + 0.5) * TILE, (((venom / w.W) | 0) + 0.5) * TILE, TUNING.status.blast, null);
+  },
+  // A ring is whole at `a` unless a gap or a board's shadow is there.
+  open(v, a, C) { return !v.gaps.some((q) => Math.abs(angleDiff(a, q)) < C.gap) && !(v.cuts && v.cuts.some((c) => Math.abs(angleDiff(a, c.a)) < c.w)); },
+  // A band is whole `s` px across its line unless a board cut it there.
+  across(v, s) { return !(v.cuts && v.cuts.some((c) => s >= c.s0 && s <= c.s1)); },
+  // The flame breaking on a board on its side: a spray of violet off it, back the way the wave came.
+  breakOn(game, b, a) {
+    if (game.hidden(b.x, b.y)) return;
+    for (let k = 0; k < 10; k++) {
+      const q = a + Math.PI + (Math.random() - 0.5) * 1.6, sp = 60 + Math.random() * 90;
+      game.parts.push({ x: b.x, y: b.y - 6, vx: Math.cos(q) * sp, vy: Math.sin(q) * sp - 30, life: 0.25 + Math.random() * 0.25, color: Math.random() < 0.5 ? PALETTE.witch : PALETTE.witchHi, size: 2 });
+    }
+    b.wobble = 0.2; game.audio.sfxThud();
   },
   hit(game, v, nx, ny) {
     const g = game.goat;
@@ -101,7 +140,7 @@ const Waves = {
         const a = clamp(1 - (v.r / (C.max * TILE)) * 0.6, 0.25, 1), n = Math.max(24, Math.ceil(Math.PI * 2 * v.r / px)), th = C.thick * TILE, ft = Math.floor(t * 18);
         for (let i = 0; i < n; i++) {
           const ang = i / n * Math.PI * 2;
-          if (v.gaps.some((q) => Math.abs(angleDiff(ang, q)) < C.gap)) continue;
+          if (!this.open(v, ang, C)) continue;
           const ca = Math.cos(ang), sa = Math.sin(ang);
           for (let o = -th / 2; o <= th / 2; o += px) {
             const rr = v.r + o, cx = Math.round((v.x + ca * rr) / px) * px, cy = Math.round((v.y + sa * rr) / px) * px;
@@ -116,7 +155,7 @@ const Waves = {
         if (C.flames) {
           const step = C.flames * TILE, m = Math.max(8, Math.round(Math.PI * 2 * v.r / step)), pts = [];
           for (let i = 0; i < m; i++) {
-            const ang = i / m * Math.PI * 2; if (v.gaps.some((q) => Math.abs(angleDiff(ang, q)) < C.gap)) continue;
+            const ang = i / m * Math.PI * 2; if (!this.open(v, ang, C)) continue;
             const fx = v.x + Math.cos(ang) * v.r, fy = v.y + Math.sin(ang) * v.r; if (stone(fx, fy)) continue;
             pts.push(fx, fy, i);
           }
@@ -129,6 +168,7 @@ const Waves = {
       } else {
         const hw = W.line.w * TILE / 2, dep = W.line.depth * TILE, px2 = -v.uy, py2 = v.ux, ft = Math.floor(t * 20);
         for (let s = -hw; s <= hw; s += px) for (let o = -dep / 2; o <= dep / 2; o += px) {
+          if (!this.across(v, s)) continue;
           const cx = Math.round((v.x + v.ux * (v.d + o) + px2 * s) / px) * px, cy = Math.round((v.y + v.uy * (v.d + o) + py2 * s) / px) * px;
           if (stone(cx, cy)) continue;
           const hot = ((Math.round(s / px) * 5 + Math.round(o / px) * 3 + ft) % 4) === 0 ? 1 : 0;
@@ -140,7 +180,7 @@ const Waves = {
           const step = W.line.flames * TILE, m = Math.max(2, Math.round(W.line.w * TILE / step)), pts = [];
           for (let i = 0; i <= m; i++) {
             const s = -hw + (i / m) * hw * 2, fx = v.x + v.ux * v.d + px2 * s, fy = v.y + v.uy * v.d + py2 * s;
-            if (!stone(fx, fy)) pts.push([fx, fy, i]);
+            if (!stone(fx, fy) && this.across(v, s)) pts.push([fx, fy, i]);
           }
           pts.sort((p, q) => p[1] - q[1]);
           ctx.globalAlpha = 0.95; ctx.save(); ctx.scale(1, 1 / TILT);

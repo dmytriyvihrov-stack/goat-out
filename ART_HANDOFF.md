@@ -135,6 +135,32 @@ before / after helper: `output/lit-2026-10-12/` (`pair.js`, `pairs.png`, `sprite
 
 ---
 
+## THE FACTORY (12 Oct 2026), a packed art pack with legs drawn in code
+
+The factory zone's art (`output/factory-art-2026-10-12`, ChatGPT's, nearest-neighbour native PNGs with hard alpha) goes in
+through `tools/pack-factory.js` → `js/factory-assets.js` (one small atlas as a data URI, the same shape as the unit atlas)
+and is drawn by `js/factory-pixels.js`: the saw robot's front and back, the welder's side view (the firing pose with the
+baked flame cut off at x 33, the fire itself is the world's) and the old torch pair for the up and down views, and the
+automaton's BODY cut off variant A (`automaton-options/native/d-corner-cage.png`, the user's pick: the corner cage), the
+frame, the meat and the four hips, 94 x 55 texels. His LEGS are not in the pack: they are cells drawn at run time off the
+body's own palette (`bar`, `leg` in factory-pixels.js) at whatever pose `Automaton.pose` (js/factory.js) hands over, so a leg
+can step, lift for the stomp, swing out knocked and fold when he falls, without a frame per pose. The floor is the pack's
+`floor-plates` cut into the 6 x 6 tiles `FLOOR_SHEET` wants (`seedFloor`, `PIXEL_ROOMS.factory.image`). Since 13 and 14 Oct
+2026 the pack's presses, belts (the corner too), burners, both wall elevations and all four floors are packed and wired
+(js/machines.js); its cabinet is THE BOMB MACHINE. **Six floors and six walls to choose from** (14 Oct 2026,
+js/factory-pixels.js `FLOORS` / `WALLS`): the pack's four floors and two walls, plus CHECKER and RUST floors and FURNACE,
+CORRUGATED, PIPES and GIRDER walls painted in code in texels (a wall is a 64-texel cap sheet at 3 px and a 480 x 18 face
+strip at 2 px, both wrapping; a floor a 144-texel square). His rule, after the first cut's PLATE wall: a wall never reads
+as the floor, so every painted cap is darker than any floor and every face another material. The ART tab's FACTORY FLOOR /
+FACTORY WALL cycle them; `output/factory-looks-2026-10-14/factory-looks.png` is all 36 pairs on one sheet
+(`tools/factory-looks.js`). **The furniture is not the pack's** (his word on the lathe, boiler and cabinet: "over-detailed,
+fewer, in our pixel style"): the boiler, cabinet, anvil, drums, cylinders and reel, their wrecks, the junk, the wall
+fixtures and THE ARM's base are cells on `PROP_PIXELS.Grid` in js/factory-props.js at the props' 1.35 texel; THE ARM
+itself is cells laid live (js/factory-pixels.js `drawArm`) off its pose. Not wired: the pack's lathe, boiler, cabinet
+states, grabber, the saw robot's claw and hammer brothers, the tracked wrench; all in `native/` with sizes and pivots in
+`manifest.json`. A welder facing up or down the screen is the pre-tank torch drawing, a stand-in until that pair is redrawn
+with the tank.
+
 ## Still to be drawn in pixel
 
 Every prop is pixel art since 1.63 (`js/prop-pixels.js`), the cave spires and the stairs since 1.64. What is still not:

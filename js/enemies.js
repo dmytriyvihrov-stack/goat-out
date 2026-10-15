@@ -66,20 +66,22 @@ class Enemy {
   }
 
   // What a kind will not answer to, with the butcher reading his own list rather than the clubman's.
-  get immunity() { return this.champion ? TUNING.champion.immune : this.cfg.immune; }
+  // A pseudo-kind of bearer with a list of its own (`e.immune`: THE FACTORY's machines, js/factory.js) reads that one.
+  get immunity() { return this.immune || (this.champion ? TUNING.champion.immune : this.cfg.immune); }
   get blunderProof() { const im = this.immunity; return !!(im && im.blunder); }
   // An attack number: the butcher has his own arm, everybody else reads their own kind.
   atk(key) {
     if (this.warden && TUNING.warden.sword[key] !== undefined) return TUNING.warden.sword[key];   // the sword (js/warden.js)
     if (this.thrower && TUNING.thrower.fist[key] !== undefined) return TUNING.thrower.fist[key];   // the big arm's fist (js/thrower.js)
     if (this.shieldman && TUNING.shieldman.strike[key] !== undefined) return TUNING.shieldman.strike[key];   // the board rammed in (`shieldman.strike`)
+    if (this.sawbot && TUNING.sawbot.strike[key] !== undefined) return TUNING.sawbot.strike[key];   // the saw (js/factory.js)
     const v = this.champion && TUNING.champion[key] !== undefined ? TUNING.champion[key] : this.cfg[key];
     // THE SPIRIT in him (js/shaman.js): his blow costs `spirit.hurt` hearts more.
     return key === 'damage' && this.spirit ? v + TUNING.shaman.spirit.hurt : v;
   }
   // How far a headbutt throws him: light kinds further, the butcher and a man with a soul in him less.
   knockMul() {
-    return (this.cfg.flingMul || 1) * (this.champion ? TUNING.champion.flingMul : 1) * (this.thrower ? TUNING.thrower.flingMul : 1) * (this.soul ? TUNING.soulBearer.flingMul : 1);
+    return (this.cfg.flingMul || 1) * (this.champion ? TUNING.champion.flingMul : 1) * (this.thrower ? TUNING.thrower.flingMul : 1) * (this.welder ? TUNING.welder.flingMul : 1) * (this.sawbot ? TUNING.sawbot.flingMul : 1) * (this.soul ? TUNING.soulBearer.flingMul : 1);
   }
   // How fast a wall has to be met to kill him. A heavy man is thrown `knockMul` as far, and the
   // wall asks the same share less of him, or a butcher carrying a soul (0.55 × 0.6 of a throw) left a
@@ -92,7 +94,7 @@ class Enemy {
   // poisoned or stunned, a lower speed should hurt him"): `status.weak` on every kill speed against a wall.
   weakMul() { return this.poison > 0 || this.dazed > 0 || this.state === 'stunned' ? TUNING.status.weak : 1; }
   // Too heavy or too much more than a man to be carried: the ogre, the butcher, a soul-bearer.
-  get unliftable() { return this.kind === 'butcher' || this.champion || this.thrower || !!this.soul; }
+  get unliftable() { return this.kind === 'butcher' || this.champion || this.thrower || this.welder || this.automaton || this.arm || !!this.soul; }
   // The thrower on an errand or with something over his head (js/thrower.js): he walks it with care, round
   // every grate, flat or not, and never on a failed trap roll (`hazardAt`, `avoidHazard`; 5 Oct 2026).
   get laden() { return !!this.thrower && (!!this.carry || this.state === 'twgo'); }
@@ -107,8 +109,10 @@ class Enemy {
     // blast. No wall ever kills him, which is the whole of what makes him dear.
     // Nor is the ogre (the Butcher, 1.66): too heavy to go anywhere, which is what sets him apart
     // from the butcher, who does. Every heart he has is taken standing, while he is on his knees.
-    if (this.kind === 'ratogre' || this.kind === 'butcher' || this.barrier) { this.aware = true; return; }
+    // Nor THE AUTOMATON (js/factory.js): four feet on the floor and a body nothing reaches.
+    if (this.kind === 'ratogre' || this.kind === 'butcher' || this.barrier || this.automaton || this.arm) { this.aware = true; return; }   // nor THE ARM, bolted down
     this.vx = vx; this.vy = vy; this.state = 'flung'; this.flung = true; this.thrown = thrown; this.held = false; this.aware = true; this.flungBy = null; this.tossBy = null; this.chain = 0; this.liftedBy = null;
+    if (this.coward) Coward.wrong(this);   // butted or thrown, he was not spared (js/coward.js)
     this.fromMouth = false;   // `Goat.throwHeld` sets it after this; anything else that throws him clears it
     this.floorMul = 0;        // the STEALTH test's longer fall (`stealth.floor`): `headbuttHits` sets it after this
     // Whatever he was halfway through painting goes with him. Throwing a mage mid-cast is the answer
@@ -121,7 +125,7 @@ class Enemy {
     if (this.dead || this.held || this.ghosted) return;
     if (this.kind === 'wraith') {
       // Immune, by default: BAAH does not touch a dead thing. The particles are a shrug, not a hit.
-      if (this.cfg.immune && this.cfg.immune.stun) { game.particles(this.x, this.y - 6, 3, PALETTE.witch, 60); return; }
+      if (this.immunity && this.immunity.stun) { game.particles(this.x, this.y - 6, 3, PALETTE.witch, 60); return; }
       // Not immune: it cannot be called off once it has started, but it can be held still where it
       // stands, solid, for as long as the scream lasts. That is the whole reason you want it frozen.
       this.dazed = Math.max(this.dazed, t); this.vx = 0; this.vy = 0;
@@ -171,6 +175,7 @@ class Enemy {
   // has begun to arrive arrives. Everything else in here is an ordinary man being made to flinch.
   balk(game, t) {
     if (this.dead || this.held || this.ghosted || this.kind === 'wraith') return false;
+    if (this.arm) return Arm.balk(game, this);   // THE ARM holding something lets go (js/factory.js)
     if (this.kind === 'ratogre') return this.breakSwing(game);
     if (this.state === 'flung' || this.state === 'floored' || this.state === 'burning') return false;
     if (this.kind === 'butcher' && this.state === 'hop') return false;
@@ -193,9 +198,12 @@ class Enemy {
   ignite(game, witch, fromMan) {
     if (this.dead || this.burning > 0 || this.ghosted) return;
     // A dead thing does not catch from a hearth. Witchfire is a Seer's doing and still finds it.
-    if (!witch && this.cfg.immune && this.cfg.immune.fire) return;
-    // The rat ogre does not burn at all, a Seer's fire included: `immune.witch` is his alone.
-    if (witch && this.cfg.immune && this.cfg.immune.witch) return;
+    const im = this.immunity;
+    // THE SAWBOT does not burn, it heats (js/factory.js, `Sawbot.heat`: red-hot, its touch hurts, soaked it goes off)
+    if ((this.sawbot || this.arm) && im && (im.fire || im.witch)) { Sawbot.heat(game, this); return; }
+    if (!witch && im && im.fire) { if (this.automaton) Sawbot.shrug(game, this, 'fire'); return; }
+    // The rat ogre does not burn at all, a Seer's fire included: `immune.witch` is his alone (and the factory's iron's).
+    if (witch && im && im.witch) return;
     // A man carrying a soul is carrying the same thing witchfire is made of (29 Sep 2026: "the soul
     // bosses do not catch from their own magic fire"): the keeper's club lights it and he walks in it.
     // Ordinary flame, a brazier, a burning man still take him like anybody.
@@ -242,10 +250,13 @@ class Enemy {
 
   die(game, cause, dx, dy, how) {
     if (this.dead || this.ghosted) return;
+    if (this.coward) Coward.wrong(this, game);   // dead is not spared (js/coward.js)
     // THE WARDEN behind his barrier (THE LAST SUPPER, js/endboss.js): nothing lands.
     if (this.barrier) { game.audio.sfxCageHit(); game.particles(this.x, this.y - 20, 6, PALETTE.witchHi, 120); game.ring(this.x, this.y, TUNING.warden.barrier.r * TILE, PALETTE.witch, 0.3, 2); return; }
     // His last heart: not a death, a change (js/warden.js).
-    if (this.warden && !this.wardenGone && cause !== 'fall' && this.hp <= 1 && typeof Warden !== 'undefined') { Warden.transform(game, this); return; }
+    if (this.warden && !this.wardenGone && cause !== 'fall' && this.hp <= 1 && typeof Warden !== 'undefined') { Warden.beginTurn(game, this); return; }
+    // THE AUTOMATON (js/factory.js): standing, the body is out of reach (a blast takes a leg); down, a heart a blow.
+    if (this.automaton && Automaton.absorb(this, game, cause, dx, dy, how)) return;
     if (this.carry) Thrower.drop(this, game);   // a blow that lands on the thrower brings down what he held
     Stats.blow(game, this, cause, how);   // what reached him, for the run's report (js/stats.js)
     // A blow that lands on the mage's man before the scene has given him the first gate's soul finds
@@ -369,7 +380,7 @@ class Enemy {
     w.emitNoise(this.x, this.y, TUNING.noise.boom);
     if (game.scatter) game.scatter.burst(this.x, this.y, B.radius);   // suppers and suits of armour
     for (const o of game.enemies) {
-      if (o === this || o.dead || o.held || o.ghosted) continue;
+      if (o === this || o.dead || o.held || o.ghosted || o.automaton) continue;   // THE AUTOMATON is `Prop.blastRoom`'s (js/factory.js)
       const dx = o.x - this.x, dy = o.y - this.y, d = hyp(dx, dy);
       if (d > B.radius || !game.blastClear(this.x, this.y, o.x, o.y)) continue;   // stone and a shut door stop it
       const nx = dx / (d || 1), ny = dy / (d || 1);
@@ -426,7 +437,8 @@ class Enemy {
   // sneaking under the STEALTH test). `canSeeGoat` and the STEALTH cells (`Renderer.sightPoly`) both ask it.
   sightRange(game) {
     const cfg = this.cfg, ST = TUNING.stealth;
-    let R = (cfg.sight + (this.watchful ? (cfg.watchSight || 4) : 0)) * TILE * (game.sneak ? ST.sight : 1);
+    // THE WELDER sees further (`welder.sightMul`, 15 Oct 2026: "they spot you sooner and fire sooner")
+    let R = (cfg.sight + (this.watchful ? (cfg.watchSight || 4) : 0)) * TILE * (game.sneak ? ST.sight : 1) * (this.welder ? TUNING.welder.sightMul : 1);
     if (game.goatLit === false) {
       const S = TUNING.dark.ai.sight;
       R = Math.min(R, (S[this.kind] || S.all) * TILE * (game.sneak && game.stealthLive ? ST.dark.sight : 1));
@@ -489,6 +501,8 @@ class Enemy {
       else if (len(p.x - x, p.y - y) < p.r + this.r + 4) return { kind: 'fire', p };
     }
     for (const rn of game.runes) if (len(rn.x - x, rn.y - y) < TUNING.seer.runeRadius * TILE + this.r) return { kind: 'trap' };
+    // THE FACTORY's press about to shut and a burner about to catch (js/machines.js)
+    if (game.machines && game.machines.length && Machines.threat(game, x, y, this.r)) return { kind: 'trap' };
     return null;
   }
 
@@ -831,7 +845,10 @@ class Enemy {
     const sh = this.shield;
     // The floor's last man held to his picture (the ogre at his bone, the mages by their bowl) until he is met (js/endboss.js).
     if (this.endHold && EndBoss.hold(this, dt, game)) return;
-    if (!GapCross.step(this, dt, game)) this.act(dt, game);   // over a drop, if it is his kind to (js/gapcross.js)
+    // THE ARM (js/factory.js): no perception, no beat of doubt and no club, its claw is all it does, so it steps here in
+    // place of `act` (which would also set down what it holds, `Thrower.drop`, since its states are not the thrower's)
+    if (this.arm) Arm.step(this, dt, game, true);
+    else if (!GapCross.step(this, dt, game)) this.act(dt, game);   // over a drop, if it is his kind to (js/gapcross.js)
     if (this.stuck && !this.dead) this.stuckFire(dt, game);
     if (!sh) return;
     const S = TUNING.shieldman;
@@ -1132,6 +1149,8 @@ class Enemy {
     // The mage's man at the first gate (`game.bless`) holds his mark until he has been given its soul
     // in front of the goat: nothing he sees or hears moves him before that.
     if (this.blessing) { this.vx = 0; this.vy = 0; return; }
+    // THE COWARD (js/coward.js) neither sees nor hunts: he cowers in his corner and begs, whatever the room is doing.
+    if (this.coward) { Coward.step(this, dt, game); this.x += this.vx * dt; this.y += this.vy * dt; w.collideCircle(this); return; }
     // ---- perception ----
     // The wheel lesson's two men are there to be watched doing what they do, so they know the goat
     // the moment he is inside their room, cone and sight range or no (see `startLevel`).
@@ -1209,6 +1228,7 @@ class Enemy {
         const distTiles = hyp(g.x - this.x, g.y - this.y) / TILE, A = game.stealthLive ? TUNING.stealth.notice : TUNING.ai;
         const t = clamp((distTiles - A.noticeNear) / (A.noticeFar - A.noticeNear), 0, 1);
         notice = t > 0 ? lerp(A.noticeMin, A.noticeMax, t) : 0;
+        if (this.welder) notice *= TUNING.welder.notice;   // and doubts him for less
       }
       if (notice > 0) { this.state = 'noticed'; this.timer = this.noticeDur = notice; }
       else { this.state = 'chase'; this.alarmAt = game.timer; }
@@ -1460,6 +1480,10 @@ class Enemy {
 
   updateBearer(dt, game, sees) {
     const g = game.goat, cfg = this.cfg, reach = this.atk('reach');
+    // THE FACTORY's machines (js/factory.js) take every step of theirs, idle included: the welder patrols his line, the
+    // automaton keeps his legs under him.
+    if (this.welder && Welder.step(this, dt, game, sees)) return;
+    if (this.automaton && Automaton.step(this, dt, game, sees)) return;
     if (this.state === 'idle') { this.idleWander(dt, game); return; }
     if (this.state === 'investigate') { this.investigate(dt, game); return; }
     // THE WARDEN: the board, the sword, the tumble and the gun (js/warden.js).
@@ -2046,6 +2070,18 @@ class Enemy {
     if (this.hideWant && hyp(g.x - this.x, g.y - this.y) > H.minDist * TILE && this.hide(game)) return;
     this.vx = d > 1 ? dx / d * cfg.speed : 0;
     this.vy = d > 1 ? dy / d * cfg.speed : 0;
+    // The chase through walls and rooms is the wraith's; the floor's last room is not (12 Oct 2026 playtest: a pack from the
+    // rooms behind flew into the last fight). One not put in that room stops at its walls and waits there, whatever he does.
+    const L = game.level, last = L && L.rooms && L.rooms[L.rooms.length - 1];
+    if (last && this.room !== last.index && !(L.def && L.def.heaven)) {
+      const inLast = (x, y) => x > last.x * TILE && x < (last.x + last.w) * TILE && y > last.y * TILE && y < (last.y + last.h) * TILE;
+      if (!inLast(this.x, this.y)) {
+        const ax = this.x + this.vx * dt * 2, ay = this.y + this.vy * dt * 2;
+        if (inLast(ax, this.y)) this.vx = 0;
+        if (inLast(this.x, ay)) this.vy = 0;
+        if (inLast(this.x + this.vx * dt * 2, this.y + this.vy * dt * 2)) { this.vx = 0; this.vy = 0; }
+      }
+    }
     this.facing = Math.atan2(g.y - this.y, g.x - this.x);
     // It only becomes real on your blind side, close enough to reach you, and not straight away,
     // and never inside a wall. Mist goes through stone; a body cannot be in it. That is the one thing

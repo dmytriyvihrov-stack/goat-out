@@ -40,8 +40,10 @@ Object.assign(Heaven, {
   standState(kind) {
     const S = TUNING.heaven.home.stands, M = this.meta || this.load();
     if (M.standOverride && M.standOverride[kind]) return M.standOverride[kind];   // the dev drawer's (`devHome`)
-    // (an animal already brought up keeps its stand open: it was mended for it, whatever the costs say now)
-    if (S.open.includes(kind) || (M.mendedStands && M.mendedStands[kind]) || (M.saved && M.saved[kind])) return 'open';
+    // Only a stand open from the start or mended up here (13 Oct 2026, his rule: "to meet an animal in the world you
+    // first have to unlock it in heaven"): an animal brought up on a build before the stands (a pig, a crow) no longer
+    // opens its own; it waits on its padlock with the rest until it is unlocked, and keeps its seat and dares for then.
+    if (S.open.includes(kind) || (M.mendedStands && M.mendedStands[kind])) return 'open';
     return this.standCost(kind) ? 'broken' : 'locked';
   },
   // What mending a stand costs: its own price, or `later` for the six locked ones once the god's fifty are given and the

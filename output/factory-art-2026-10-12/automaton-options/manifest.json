@@ -1,0 +1,100 @@
+{
+  "tileWorldPx": 32,
+  "generator": "built-in image_gen",
+  "nativeAlpha": "binary",
+  "items": [
+    {
+      "id": "d-corner-cage",
+      "title": "А — Угловая клетка",
+      "file": "native/d-corner-cage.png",
+      "canvas": [
+        160,
+        160
+      ],
+      "contentRect": [
+        8,
+        13,
+        144,
+        139
+      ],
+      "sourceRect": [
+        40,
+        66,
+        1198,
+        1154
+      ],
+      "suggestedTexelScale": 1.35,
+      "visibleWorldExtent": [
+        194.4,
+        187.7
+      ],
+      "frameWorldSize": [
+        216,
+        216
+      ],
+      "status": "alternative-not-yet-selected"
+    },
+    {
+      "id": "e-girder-frame",
+      "title": "Б — Балочная рама",
+      "file": "native/e-girder-frame.png",
+      "canvas": [
+        160,
+        160
+      ],
+      "contentRect": [
+        8,
+        9,
+        144,
+        143
+      ],
+      "sourceRect": [
+        35,
+        29,
+        1189,
+        1184
+      ],
+      "suggestedTexelScale": 1.35,
+      "visibleWorldExtent": [
+        194.4,
+        193.1
+      ],
+      "frameWorldSize": [
+        216,
+        216
+      ],
+      "status": "alternative-not-yet-selected"
+    },
+    {
+      "id": "f-braced-frame",
+      "title": "В — Рама с раскосами",
+      "file": "native/f-braced-frame.png",
+      "canvas": [
+        160,
+        160
+      ],
+      "contentRect": [
+        8,
+        12,
+        144,
+        140
+      ],
+      "sourceRect": [
+        28,
+        40,
+        1224,
+        1186
+      ],
+      "suggestedTexelScale": 1.35,
+      "visibleWorldExtent": [
+        194.4,
+        189
+      ],
+      "frameWorldSize": [
+        216,
+        216
+      ],
+      "status": "alternative-not-yet-selected"
+    }
+  ]
+}

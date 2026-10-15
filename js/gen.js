@@ -78,10 +78,12 @@ function roomMenCap(men, tpl) {
 // the shieldman (`TUNING.shieldman`), 'thrower' the thrower (`TUNING.thrower`). A spawn carries the real kind
 // and the flag; `threatKind` reads one back.
 // 'shaman' the shaman (`TUNING.shaman`, js/shaman.js).
+// 'sawbot', 'welder', 'automaton' THE FACTORY's machines (js/factory.js), bearers with the flag like the rest.
 function spawnKind(k) {
-  return { kind: k === 'champion' || k === 'shield' || k === 'thrower' || k === 'shaman' ? 'bearer' : k, champion: k === 'champion', shield: k === 'shield', thrower: k === 'thrower', shaman: k === 'shaman' };
+  const pseudo = k === 'champion' || k === 'shield' || k === 'thrower' || k === 'shaman' || k === 'sawbot' || k === 'welder' || k === 'automaton' || k === 'arm';
+  return { kind: pseudo ? 'bearer' : k, champion: k === 'champion', shield: k === 'shield', thrower: k === 'thrower', shaman: k === 'shaman', sawbot: k === 'sawbot', welder: k === 'welder', automaton: k === 'automaton', arm: k === 'arm' };
 }
-function threatKind(s) { return s.champion ? 'champion' : s.shield ? 'shield' : s.thrower ? 'thrower' : s.shaman ? 'shaman' : s.kind; }
+function threatKind(s) { return s.champion ? 'champion' : s.shield ? 'shield' : s.thrower ? 'thrower' : s.shaman ? 'shaman' : s.sawbot ? 'sawbot' : s.welder ? 'welder' : s.automaton ? 'automaton' : s.arm ? 'arm' : s.kind; }
 
 // `crowd` (7 Oct 2026 playtest, `Game.crowdFor`): a thicker floor for a goat who has not died yet, ×1.5 on the third floor
 // and ×2 after it, "so that he reaches heaven and gets the gathering". It scales the ordinary rooms' budget and head
@@ -299,6 +301,7 @@ function dealCombo(levelDef, rooms, plan, seed, opts) {
 // multipliers on the odds of a second secret, of grass behind one, and of a loose rack, plus bowls
 // of milk on top of the level's own count. Nothing else the goat carries reaches the generator.
 function generateLevel(levelDef, seed, opts) {
+  if (levelDef.factory) return factoryLevel(levelDef, seed);   // THE FACTORY's test floor, laid too (js/factory.js)
   if (levelDef.showroom) return showroomLevel(levelDef, seed);   // the dev floor is laid, not rolled (js/showroom.js)
   // Forty, not twenty: THE TRIP erodes every room into a cave and more than half its attempts die
   // on a room edge with no row a door can use, so twenty tries in a row failed about once in four
@@ -944,7 +947,8 @@ function tryGenerate(levelDef, seed, opts) {
         const clearSpit = [-1, 0, 1].every((dx) => [-1, 0].every((dy) => (dx === 0 && dy === 0) || tiles[(m.ty + dy) * W + m.tx + dx] === T.FLOOR));
         const roast = !roasted && clearSpit && (((m.tx * 73856093) ^ (m.ty * 19349663)) >>> 0) % 1000 < TUNING.prop.brazier.roast * 1000;
         if (roast) roasted = true;
-        props.push({ x: px, y: py, kind: 'brazier', roast });
+        const at = roast ? { x: px, y: py } : brazierOffWall(tiles, W, m.tx, m.ty, room.markers);
+        props.push({ x: at.x, y: at.y, kind: 'brazier', roast });
       }
       else if (m.c === 'o') props.push({ x: px, y: py, kind: 'crate' });
       else if (m.c === 'b') { if (manned) props.push({ x: px, y: py, kind: 'bell' }); }
@@ -2177,6 +2181,8 @@ function tryGenerate(levelDef, seed, opts) {
   clearWordsRows(controls, rooms, tiles, W, grass, cleanProps, plan, wordOrders);
   // THE SACRIFICE ALTAR (9 Oct 2026, his ask; js/sacrifice.js): laid last, so nothing placed after it stands on it.
   const sacrifice = LEVELS.indexOf(levelDef) === TUNING.sacrifice.at ? placeSacrifice(levelDef, rooms, tiles, W, grass, cleanProps, filtered, seed) : null;
+  // THE COWARD's corners (js/coward.js), after the altar so its disc is already clear.
+  const cowards = placeCowards(levelDef, rooms, tiles, W, grass, cleanProps, filtered, seed);
   // The ogre's vault wakes him into its room, where the horns do nothing to him: a room with nothing
   // that hurts him keeps the grass instead (1.89 backlog).
   if (vault && vault.kind === 'ogre' && !ogreArmed(rooms[levelDef.vaultAt], cleanProps)) {
@@ -2184,7 +2190,7 @@ function tryGenerate(levelDef, seed, opts) {
     if (opts.fresh && opts.fresh.vault === 'ogre') opts.fresh.vault = null;   // the unseen kind was not laid after all
   }
   const level = { W, H, tiles, rooms, spawns: filtered, props: cleanProps, start, exit, exitTile, forkTile, entry, seed, def: levelDef,
-    hints, controls, cagePrompt, vault, windows, plan, gates, sealedArenas, shop, combo, chasms, gaps, crowdMul, sacrifice,
+    hints, controls, cagePrompt, vault, windows, plan, gates, sealedArenas, shop, combo, chasms, gaps, crowdMul, sacrifice, cowards,
     // Grass lying under a wall that went back up is not grass: only what is still on floor.
     grass: [...grass].filter((i) => tiles[i] === T.FLOOR), exitGate: null };
   level.carpets = layCarpets(level);
@@ -2905,6 +2911,57 @@ function placeSacrifice(def, rooms, tiles, W, grass, props, spawns, seed) {
   }
   return null;
 }
+// THE COWARD (13 Oct 2026, js/coward.js): a corner for him, on a stream of its own, laid after everything else so nothing
+// stands on him. `beg`: on the floors in `coward.levels`, at that floor's `chance`, a corner of a room the cult fights in,
+// where he hides from it. `gift`: on any floor but THE TRIP, a corner of a room with nobody near it and a tile toward the
+// room for the tuft he lays there; whether one he spared comes to it is `startLevel`'s (the run's), never the generator's.
+// A corner: plain floor with stone on two sides at a right angle, `door` tiles off both doorways, clear of props, men,
+// grass and any drop. `GEN_RULES.coward`.
+function cowardCorner(r, tiles, W, grass, props, spawns, rng, gift) {
+  const C = TUNING.coward.corner, wall = (x, y) => tiles[y * W + x] === T.WALL, flo = (x, y) => tiles[y * W + x] === T.FLOOR && !grass.has(y * W + x);
+  const pit = (x, y) => { for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (tiles[(y + dy) * W + x + dx] === T.PIT) return true; return false; };
+  const far = (px, py) => (!r.enter || len(r.enter.x - px, r.enter.y - py) >= C.door * TILE) && (!r.exitMouth || len(r.exitMouth.x - px, r.exitMouth.y - py) >= C.door * TILE);
+  const clear = (px, py, d) => !props.some((p) => len(p.x - px, p.y - py) < d * TILE);
+  const spots = [];
+  for (let ty = r.y + 1; ty <= r.y + r.h - 2; ty++) for (let tx = r.x + 1; tx <= r.x + r.w - 2; tx++) {
+    if (!flo(tx, ty) || pit(tx, ty)) continue;
+    const sx = wall(tx - 1, ty) ? 1 : wall(tx + 1, ty) ? -1 : 0, sy = wall(tx, ty - 1) ? 1 : wall(tx, ty + 1) ? -1 : 0;
+    if (!sx || !sy) continue;
+    const x = (tx + 0.5) * TILE, y = (ty + 0.5) * TILE;
+    if (!far(x, y) || !clear(x, y, C.props) || spawns.some((s) => len(s.x - x, s.y - y) < (gift ? C.giftMen : C.men) * TILE)) continue;
+    const spot = { x, y, room: r.index, fx: sx, fy: sy };
+    if (gift) {
+      const gx = tx + sx, gy = ty + sy;
+      if (!flo(gx, gy) || !flo(tx + sx, ty) || !flo(tx, ty + sy) || !clear((gx + 0.5) * TILE, (gy + 0.5) * TILE, C.props)) continue;
+      spot.gx = (gx + 0.5) * TILE; spot.gy = (gy + 0.5) * TILE;
+    }
+    spots.push(spot);
+  }
+  return spots.length ? rng.pick(spots) : null;
+}
+function placeCowards(def, rooms, tiles, W, grass, props, spawns, seed) {
+  const C = TUNING.coward, rng = new RNG(((seed ^ 0x0c0aa4d) >>> 0)), n = rooms.length, li = levelIndexOf(def);
+  if (def.shroom || def.showroom || def.factory || def.heaven) return null;
+  const fits = (r) => r.index >= C.minRoom && r.index < n - 1 && (r.role === 'canon' || r.role === 'mix') && !r.isTrap && !r.isAmbush && !r.isChand
+    && !r.isCrowd && r.index !== def.vaultAt && r.index !== shopRoomOf(def) && !(r.tpl && r.tpl.bridge) && !isFlankRoom(r);
+  const menIn = (r) => spawns.filter((s) => s.roomIndex === r.index).length;
+  // never a room with a drop in it: the chasm's lesson room is THE ROAD's glimpse of the Warden (js/endboss.js), and a
+  // man at the lip of a trench reads as a man put there to fall
+  const dry = (r) => { for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) if (tiles[y * W + x] === T.PIT) return false; return true; };
+  let beg = null;
+  const k = C.levels.indexOf(li);
+  if (k >= 0 && rng.chance(C.chance[k])) {
+    for (const r of rng.shuffle(rooms.filter((r) => fits(r) && dry(r) && menIn(r) > 0)).sort((a, b) => Math.min(2, menIn(b)) - Math.min(2, menIn(a)))) {
+      beg = cowardCorner(r, tiles, W, grass, props, spawns, rng, false); if (beg) break;
+    }
+  }
+  let gift = null;
+  const quiet = (r) => (fits(r) || r.isRest || r.isCalm) && dry(r) && r.index >= 1 && r.index < n - 1 && (!beg || r.index !== beg.room);
+  for (const r of rng.shuffle(rooms.filter(quiet)).sort((a, b) => menIn(a) - menIn(b))) {
+    gift = cowardCorner(r, tiles, W, grass, props, spawns, rng, true); if (gift) break;
+  }
+  return beg || gift ? { beg, gift } : null;
+}
 // `min` overrides `chasm.minRoom` (the shaman's room may be the floor's first, 9 Oct 2026).
 function chasmRoomFits(def, r, n, min) {
   const name = r.tpl && r.tpl.name;
@@ -2993,6 +3050,45 @@ function reachable(tiles, W, H, sx, sy, tx, ty, gaps) {
 // single tile is one table centred on it. A table and a brazier either stand as one lump or leave a
 // way between them a goat walks without brushing the coals (`tableSqueeze`, `GEN_RULES.tables`); a
 // table that would leave a squeeze is not put down.
+// A bowl of coals in the tile against a wall left a strip of floor between its feet and the stone that read as a way
+// through and was three pixels wide (12 Oct 2026 playtest: "when you place it, it matters that I can pass"). Against a
+// wall it stands off it far enough for a goat to go behind (`brazier.behind` px past his width), when the tile it steps
+// into is plain floor with nothing else drawn on it; otherwise it is set flush on the stone, so no gap is drawn at all.
+// A wall on both sides of it (a plug in a one-tile gap), it stays. `GEN_RULES.braziers`.
+function brazierOffWall(tiles, W, tx, ty, markers) {
+  const B = TUNING.prop.brazier;
+  const wall = (x, y) => tiles[y * W + x] === T.WALL, free = (x, y) => tiles[y * W + x] === T.FLOOR && !markers.some((m) => m.tx === x && m.ty === y);
+  const off = B.r + 2 * TUNING.goat.radius + B.behind - TILE / 2;
+  const lay = (step) => {
+    const at = { x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE };
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      if (!wall(tx + dx, ty + dy) || wall(tx - dx, ty - dy)) continue;
+      const k = step && free(tx - dx, ty - dy) ? -off : TILE / 2 - B.r;
+      at.x += dx * k; at.y += dy * k;
+    }
+    return at;
+  };
+  // stepped off if that leaves no strip on some other side (a pillar a tile off), else flush, else where it was drawn
+  for (const at of [lay(true), lay(false)]) if (!brazierSqueeze(tiles, W, at)) return at;
+  return { x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE };
+}
+// The way past it from a wall: how far from the bowl's rim to each stone face beside its tile. A brazier is flush (a gap
+// of two px or less) or leaves a goat's width, never a strip in between.
+function brazierSqueeze(tiles, W, f) {
+  const B = TUNING.prop.brazier, tx = Math.floor(f.x / TILE), ty = Math.floor(f.y / TILE), goat = 2 * TUNING.goat.radius;
+  const wall = (x, y) => tiles[y * W + x] === T.WALL;
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    if (wall(tx + dx, ty + dy) && wall(tx - dx, ty - dy)) continue;   // a plug in a one-tile gap: one lump with the stone
+    for (let k = 1; k <= 2; k++) {
+      if (tiles[(ty + dy * k) * W + tx + dx * k] !== T.WALL) continue;
+      const face = dx > 0 ? (tx + k) * TILE - f.x : dx < 0 ? f.x - (tx - k + 1) * TILE : dy > 0 ? (ty + k) * TILE - f.y : f.y - (ty - k + 1) * TILE;
+      const gap = face - B.r;
+      if (gap > 2 && gap < goat) return gap;
+      break;
+    }
+  }
+  return 0;
+}
 function tableSqueeze(t, f) {
   const Tb = TUNING.prop.table, gap = len(t.x - f.x, t.y - f.y) - Tb.r - TUNING.prop.brazier.r, goat = 2 * TUNING.goat.radius;
   return gap >= goat - Tb.squeeze && gap < goat + Tb.squeeze;

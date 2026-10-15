@@ -1,0 +1,1735 @@
+{
+  "generator": "built-in image_gen",
+  "packing": "crop, nearest-neighbour size conversion, binary alpha; originals preserved",
+  "tileWorldPx": 32,
+  "propWorldPxPerTexel": 1.35,
+  "atlas": "atlas.png",
+  "assets": [
+    {
+      "id": "wall-brick-straight",
+      "file": "native/wall-brick-straight.png",
+      "source": "source/01-walls.png",
+      "sourceRect": [
+        95,
+        61,
+        534,
+        223
+      ],
+      "width": 72,
+      "height": 30,
+      "pivot": [
+        36,
+        29
+      ],
+      "worldSize": [
+        97.2,
+        40.5
+      ],
+      "atlasRect": [
+        2,
+        2,
+        72,
+        30
+      ]
+    },
+    {
+      "id": "wall-brick-outer",
+      "file": "native/wall-brick-outer.png",
+      "source": "source/01-walls.png",
+      "sourceRect": [
+        667,
+        45,
+        247,
+        260
+      ],
+      "width": 32,
+      "height": 34,
+      "pivot": [
+        16,
+        33
+      ],
+      "worldSize": [
+        43.2,
+        45.9
+      ],
+      "atlasRect": [
+        76,
+        2,
+        32,
+        34
+      ]
+    },
+    {
+      "id": "wall-brick-inner",
+      "file": "native/wall-brick-inner.png",
+      "source": "source/01-walls.png",
+      "sourceRect": [
+        960,
+        30,
+        284,
+        263
+      ],
+      "width": 32,
+      "height": 30,
+      "pivot": [
+        16,
+        29
+      ],
+      "worldSize": [
+        43.2,
+        40.5
+      ],
+      "atlasRect": [
+        110,
+        2,
+        32,
+        30
+      ]
+    },
+    {
+      "id": "wall-brick-door",
+      "file": "native/wall-brick-door.png",
+      "source": "source/01-walls.png",
+      "sourceRect": [
+        1301,
+        59,
+        377,
+        227
+      ],
+      "width": 48,
+      "height": 29,
+      "pivot": [
+        24,
+        28
+      ],
+      "worldSize": [
+        64.8,
+        39.15
+      ],
+      "atlasRect": [
+        144,
+        2,
+        48,
+        29
+      ]
+    },
+    {
+      "id": "wall-iron-straight",
+      "file": "native/wall-iron-straight.png",
+      "source": "source/01-walls.png",
+      "sourceRect": [
+        81,
+        343,
+        553,
+        243
+      ],
+      "width": 72,
+      "height": 32,
+      "pivot": [
+        36,
+        31
+      ],
+      "worldSize": [
+        97.2,
+        43.2
+      ],
+      "atlasRect": [
+        194,
+        2,
+        72,
+        32
+      ]
+    },
+    {
+      "id": "wall-iron-outer",
+      "file": "native/wall-iron-outer.png",
+      "source": "source/01-walls.png",
+      "sourceRect": [
+        667,
+        328,
+        247,
+        282
+      ],
+      "width": 32,
+      "height": 37,
+      "pivot": [
+        16,
+        36
+      ],
+      "worldSize": [
+        43.2,
+        49.95
+      ],
+      "atlasRect": [
+        268,
+        2,
+        32,
+        37
+      ]
+    },
+    {
+      "id": "wall-iron-inner",
+      "file": "native/wall-iron-inner.png",
+      "source": "source/01-walls.png",
+      "sourceRect": [
+        953,
+        323,
+        281,
+        280
+      ],
+      "width": 32,
+      "height": 32,
+      "pivot": [
+        16,
+        31
+      ],
+      "worldSize": [
+        43.2,
+        43.2
+      ],
+      "atlasRect": [
+        302,
+        2,
+        32,
+        32
+      ]
+    },
+    {
+      "id": "wall-iron-door",
+      "file": "native/wall-iron-door.png",
+      "source": "source/01-walls.png",
+      "sourceRect": [
+        1272,
+        338,
+        428,
+        257
+      ],
+      "width": 48,
+      "height": 29,
+      "pivot": [
+        24,
+        28
+      ],
+      "worldSize": [
+        64.8,
+        39.15
+      ],
+      "atlasRect": [
+        336,
+        2,
+        48,
+        29
+      ]
+    },
+    {
+      "id": "floor-concrete",
+      "file": "native/floor-concrete.png",
+      "source": "source/02-floors.png",
+      "sourceRect": [
+        45,
+        35,
+        557,
+        565
+      ],
+      "width": 144,
+      "height": 144,
+      "pivot": [
+        72,
+        143
+      ],
+      "worldSize": [
+        192,
+        192
+      ],
+      "tileSpan": [
+        6,
+        6
+      ],
+      "seamlessVerified": false,
+      "atlasRect": [
+        386,
+        2,
+        144,
+        144
+      ]
+    },
+    {
+      "id": "floor-plates",
+      "file": "native/floor-plates.png",
+      "source": "source/02-floors.png",
+      "sourceRect": [
+        663,
+        35,
+        555,
+        565
+      ],
+      "width": 144,
+      "height": 144,
+      "pivot": [
+        72,
+        143
+      ],
+      "worldSize": [
+        192,
+        192
+      ],
+      "tileSpan": [
+        6,
+        6
+      ],
+      "seamlessVerified": false,
+      "atlasRect": [
+        532,
+        2,
+        144,
+        144
+      ]
+    },
+    {
+      "id": "floor-grate",
+      "file": "native/floor-grate.png",
+      "source": "source/02-floors.png",
+      "sourceRect": [
+        45,
+        650,
+        557,
+        549
+      ],
+      "width": 144,
+      "height": 144,
+      "pivot": [
+        72,
+        143
+      ],
+      "worldSize": [
+        192,
+        192
+      ],
+      "tileSpan": [
+        6,
+        6
+      ],
+      "seamlessVerified": false,
+      "atlasRect": [
+        678,
+        2,
+        144,
+        144
+      ]
+    },
+    {
+      "id": "floor-brick",
+      "file": "native/floor-brick.png",
+      "source": "source/02-floors.png",
+      "sourceRect": [
+        663,
+        650,
+        555,
+        549
+      ],
+      "width": 144,
+      "height": 144,
+      "pivot": [
+        72,
+        143
+      ],
+      "worldSize": [
+        192,
+        192
+      ],
+      "tileSpan": [
+        6,
+        6
+      ],
+      "seamlessVerified": false,
+      "atlasRect": [
+        824,
+        2,
+        144,
+        144
+      ]
+    },
+    {
+      "id": "press-wide-open",
+      "file": "native/press-wide-open.png",
+      "source": "source/03-presses.png",
+      "sourceRect": [
+        21,
+        69,
+        538,
+        598
+      ],
+      "width": 130,
+      "height": 144,
+      "pivot": [
+        65,
+        143
+      ],
+      "worldSize": [
+        175.5,
+        194.4
+      ],
+      "jawLengthTiles": 6,
+      "state": "open",
+      "atlasRect": [
+        2,
+        148,
+        130,
+        144
+      ]
+    },
+    {
+      "id": "press-wide-closing",
+      "file": "native/press-wide-closing.png",
+      "source": "source/03-presses.png",
+      "sourceRect": [
+        625,
+        68,
+        420,
+        599
+      ],
+      "width": 101,
+      "height": 144,
+      "pivot": [
+        51,
+        143
+      ],
+      "worldSize": [
+        136.35,
+        194.4
+      ],
+      "jawLengthTiles": 6,
+      "state": "closing",
+      "atlasRect": [
+        134,
+        148,
+        101,
+        144
+      ]
+    },
+    {
+      "id": "press-wide-closed",
+      "file": "native/press-wide-closed.png",
+      "source": "source/03-presses.png",
+      "sourceRect": [
+        1119,
+        69,
+        387,
+        598
+      ],
+      "width": 93,
+      "height": 144,
+      "pivot": [
+        47,
+        143
+      ],
+      "worldSize": [
+        125.55,
+        194.4
+      ],
+      "jawLengthTiles": 6,
+      "state": "closed",
+      "atlasRect": [
+        237,
+        148,
+        93,
+        144
+      ]
+    },
+    {
+      "id": "press-small-open",
+      "file": "native/press-small-open.png",
+      "source": "source/03-presses.png",
+      "sourceRect": [
+        22,
+        753,
+        534,
+        183
+      ],
+      "width": 140,
+      "height": 48,
+      "pivot": [
+        70,
+        47
+      ],
+      "worldSize": [
+        189,
+        64.8
+      ],
+      "jawLengthTiles": 2,
+      "state": "open",
+      "atlasRect": [
+        332,
+        148,
+        140,
+        48
+      ]
+    },
+    {
+      "id": "press-small-closing",
+      "file": "native/press-small-closing.png",
+      "source": "source/03-presses.png",
+      "sourceRect": [
+        626,
+        753,
+        419,
+        183
+      ],
+      "width": 110,
+      "height": 48,
+      "pivot": [
+        55,
+        47
+      ],
+      "worldSize": [
+        148.5,
+        64.8
+      ],
+      "jawLengthTiles": 2,
+      "state": "closing",
+      "atlasRect": [
+        474,
+        148,
+        110,
+        48
+      ]
+    },
+    {
+      "id": "press-small-closed",
+      "file": "native/press-small-closed.png",
+      "source": "source/03-presses.png",
+      "sourceRect": [
+        1123,
+        753,
+        380,
+        183
+      ],
+      "width": 100,
+      "height": 48,
+      "pivot": [
+        50,
+        47
+      ],
+      "worldSize": [
+        135,
+        64.8
+      ],
+      "jawLengthTiles": 2,
+      "state": "closed",
+      "atlasRect": [
+        586,
+        148,
+        100,
+        48
+      ]
+    },
+    {
+      "id": "belt-right-0",
+      "file": "native/belt-right-0.png",
+      "source": "source/04-conveyor.png",
+      "sourceRect": [
+        72,
+        58,
+        424,
+        160
+      ],
+      "width": 64,
+      "height": 24,
+      "pivot": [
+        32,
+        23
+      ],
+      "worldSize": [
+        86.4,
+        32.4
+      ],
+      "direction": "right",
+      "tileSpan": [
+        3,
+        1
+      ],
+      "atlasRect": [
+        688,
+        148,
+        64,
+        24
+      ]
+    },
+    {
+      "id": "belt-down-0",
+      "file": "native/belt-down-0.png",
+      "source": "source/04-conveyor.png",
+      "sourceRect": [
+        191,
+        260,
+        167,
+        424
+      ],
+      "width": 24,
+      "height": 61,
+      "pivot": [
+        12,
+        60
+      ],
+      "worldSize": [
+        32.4,
+        82.35
+      ],
+      "direction": "down",
+      "tileSpan": [
+        1,
+        3
+      ],
+      "atlasRect": [
+        754,
+        148,
+        24,
+        61
+      ]
+    },
+    {
+      "id": "belt-corner",
+      "file": "native/belt-corner.png",
+      "source": "source/04-conveyor.png",
+      "sourceRect": [
+        144,
+        720,
+        264,
+        240
+      ],
+      "width": 32,
+      "height": 29,
+      "pivot": [
+        16,
+        28
+      ],
+      "worldSize": [
+        43.2,
+        39.15
+      ],
+      "atlasRect": [
+        780,
+        148,
+        32,
+        29
+      ]
+    },
+    {
+      "id": "belt-right-1",
+      "file": "native/belt-right-1.png",
+      "source": "source/04-conveyor.png",
+      "sourceRect": [
+        555,
+        58,
+        426,
+        160
+      ],
+      "width": 64,
+      "height": 24,
+      "pivot": [
+        32,
+        23
+      ],
+      "worldSize": [
+        86.4,
+        32.4
+      ],
+      "direction": "right",
+      "tileSpan": [
+        3,
+        1
+      ],
+      "atlasRect": [
+        814,
+        148,
+        64,
+        24
+      ]
+    },
+    {
+      "id": "belt-down-1",
+      "file": "native/belt-down-1.png",
+      "source": "source/04-conveyor.png",
+      "sourceRect": [
+        681,
+        260,
+        166,
+        424
+      ],
+      "width": 24,
+      "height": 61,
+      "pivot": [
+        12,
+        60
+      ],
+      "worldSize": [
+        32.4,
+        82.35
+      ],
+      "direction": "down",
+      "tileSpan": [
+        1,
+        3
+      ],
+      "atlasRect": [
+        880,
+        148,
+        24,
+        61
+      ]
+    },
+    {
+      "id": "belt-roller",
+      "file": "native/belt-roller.png",
+      "source": "source/04-conveyor.png",
+      "sourceRect": [
+        627,
+        734,
+        262,
+        212
+      ],
+      "width": 40,
+      "height": 32,
+      "pivot": [
+        20,
+        31
+      ],
+      "worldSize": [
+        54,
+        43.2
+      ],
+      "atlasRect": [
+        906,
+        148,
+        40,
+        32
+      ]
+    },
+    {
+      "id": "belt-right-2",
+      "file": "native/belt-right-2.png",
+      "source": "source/04-conveyor.png",
+      "sourceRect": [
+        1040,
+        58,
+        425,
+        160
+      ],
+      "width": 64,
+      "height": 24,
+      "pivot": [
+        32,
+        23
+      ],
+      "worldSize": [
+        86.4,
+        32.4
+      ],
+      "direction": "right",
+      "tileSpan": [
+        3,
+        1
+      ],
+      "atlasRect": [
+        948,
+        148,
+        64,
+        24
+      ]
+    },
+    {
+      "id": "belt-down-2",
+      "file": "native/belt-down-2.png",
+      "source": "source/04-conveyor.png",
+      "sourceRect": [
+        1175,
+        260,
+        167,
+        424
+      ],
+      "width": 24,
+      "height": 61,
+      "pivot": [
+        12,
+        60
+      ],
+      "worldSize": [
+        32.4,
+        82.35
+      ],
+      "direction": "down",
+      "tileSpan": [
+        1,
+        3
+      ],
+      "atlasRect": [
+        2,
+        294,
+        24,
+        61
+      ]
+    },
+    {
+      "id": "belt-motor",
+      "file": "native/belt-motor.png",
+      "source": "source/04-conveyor.png",
+      "sourceRect": [
+        1098,
+        727,
+        327,
+        233
+      ],
+      "width": 45,
+      "height": 32,
+      "pivot": [
+        23,
+        31
+      ],
+      "worldSize": [
+        60.75,
+        43.2
+      ],
+      "atlasRect": [
+        28,
+        294,
+        45,
+        32
+      ]
+    },
+    {
+      "id": "grabber-open",
+      "file": "native/grabber-open.png",
+      "source": "source/05-grabber.png",
+      "sourceRect": [
+        37,
+        53,
+        574,
+        656
+      ],
+      "width": 48,
+      "height": 55,
+      "pivot": [
+        24,
+        54
+      ],
+      "worldSize": [
+        64.8,
+        74.25
+      ],
+      "atlasRect": [
+        75,
+        294,
+        48,
+        55
+      ]
+    },
+    {
+      "id": "grabber-reach",
+      "file": "native/grabber-reach.png",
+      "source": "source/05-grabber.png",
+      "sourceRect": [
+        633,
+        99,
+        604,
+        632
+      ],
+      "width": 48,
+      "height": 50,
+      "pivot": [
+        24,
+        49
+      ],
+      "worldSize": [
+        64.8,
+        67.5
+      ],
+      "atlasRect": [
+        125,
+        294,
+        48,
+        50
+      ]
+    },
+    {
+      "id": "grabber-closed",
+      "file": "native/grabber-closed.png",
+      "source": "source/05-grabber.png",
+      "sourceRect": [
+        1363,
+        101,
+        453,
+        608
+      ],
+      "width": 48,
+      "height": 64,
+      "pivot": [
+        24,
+        63
+      ],
+      "worldSize": [
+        64.8,
+        86.4
+      ],
+      "atlasRect": [
+        175,
+        294,
+        48,
+        64
+      ]
+    },
+    {
+      "id": "burner-off",
+      "file": "native/burner-off.png",
+      "source": "source/06-floor-burner.png",
+      "sourceRect": [
+        63,
+        347,
+        396,
+        324
+      ],
+      "width": 22,
+      "height": 18,
+      "pivot": [
+        11,
+        17
+      ],
+      "worldSize": [
+        29.7,
+        24.3
+      ],
+      "footprintTiles": [
+        1,
+        1
+      ],
+      "atlasRect": [
+        225,
+        294,
+        22,
+        18
+      ]
+    },
+    {
+      "id": "burner-warning",
+      "file": "native/burner-warning.png",
+      "source": "source/06-floor-burner.png",
+      "sourceRect": [
+        585,
+        347,
+        395,
+        324
+      ],
+      "width": 22,
+      "height": 18,
+      "pivot": [
+        11,
+        17
+      ],
+      "worldSize": [
+        29.7,
+        24.3
+      ],
+      "footprintTiles": [
+        1,
+        1
+      ],
+      "atlasRect": [
+        249,
+        294,
+        22,
+        18
+      ]
+    },
+    {
+      "id": "burner-ignite",
+      "file": "native/burner-ignite.png",
+      "source": "source/06-floor-burner.png",
+      "sourceRect": [
+        1106,
+        336,
+        394,
+        335
+      ],
+      "width": 22,
+      "height": 19,
+      "pivot": [
+        11,
+        18
+      ],
+      "worldSize": [
+        29.7,
+        25.65
+      ],
+      "footprintTiles": [
+        1,
+        1
+      ],
+      "atlasRect": [
+        273,
+        294,
+        22,
+        19
+      ]
+    },
+    {
+      "id": "burner-fire",
+      "file": "native/burner-fire.png",
+      "source": "source/06-floor-burner.png",
+      "sourceRect": [
+        1627,
+        17,
+        396,
+        654
+      ],
+      "width": 22,
+      "height": 37,
+      "pivot": [
+        11,
+        36
+      ],
+      "worldSize": [
+        29.7,
+        49.95
+      ],
+      "footprintTiles": [
+        1,
+        1
+      ],
+      "atlasRect": [
+        297,
+        294,
+        22,
+        37
+      ]
+    },
+    {
+      "id": "lathe-intact",
+      "file": "native/lathe-intact.png",
+      "source": "source/07-breakable-machines.png",
+      "sourceRect": [
+        35,
+        73,
+        349,
+        232
+      ],
+      "width": 48,
+      "height": 32,
+      "pivot": [
+        24,
+        31
+      ],
+      "worldSize": [
+        64.8,
+        43.2
+      ],
+      "atlasRect": [
+        321,
+        294,
+        48,
+        32
+      ]
+    },
+    {
+      "id": "lathe-cracked",
+      "file": "native/lathe-cracked.png",
+      "source": "source/07-breakable-machines.png",
+      "sourceRect": [
+        384,
+        68,
+        383,
+        237
+      ],
+      "width": 53,
+      "height": 33,
+      "pivot": [
+        27,
+        32
+      ],
+      "worldSize": [
+        71.55,
+        44.55
+      ],
+      "atlasRect": [
+        371,
+        294,
+        53,
+        33
+      ]
+    },
+    {
+      "id": "lathe-wreck",
+      "file": "native/lathe-wreck.png",
+      "source": "source/07-breakable-machines.png",
+      "sourceRect": [
+        798,
+        84,
+        349,
+        211
+      ],
+      "width": 48,
+      "height": 29,
+      "pivot": [
+        24,
+        28
+      ],
+      "worldSize": [
+        64.8,
+        39.15
+      ],
+      "atlasRect": [
+        426,
+        294,
+        48,
+        29
+      ]
+    },
+    {
+      "id": "lathe-parts",
+      "file": "native/lathe-parts.png",
+      "source": "source/07-breakable-machines.png",
+      "sourceRect": [
+        1184,
+        100,
+        318,
+        199
+      ],
+      "width": 44,
+      "height": 27,
+      "pivot": [
+        22,
+        26
+      ],
+      "worldSize": [
+        59.4,
+        36.45
+      ],
+      "atlasRect": [
+        476,
+        294,
+        44,
+        27
+      ]
+    },
+    {
+      "id": "boiler-intact",
+      "file": "native/boiler-intact.png",
+      "source": "source/07-breakable-machines.png",
+      "sourceRect": [
+        52,
+        353,
+        286,
+        292
+      ],
+      "width": 37,
+      "height": 37,
+      "pivot": [
+        19,
+        36
+      ],
+      "worldSize": [
+        49.95,
+        49.95
+      ],
+      "atlasRect": [
+        522,
+        294,
+        37,
+        37
+      ]
+    },
+    {
+      "id": "boiler-cracked",
+      "file": "native/boiler-cracked.png",
+      "source": "source/07-breakable-machines.png",
+      "sourceRect": [
+        435,
+        353,
+        285,
+        292
+      ],
+      "width": 36,
+      "height": 37,
+      "pivot": [
+        18,
+        36
+      ],
+      "worldSize": [
+        48.6,
+        49.95
+      ],
+      "atlasRect": [
+        561,
+        294,
+        36,
+        37
+      ]
+    },
+    {
+      "id": "boiler-wreck",
+      "file": "native/boiler-wreck.png",
+      "source": "source/07-breakable-machines.png",
+      "sourceRect": [
+        799,
+        372,
+        330,
+        268
+      ],
+      "width": 42,
+      "height": 34,
+      "pivot": [
+        21,
+        33
+      ],
+      "worldSize": [
+        56.7,
+        45.9
+      ],
+      "atlasRect": [
+        599,
+        294,
+        42,
+        34
+      ]
+    },
+    {
+      "id": "boiler-parts",
+      "file": "native/boiler-parts.png",
+      "source": "source/07-breakable-machines.png",
+      "sourceRect": [
+        1180,
+        372,
+        321,
+        262
+      ],
+      "width": 41,
+      "height": 34,
+      "pivot": [
+        21,
+        33
+      ],
+      "worldSize": [
+        55.35,
+        45.9
+      ],
+      "atlasRect": [
+        643,
+        294,
+        41,
+        34
+      ]
+    },
+    {
+      "id": "cabinet-intact",
+      "file": "native/cabinet-intact.png",
+      "source": "source/07-breakable-machines.png",
+      "sourceRect": [
+        79,
+        685,
+        247,
+        272
+      ],
+      "width": 30,
+      "height": 33,
+      "pivot": [
+        15,
+        32
+      ],
+      "worldSize": [
+        40.5,
+        44.55
+      ],
+      "atlasRect": [
+        686,
+        294,
+        30,
+        33
+      ]
+    },
+    {
+      "id": "cabinet-cracked",
+      "file": "native/cabinet-cracked.png",
+      "source": "source/07-breakable-machines.png",
+      "sourceRect": [
+        462,
+        684,
+        240,
+        273
+      ],
+      "width": 29,
+      "height": 33,
+      "pivot": [
+        15,
+        32
+      ],
+      "worldSize": [
+        39.15,
+        44.55
+      ],
+      "atlasRect": [
+        718,
+        294,
+        29,
+        33
+      ]
+    },
+    {
+      "id": "cabinet-wreck",
+      "file": "native/cabinet-wreck.png",
+      "source": "source/07-breakable-machines.png",
+      "sourceRect": [
+        781,
+        698,
+        366,
+        276
+      ],
+      "width": 45,
+      "height": 34,
+      "pivot": [
+        23,
+        33
+      ],
+      "worldSize": [
+        60.75,
+        45.9
+      ],
+      "atlasRect": [
+        749,
+        294,
+        45,
+        34
+      ]
+    },
+    {
+      "id": "cabinet-parts",
+      "file": "native/cabinet-parts.png",
+      "source": "source/07-breakable-machines.png",
+      "sourceRect": [
+        1189,
+        688,
+        311,
+        286
+      ],
+      "width": 38,
+      "height": 35,
+      "pivot": [
+        19,
+        34
+      ],
+      "worldSize": [
+        51.3,
+        47.25
+      ],
+      "atlasRect": [
+        796,
+        294,
+        38,
+        35
+      ]
+    },
+    {
+      "id": "robot-saw-front",
+      "file": "native/robot-saw-front.png",
+      "source": "source/10-rough-robots.png",
+      "sourceRect": [
+        109,
+        107,
+        405,
+        376
+      ],
+      "width": 27,
+      "height": 25,
+      "pivot": [
+        14,
+        24
+      ],
+      "worldSize": [
+        36.45,
+        33.75
+      ],
+      "renderExtent": 36,
+      "view": "front",
+      "atlasRect": [
+        836,
+        294,
+        27,
+        25
+      ]
+    },
+    {
+      "id": "robot-claw-front",
+      "file": "native/robot-claw-front.png",
+      "source": "source/10-rough-robots.png",
+      "sourceRect": [
+        563,
+        101,
+        341,
+        382
+      ],
+      "width": 23,
+      "height": 25,
+      "pivot": [
+        12,
+        24
+      ],
+      "worldSize": [
+        31.05,
+        33.75
+      ],
+      "renderExtent": 36,
+      "view": "front",
+      "atlasRect": [
+        865,
+        294,
+        23,
+        25
+      ]
+    },
+    {
+      "id": "robot-hammer-front",
+      "file": "native/robot-hammer-front.png",
+      "source": "source/10-rough-robots.png",
+      "sourceRect": [
+        1013,
+        103,
+        414,
+        393
+      ],
+      "width": 27,
+      "height": 26,
+      "pivot": [
+        14,
+        25
+      ],
+      "worldSize": [
+        36.45,
+        35.1
+      ],
+      "renderExtent": 36,
+      "view": "front",
+      "atlasRect": [
+        890,
+        294,
+        27,
+        26
+      ]
+    },
+    {
+      "id": "robot-saw-back",
+      "file": "native/robot-saw-back.png",
+      "source": "source/10-rough-robots.png",
+      "sourceRect": [
+        114,
+        552,
+        399,
+        360
+      ],
+      "width": 26,
+      "height": 24,
+      "pivot": [
+        13,
+        23
+      ],
+      "worldSize": [
+        35.1,
+        32.4
+      ],
+      "renderExtent": 36,
+      "view": "back",
+      "atlasRect": [
+        919,
+        294,
+        26,
+        24
+      ]
+    },
+    {
+      "id": "robot-claw-back",
+      "file": "native/robot-claw-back.png",
+      "source": "source/10-rough-robots.png",
+      "sourceRect": [
+        610,
+        561,
+        355,
+        363
+      ],
+      "width": 23,
+      "height": 24,
+      "pivot": [
+        12,
+        23
+      ],
+      "worldSize": [
+        31.05,
+        32.4
+      ],
+      "renderExtent": 36,
+      "view": "back",
+      "atlasRect": [
+        947,
+        294,
+        23,
+        24
+      ]
+    },
+    {
+      "id": "robot-hammer-back",
+      "file": "native/robot-hammer-back.png",
+      "source": "source/10-rough-robots.png",
+      "sourceRect": [
+        1048,
+        549,
+        430,
+        385
+      ],
+      "width": 28,
+      "height": 25,
+      "pivot": [
+        14,
+        24
+      ],
+      "worldSize": [
+        37.8,
+        33.75
+      ],
+      "renderExtent": 36,
+      "view": "back",
+      "atlasRect": [
+        972,
+        294,
+        28,
+        25
+      ]
+    },
+    {
+      "id": "tracked-torch-front",
+      "file": "native/tracked-torch-front.png",
+      "source": "source/11-tracked-human.png",
+      "sourceRect": [
+        62,
+        74,
+        477,
+        534
+      ],
+      "width": 35,
+      "height": 39,
+      "pivot": [
+        18,
+        38
+      ],
+      "worldSize": [
+        47.25,
+        52.65
+      ],
+      "atlasRect": [
+        2,
+        360,
+        35,
+        39
+      ]
+    },
+    {
+      "id": "tracked-wrench-front",
+      "file": "native/tracked-wrench-front.png",
+      "source": "source/11-tracked-human.png",
+      "sourceRect": [
+        680,
+        48,
+        546,
+        570
+      ],
+      "width": 40,
+      "height": 41,
+      "pivot": [
+        20,
+        40
+      ],
+      "worldSize": [
+        54,
+        55.35
+      ],
+      "atlasRect": [
+        39,
+        360,
+        40,
+        41
+      ]
+    },
+    {
+      "id": "tracked-torch-back",
+      "file": "native/tracked-torch-back.png",
+      "source": "source/11-tracked-human.png",
+      "sourceRect": [
+        49,
+        684,
+        529,
+        507
+      ],
+      "width": 38,
+      "height": 37,
+      "pivot": [
+        19,
+        36
+      ],
+      "worldSize": [
+        51.3,
+        49.95
+      ],
+      "atlasRect": [
+        81,
+        360,
+        38,
+        37
+      ]
+    },
+    {
+      "id": "tracked-wrench-back",
+      "file": "native/tracked-wrench-back.png",
+      "source": "source/11-tracked-human.png",
+      "sourceRect": [
+        686,
+        618,
+        564,
+        598
+      ],
+      "width": 41,
+      "height": 43,
+      "pivot": [
+        21,
+        42
+      ],
+      "worldSize": [
+        55.35,
+        58.05
+      ],
+      "atlasRect": [
+        121,
+        360,
+        41,
+        43
+      ]
+    },
+    {
+      "id": "colossus-standing",
+      "file": "native/colossus-standing.png",
+      "source": "source/13-living-colossus.png",
+      "sourceRect": [
+        47,
+        21,
+        1242,
+        1154
+      ],
+      "width": 144,
+      "height": 134,
+      "pivot": [
+        72,
+        133
+      ],
+      "worldSize": [
+        194.4,
+        180.9
+      ],
+      "footprintTiles": [
+        6,
+        5
+      ],
+      "state": "standing",
+      "renderExtent": 194.4,
+      "notes": "Final organic welded design. Four legs. Static standing/fallen poses, no animation.",
+      "atlasRect": [
+        164,
+        360,
+        144,
+        134
+      ]
+    },
+    {
+      "id": "colossus-fallen",
+      "file": "native/colossus-fallen.png",
+      "source": "source/15-colossus-fallen.png",
+      "sourceRect": [
+        23,
+        249,
+        1264,
+        842
+      ],
+      "width": 146,
+      "height": 97,
+      "pivot": [
+        73,
+        96
+      ],
+      "worldSize": [
+        197.1,
+        130.95
+      ],
+      "footprintTiles": [
+        6,
+        5
+      ],
+      "state": "fallen",
+      "notes": "Static fallen pose. Scale checked against standing body; not an animation frame.",
+      "atlasRect": [
+        310,
+        360,
+        146,
+        97
+      ]
+    },
+    {
+      "id": "welder-idle",
+      "file": "native/welder-idle.png",
+      "source": "source/14-welder-flamethrower.png",
+      "sourceRect": [
+        93,
+        100,
+        641,
+        673
+      ],
+      "width": 40,
+      "height": 42,
+      "pivot": [
+        20,
+        41
+      ],
+      "worldSize": [
+        54,
+        56.7
+      ],
+      "renderExtent": 56.7,
+      "atlasRect": [
+        458,
+        360,
+        40,
+        42
+      ]
+    },
+    {
+      "id": "welder-fire",
+      "file": "native/welder-fire.png",
+      "source": "source/14-welder-flamethrower.png",
+      "sourceRect": [
+        849,
+        100,
+        889,
+        723
+      ],
+      "width": 55,
+      "height": 45,
+      "pivot": [
+        28,
+        44
+      ],
+      "worldSize": [
+        74.25,
+        60.75
+      ],
+      "renderExtent": 56.7,
+      "notes": "Flame is included in this study frame; FX should be separate for implementation.",
+      "atlasRect": [
+        500,
+        360,
+        55,
+        45
+      ]
+    }
+  ]
+}

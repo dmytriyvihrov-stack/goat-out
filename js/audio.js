@@ -1287,6 +1287,12 @@ class GameAudio {
   sfxFire() { this.foley('fire', { gain: 0.22 }); }
   // A lit fuse: a thin hiss that spits, for as long as it has left to burn.
   sfxFuse(dur) { const d = Math.round((dur || 3) * 10) / 10; this.foley('fuse', { key: 'fuse:' + d, args: { dur: d }, takes: 1, gain: 0.085, steady: true }); }
+  // THE FACTORY's machines (js/machines.js), where they stand (`where` is `heard(dx, dy)`): a press or a ram's warning
+  // as one build the length of its warning (`dur`), its jaws drawn back, a burner's gas, a machine stopping for good.
+  sfxHydraulic(dur, where) { const d = Math.round(dur * 20) / 20, v = where ? where.vol : 1; this.foley('hydraulic', { key: 'hydraulic:' + d, args: { dur: d }, takes: 2, gain: TUNING.audio.machines.build * v, pan: where ? where.pan : 0, steady: true }); }
+  sfxVent(where) { this.foley('vent', { gain: TUNING.audio.machines.vent * (where ? where.vol : 1), pan: where ? where.pan : 0 }); }
+  sfxGas(where) { this.foley('gas', { gain: TUNING.audio.machines.gas * (where ? where.vol : 1), pan: where ? where.pan : 0 }); }
+  sfxWinddown(where) { this.foley('winddown', { gain: TUNING.audio.machines.down * (where ? where.vol : 1), pan: where ? where.pan : 0, wet: 0.05 }); }
   sfxSwing() { this.foley('swing', { gain: 0.12 }); }
   // Somebody going over an edge: a man's shout running away downward.
   sfxFall() { this.foley('fall', { gain: 0.2, wet: 0.1 }); }

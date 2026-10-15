@@ -1,0 +1,55 @@
+<style>
+/* Layout: one narrow column of cards, a sticky bar with the count and filters; the game's own dark stone and bone. */
+:root {
+  --bg: #17130f; --panel: #211b16; --line: #3a3027; --fg: #efe6d0; --dim: #a8977c;
+  --blood: #c0392b; --amber: #f2aa30; --ok: #7fae5a; --violet: #9a7ce0;
+  --display: 'Jacquard 24', 'Alegreya SC', Georgia, serif;
+  --head: 'Alegreya SC', Georgia, serif;
+  --body: 'Alegreya', Georgia, 'Times New Roman', serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 17px/1.45 var(--body); margin: 0; }
+.wrap { max-width: 860px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 60px; }
+h1 { font: 400 52px/1 var(--display); margin: 8px 0 4px; letter-spacing: 0.5px; }
+.lede { color: var(--dim); margin: 0 0 14px; max-width: 65ch; }
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line);
+  display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding-block: 10px; }
+.count { font: 700 15px var(--head); letter-spacing: 0.06em; font-variant-numeric: tabular-nums; }
+.meter { flex: 1 1 160px; height: 8px; background: var(--line); display: flex; min-width: 120px; }
+.meter i { display: block; height: 100%; }
+.filters { display: flex; gap: 6px; flex-wrap: wrap; }
+button { font: 600 14px var(--head); letter-spacing: 0.05em; color: var(--fg); background: var(--panel); border: 1px solid var(--line);
+  padding: 5px 10px; cursor: pointer; border-radius: 3px; }
+button:hover { border-color: var(--dim); }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.sync { font-size: 13px; color: var(--dim); margin-left: auto; }
+h2 { font: 700 20px var(--head); letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); margin: 28px 0 10px; text-wrap: balance; }
+.list { display: grid; gap: 12px; }
+.item { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--line); padding: 14px 16px; min-width: 0; }
+.item[data-s="ok"] { border-left-color: var(--ok); }
+.item[data-s="bad"] { border-left-color: var(--blood); }
+.item[data-s="wip"] { border-left-color: var(--amber); }
+.top { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.top h3 { font: 700 19px var(--head); margin: 0; letter-spacing: 0.03em; flex: 1 1 260px; min-width: 0; }
+.tag { font: 700 11px var(--head); letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 6px; border: 1px solid; }
+.tag.new { color: var(--amber); } .tag.big { color: var(--violet); }
+.how { margin: 8px 0 6px; font-size: 15px; color: var(--dim); }
+.how b { color: var(--fg); font-weight: 600; }
+kbd { font: 600 13px var(--head); background: var(--bg); border: 1px solid var(--line); padding: 0 5px; color: var(--fg); }
+ul { list-style: none; margin: 6px 0 10px; padding: 0; display: grid; gap: 4px; }
+li label { display: flex; gap: 9px; align-items: flex-start; cursor: pointer; }
+li input { margin-top: 5px; accent-color: var(--ok); width: 16px; height: 16px; flex: none; }
+li.done span { color: var(--dim); text-decoration: line-through; text-decoration-color: var(--line); }
+.status { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.status button[data-v="ok"][aria-pressed="true"] { background: var(--ok); border-color: var(--ok); color: #10140c; }
+.status button[data-v="bad"][aria-pressed="true"] { background: var(--blood); border-color: var(--blood); color: var(--fg); }
+.status button[data-v="wip"][aria-pressed="true"] { background: var(--amber); border-color: var(--amber); color: #1a1208; }
+textarea { width: 100%; margin-top: 8px; min-height: 2.6em; resize: vertical; background: var(--bg); color: var(--fg);
+  border: 1px solid var(--line); font: 15px/1.4 var(--body); padding: 6px 8px; }
+.note { font-size: 13px; color: var(--dim); margin-top: 22px; }
+.ro .status button, .ro input, .ro textarea { pointer-events: none; opacity: 0.6; }
+@media (prefers-reduced-motion: no-preference) { .meter i { transition: width .3s; } }
+@media (max-width: 480px) { h1 { font-size: 40px; } .sync { margin-left: 0; width: 100%; } }
+</style>

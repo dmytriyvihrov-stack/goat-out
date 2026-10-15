@@ -347,6 +347,7 @@ class CombatFX {
   death(e,cause,dx,dy) {
     if (cause==='fall') return;
     if (e.kind==='wraith') { this.explosion(e.x,e.y,35,true,true); return; }
+    if (e.sawbot || e.welder) { this.scrap(e,dx,dy); return; }
     // `size` is the 96-px canvas the snapshot and the corpse are drawn into, at world scale: the pixel
     // sprite is already his living size there. Squeezed to 40 (a leftover of the painted sheets,
     // drawn at 80) every body lay at under half the man it was (playtest, 24 Sep 2026).
@@ -388,6 +389,39 @@ class CombatFX {
           key:this.game.renderer.painted.characterKey(e)});   // who he was, for the thrower's fist (`Thrower.bodyProp`)
       if(cause==='burn') this.explosion(e.x,e.y,19,!!e.witchBurn,true);
     }
+  }
+
+  // THE SAWBOT (js/factory.js) comes apart, never lies down (13 Oct 2026 playtest: "after a robot dies it flies into
+  // pieces"): its own sprite cut into plates, each cut edge dark iron with a rust line instead of blood, thrown wide
+  // with sparks and a puff of smoke; the pieces lie where they land like any other.
+  // The welder breaks the same way (14 Oct 2026). Both are cut off their FRONT view whatever way they faced (the crops are
+  // in the 96 px snapshot, feet at (48, 74)), and the HEAD is a piece of its own (that playtest: "when the robot flies
+  // apart I want to see the head"): whole, a size up, thrown highest, turning slowly so it is read in the air, and it
+  // lands upright on its neck (`rest`), its cut only along the bottom.
+  scrap(e,dx,dy) {
+    const g=this.game,S=TUNING.effects.scrap,welder=!!e.welder,d=hyp(dx,dy)||1;dx/=d;dy/=d;
+    const sprite=this.snapshot({kind:'bearer',sawbot:!welder,welder,facing:Math.PI/2});
+    this.explosion(e.x,e.y-10,24,false,true);
+    g.particles(e.x,e.y-14,14,PALETTE.fireHi,260);g.particles(e.x,e.y-10,8,PALETTE.ash,160);
+    if(!sprite)return;
+    const P=welder?S.welder:S.sawbot;
+    const cut=(crop,head)=>{
+      const pc=CombatFX.pieceCanvas(crop[2],crop[3]),c=pc.getContext('2d');
+      c.drawImage(sprite,crop[0],crop[1],crop[2],crop[3],0,0,crop[2],crop[3]);
+      c.globalCompositeOperation='source-atop';c.fillStyle='#2a272d';
+      c.fillRect(0,crop[3]-2,crop[2],2);
+      if(!head){c.fillRect(0,0,crop[2],2);c.fillRect(0,0,2,crop[3]);c.fillRect(crop[2]-2,0,2,crop[3]);c.fillStyle='#8e4535';c.fillRect(2,2,crop[2]-4,1);}
+      else{c.fillStyle='#8e4535';c.fillRect(0,crop[3]-3,crop[2],1);}
+      return pc;
+    };
+    for(const crop of P.pieces) this.fragment(e.x,e.y-8,cut(crop,false),[0,0,crop[2],crop[3]],crop[2],crop[3],dx||Math.random()-0.5,dy||Math.random()-0.5,'metal',{vz:TUNING.effects.lift*(1.1+Math.random()*0.6)});
+    const h=P.head,k=S.headScale;
+    // straight up, drifting `headSpeed` px/s along the blow: it comes down a tile or two from where he stood, never behind
+    // something across the room
+    const ha=Math.atan2(dy||Math.random()-0.5,dx||Math.random()-0.5)+(Math.random()-0.5)*0.8;
+    this.fragment(e.x,e.y-16,cut(h,true),[0,0,h[2],h[3]],h[2]*k,h[3]*k,dx,dy,'metal',
+      {vx:Math.cos(ha)*S.headSpeed,vy:Math.sin(ha)*S.headSpeed,vz:TUNING.effects.lift*S.headLift,spin:(Math.random()-0.5)*S.headSpin,rest:0});
+    g.particles(e.x,e.y-20,6,'#ffd36b',200);
   }
 
   blood(x,y,dx,dy,count) {

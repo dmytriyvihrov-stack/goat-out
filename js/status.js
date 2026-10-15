@@ -18,6 +18,9 @@ const Status = {
   // Poison a man. Where it lands on something already wrong with him it reacts instead of stacking.
   poison(game, e, t) {
     if (e.dead || e.ghosted) return;
+    // Iron (THE FACTORY's sawbot and automaton, js/factory.js): poison finds nothing in it to sicken.
+    // The sawbot is soaked by it instead (`Sawbot.soak`): soaked and hot, it goes off.
+    if (e.immunity && e.immunity.poison) { if (typeof Sawbot !== 'undefined') { if (e.sawbot || e.arm) Sawbot.soak(game, e); else Sawbot.shrug(game, e, 'poison'); } return; }
     if (e.burning > 0) { Status.blast(game, e.x, e.y, TUNING.status.blast, e); return; }
     if (e.dazed > 0) { Status.sting(game, e); return; }
     const fresh = e.poison <= 0;
@@ -43,6 +46,7 @@ const Status = {
   // a puddle under a dazed man would otherwise announce it every frame.
   sting(game, e) {
     const S = TUNING.status.sting;
+    if (e.immunity && e.immunity.poison) return;   // iron takes no shock either
     // Not on a kind the stars do nothing to (the rat ogre, the wraith): SHOCK froze the rat ogre
     // nearly five seconds, standing, where a crate alone gives him under three on the floor.
     // × ENEMY ATTACK undoes that dev slider (folded into `enemySlow`): it speeds blows, not a sting.
@@ -104,7 +108,7 @@ const Status = {
       const i = w.idx(tx, ty); if (w.poison[i] > 0) { w.poison[i] = 0; w.poisonOn.delete(i); }
     }
     for (const o of game.enemies) {
-      if (o.dead || o.held || o.ghosted) continue;
+      if (o.dead || o.held || o.ghosted || o.automaton) continue;   // THE AUTOMATON is `Prop.blastRoom`'s (js/factory.js)
       const ddx = o.x - x, ddy = o.y - y, d = hyp(ddx, ddy);
       if (d > R + o.r) continue;
       if (o !== source && !game.blastClear(x, y, o.x, o.y)) continue;
@@ -268,8 +272,16 @@ const Status = {
   // there at all.
   updateCarried(game) {
     const w = game.world, J = TUNING.status.jaw;
+    // Any thing thrown through fire catches for the rest of its flight, as a crate always did (a crate, a bomb and a barrel
+    // keep their own rules), and lying still again it is out (13 Oct 2026 playtest: "what I throw sets a man alight if it
+    // is burning"; a blade thrown through the welder's jet hit the man behind it cold).
+    for (const p of game.props) {
+      if (p.kind === 'crate' || p.kind === 'bomb' || p.kind === 'barrel') continue;
+      if (!p.flung || p.broken || p.held) { if (p.alight) p.alight = null; continue; }
+      if (!p.alight && w.isBurningPx(p.x, p.y)) p.alight = w.isWitchPx(p.x, p.y) ? 'witch' : 'fire';
+    }
     const each = (o, isMan) => {
-      if (!o.venom && !o.brand) return;
+      if (!o.venom && !o.brand && !(!isMan && o.alight)) return;
       // An animal flies on its own flag, a shell's `flying`, a kicked hen's `birdState`, not `flung`.
       const up = o.flung || o.flying || o.birdState === 'flying';
       const flying = isMan ? o.state === 'flung' && !o.dead : up && !o.broken && !o.held;
@@ -285,7 +297,16 @@ const Status = {
           }
         }
         if (o.brand) Status.brandTrail(game, o);
-        if (Math.random() < 0.6) game.particles(o.x, o.y, 1, o.brand ? PALETTE.fireHi : PALETTE.venom, 60);
+        // burning, a firebrand's or caught on the way: whoever it meets catches (a man thrown alight is one already)
+        if (!isMan && (o.brand || o.alight)) {
+          const witch = o.alight === 'witch' || !!(o.brand && o.brand.witch);
+          for (const e of game.enemies) {
+            if (e.dead || e.held || e.ghosted || e.burning > 0 || e === o.byCult) continue;
+            if (hyp(e.x - o.x, e.y - o.y) > e.r + (o.r || 0) + J.touch) continue;
+            e.ignite(game, witch);
+          }
+        }
+        if (Math.random() < 0.6) game.particles(o.x, o.y, 1, o.brand || o.alight ? PALETTE.fireHi : PALETTE.venom, 60);
         return;
       }
       const venom = o.venom;

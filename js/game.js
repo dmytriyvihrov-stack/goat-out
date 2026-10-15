@@ -233,7 +233,8 @@ class Game {
       // `#dark` the same for THE DARK: whatever floor LEVELS starts is played with the lamps out.
       this.askedDark = h === 'dark' && !this.dev.hidden;
       // `#showroom`: NEW GAME opens THE SHOWROOM (js/showroom.js) instead of the pen.
-      this.askedShowroom = h === 'showroom';
+      this.askedShowroom = h === 'showroom' || h === 'factory';
+      this.askedFactory = h === 'factory';   // `#factory`: NEW GAME opens THE FACTORY's test floor (js/factory.js)
       // `#bot` (9 Oct 2026, "can I run the bot from the computer without the AI"): the friend's autoplay bot
       // (tools/autoplay-bot.js, plain script, no model behind it) is loaded the way the harness is. Served pages only
       // (the artifact has no /tools), F8 starts and stops it, F9 hides its panel.
@@ -1204,7 +1205,7 @@ class Game {
       this.audio.sfxBoom(); this.thud(x, y, 5); this.ring(x, y, R, PALETTE.fireHi); this.particles(x, y, 12, PALETTE.fire, 220);
       w.emitNoise(x, y, TUNING.noise.boom);
       for (const e of this.enemies) {
-        if (e.dead || e.held || e.ghosted) continue;
+        if (e.dead || e.held || e.ghosted || e.automaton) continue;   // THE AUTOMATON is `Prop.blastRoom`'s (js/factory.js)
         const d = hyp(e.x - x, e.y - y);
         if (d <= R + e.r * 0.5 && this.blastClear(x, y, e.x, e.y)) e.die(this, 'splat', (e.x - x) / (d || 1), (e.y - y) / (d || 1), 'powder');
       }
@@ -1639,6 +1640,7 @@ class Game {
     // THE CHASE over whatever floor is up, from now (js/chase.js); off takes it away. Its run codes carry `C`.
     if (id === 'chase') { this.dev.chase = !this.dev.chase; if (this.level && this.world && this.goat) Chase.start(this); this.devToast(this.dev.chase ? 'CHASE ON: THE RED COMES FROM THE LEFT' : 'CHASE OFF'); return; }
     if (id === 'showroom') { this.dev.open = false; this.startShowroom(); return; }
+    if (id === 'factory') { this.dev.open = false; this.startShowroom(true); return; }   // THE FACTORY's test floor (js/factory.js)
     if (id === 'cam-zoom') {
       const cur = this.dev.tune.camera || 1, next = DEV_CAM_STEPS.find((v) => v > cur + 0.001) || DEV_CAM_STEPS[0];
       this.setDevTune('camera', next); this.devToast(`CAMERA ×${next}: ${next > 1 ? 'CLOSER, EVERYTHING BIGGER' : next < 1 ? 'FURTHER, MORE OF THE ROOM' : 'AS SHIPPED'}`); return;
@@ -1799,9 +1801,14 @@ class Game {
     if (id === 'art-floors') { ART_PASS.floors = !ART_PASS.floors; return; }
     if (id === 'art-shield') { ART_PASS.shield = ((ART_PASS.shield || 0) + 1) % PROP_PIXELS.SHIELD_LOOKS.length; return; }
     if (id === 'art-shaman') { ART_PASS.shaman = ((ART_PASS.shaman || 0) + 1) % SHAMAN_PIXELS.LOOKS.length; return; }
+    // THE FACTORY's floor and wall looks (js/factory-pixels.js); the rooms' bake keys on them, so they repaint by themselves
+    if (id === 'art-ffloor') { ART_PASS.ffloor = ((ART_PASS.ffloor || 0) + 1) % FACTORY_PIXELS.FLOORS.length; return; }
+    if (id === 'art-fwall') { ART_PASS.fwall = ((ART_PASS.fwall || 0) + 1) % FACTORY_PIXELS.WALLS.length; return; }
     if (id === 'art-smallProps') { ART_PASS.smallProps = !ART_PASS.smallProps; return; }
     // the second pass's switches; the baked rooms and cave key themselves on hay and the cave's floor
-    if (id === 'art-shadows' || id === 'art-tells' || id === 'art-hay' || id === 'art-cave' || id === 'art-lit') { const k = id.slice(4); ART_PASS[k] = !ART_PASS[k]; return; }
+    if (id === 'art-shadows' || id === 'art-tells' || id === 'art-hay' || id === 'art-cave' || id === 'art-lit' || id === 'art-ink') { const k = id.slice(4); ART_PASS[k] = !ART_PASS[k]; return; }
+    // ONE STYLE: THE WARDEN's texel, and with it how tall the renderer takes him to be (his marks, the boss bar's eye)
+    if (id === 'art-grain') { ART_PASS.grain = !ART_PASS.grain; if (typeof WARDEN_PIXELS !== 'undefined' && WARDEN_PIXELS.applyGrain) WARDEN_PIXELS.applyGrain(); return; }
     if (id === 'art-clubman') { ART_PASS.clubman = (ART_PASS.clubman + 1) % PIXEL_STUDY.clubman.length; return; }
     if (id === 'juice-export') {
       try {
@@ -1941,8 +1948,15 @@ class Game {
     if (id === 'soulpick-miss') return;   // a click beside PICK A SOUL's panel goes nowhere
     // The ENEMIES tab's SPAWN under a kind: that man, with a soul in him when the row's SOUL is on.
     if (id.startsWith('enemy-spawn=')) {
-      const tag = id.slice(12), e = this.spawnEnemy(tag === 'champion' || tag === 'boss' || tag === 'shield' || tag === 'thrower' || tag === 'shaman' || tag === 'warden' ? 'bearer' : tag === 'flayed' ? 'butcher' : tag);
+      const tag = id.slice(12), e = this.spawnEnemy(tag === 'champion' || tag === 'boss' || tag === 'shield' || tag === 'thrower' || tag === 'shaman' || tag === 'warden' || tag === 'sawbot' || tag === 'welder' || tag === 'automaton' || tag === 'arm' || tag === 'coward' || tag === 'cowardgift' ? 'bearer' : tag === 'flayed' ? 'butcher' : tag);
       if (!e) return;
+      // THE COWARD (js/coward.js): in his corner as the spawner put him, or the one spared with his tuft
+      if (tag === 'coward' || tag === 'cowardgift') { Coward.devSpawn(this, e, tag === 'cowardgift'); this.devToast(tag === 'coward' ? '+ THE COWARD' : '+ THE COWARD, WITH GRASS'); return; }
+      // THE FACTORY's machines (js/factory.js); the welder drives the axis the room is longer along
+      if (tag === 'sawbot') Sawbot.give(e);
+      if (tag === 'arm') { Arm.give(e); const r = roomAt(this.level, e.x, e.y); e.room = r ? r.index : -1; }   // THE ARM, bolted where it is dropped
+      if (tag === 'welder') { const r = roomAt(this.level, e.x, e.y); Welder.give(e, r && r.h > r.w ? 'y' : 'x'); e.room = r ? r.index : -1; }
+      if (tag === 'automaton') { Automaton.give(e); const r = roomAt(this.level, e.x, e.y); e.room = r ? r.index : -1; }
       // the villain's two phases (js/warden.js): the man with his seven hearts, the monster with the soul in him
       if (tag === 'warden') { Warden.give(e); this.ensoul(e); e.hp = e.maxHp = TUNING.warden.hp; this.devToast('+ THE WARDEN'); return; }
       if (tag === 'flayed') { const M = TUNING.warden.monster; e.boss = true; e.flayed = true; this.ensoul(e); e.soulMeet = M.meet; e.hp = e.maxHp = M.hp; e.speed = e.cfg.speed * M.speedMul; this.devToast('+ THE FLAYED'); return; }
@@ -2021,7 +2035,7 @@ class Game {
   // meeting"): what the drawer's SPAWN rows drop is plain, a champion (yellow), or a soul-bearer (violet) at its
   // first, second or third meeting (`e.soulMeet`: an ogre's witchfire waves, js/waves.js). Not the rat ogre.
   devSpawnAs(e, tag) {
-    const a = this.dev.spawnAs | 0; if (!a || e.kind === 'ratogre') return;
+    const a = this.dev.spawnAs | 0; if (!a || e.kind === 'ratogre' || e.automaton) return;   // THE AUTOMATON is his own kind of boss
     e.boss = true; e.elite = e.kind !== 'butcher';
     e.hp = e.maxHp = e.kind === 'butcher' ? e.cfg.hp : e.hp + TUNING.boss.champHp;
     if (a >= 2) {
@@ -2732,7 +2746,7 @@ class Game {
     this.climbDark = false;
     // THE ALTAR AGAIN for a goat who has climbed out of it once; a floor put aside comes back the way it was laid (`floorGen.again`).
     const again = index === 0 && !this.showroomOn && (sp && sp.gen && sp.gen.again !== undefined ? !!sp.gen.again : this.altarKnown());
-    const def = this.showroomOn ? SHOWROOM_LEVEL : index === this.tripAt ? tripLevel(index) : index === this.darkAt && index === DARK_LEVEL.darkOf ? darkLevel() : again ? altarAgain(seed) : LEVELS[index];
+    const def = this.showroomOn ? (this.factoryOn ? FACTORY_LEVEL : SHOWROOM_LEVEL) : index === this.tripAt ? tripLevel(index) : index === this.darkAt && index === DARK_LEVEL.darkOf ? darkLevel() : again ? altarAgain(seed) : LEVELS[index];
     this.levelTripAt = this.tripAt;
     if (cp) this.tripAt = cp.tripAt;   // a tuft eaten before the gate stays eaten
     this.tripBanner = def.shroom ? TUNING.shroom.banner.time : 0;
@@ -2788,6 +2802,11 @@ class Game {
       if (s.thrower) Thrower.give(e);
       // The shaman (`TUNING.shaman`, js/shaman.js): one heart, his spirit and his call.
       if (s.shaman) Shaman.give(e);
+      // THE FACTORY's machines (js/factory.js): the sawbot, the welder on his line (`waxis`), the automaton.
+      if (s.sawbot) Sawbot.give(e);
+      if (s.arm) Arm.give(e);   // THE ARM, bolted down (js/factory.js)
+      if (s.welder) Welder.give(e, s.waxis);
+      if (s.automaton) Automaton.give(e);
       // A boss wears the outline and stands bigger. Without a soul he is a champion, yellow, his kind's
       // own hearts plus `boss.champHp` and nothing else; `ensoul` below makes the strong one. The ogre,
       // boss-only, keeps his `butcher.hp`.
@@ -2808,6 +2827,7 @@ class Game {
       if (s.sentry) { e.sentry = true; e.facing = s.facing || 0; }
       // THE YARD's chandelier lesson (`post`): the sentry's feet, under the ring, in the notch.
       if (s.post) { e.sentry = true; e.facing = s.facing || 0; }
+      else if (s.facing !== undefined && !s.sentry) e.facing = s.facing;   // a man laid facing his work (THE FACTORY's workshop, js/factory.js)
       if (s.boss) e.boss = true;
       // A gate's keeper (`levelDef.gateKeeper`) is made one further down (`keepGate`), with his soul.
       // Lying in the grass (THE CAVE): he is put down still and facing any way at all, and what
@@ -2815,6 +2835,9 @@ class Game {
       if (s.lurk) { e.lurk = true; e.facing = Math.random() * Math.PI * 2; }
       return e;
     });
+    // THE COWARD in his corner, and the one spared earlier in the run with a tuft laid before him (js/coward.js): before the
+    // spawn list is numbered and the props laid, so a floor put aside names him and his grass like any other.
+    Coward.lay(this, sp);
     // THE SHOWROOM's galleries (js/showroom.js): figures only, on the level and never in `enemies`.
     if (this.level.statues) this.level.statueMen = showroomStatues(this.level);
     // `soulPlan` names men by their place in the spawn list, and `stageFirstHide` may take men out
@@ -2852,6 +2875,7 @@ class Game {
     // A boulder is stone to the flow field until it breaks (`Prop.crackRock` clears it).
     for (const p of this.props) if (p.kind === 'rock') this.world.block[Math.floor(p.y / TILE) * this.world.W + Math.floor(p.x / TILE)] = 1;
     this.hazards = this.props.filter((p) => p.kind === 'brazier' || p.kind === 'mill' || p.kind === 'spike' || p.kind === 'spire' || p.kind === 'barrel');
+    Machines.start(this);   // THE FACTORY's presses, belts and burners off `level.machines` (js/machines.js)
     // The wall's dressing a flung body asks about every step (`Enemy.wallDressing`): kept off the prop loop.
     this.wallArt = this.props.filter((p) => p.kind === 'armor' || p.kind === 'trophy' || p.kind === 'suit' || p.kind === 'poster');
     this.sightBlockers = this.props.filter((p) => p.kind === 'door' || p.kind === 'bell' || p.kind === 'mill' || p.kind === 'secret');
@@ -2907,7 +2931,7 @@ class Game {
     if (head) { this.levelBoons = head.boons; this.levelArtifacts = head.artifacts.map((a) => ({ id: a.id, tier: a.tier })); this.levelCape = head.cape; this.levelTalRun = head.talRun ? Object.assign({}, head.talRun) : null; }
     this.boom = { fly: null };
     this.cam.x = this.goat.x; this.cam.y = this.goat.y; this.cam.zoom = this.renderer.zoomFit;
-    this.camLead.x = 0; this.camLead.y = 0; this.camFollow = null; this.camTrack = null; this.camHold = undefined; this.camRoomMid = null; this.camFight = 0; this.camBoss = null;
+    this.camLead.x = 0; this.camLead.y = 0; this.camFollow = null; this.camTrack = null; this.camHold = undefined; this.camRoomMid = null; this.camLens = this.camLensGoal = null; this.camFight = 0; this.camBoss = null;
     // A thin trail of where he actually walked, sampled on a clock rather than every step so a long
     // level does not grow an enormous array. It is what the death screen's pull-back draws as a line.
     this.pathTrail = [{ x: this.goat.x, y: this.goat.y }]; this.pathTimer = 0; this.deathCam = null; this.painting = null;
@@ -3132,7 +3156,7 @@ class Game {
     // `panel` is whatever is laid over the menu, the record sheet, or the two switches. The board
     // is put away by anything at all; the switches are not, because a click on one is meant to
     // throw it rather than to leave.
-    this.menu = { index: this.save ? 1 : 0, rects: [], t: 0, shake: 0, panel: null, sub: 0, sliderDrag: null, tripPick: false };
+    this.menu = { index: this.save || this.heavenBack() ? 1 : 0, rects: [], t: 0, shake: 0, panel: null, sub: 0, sliderDrag: null, tripPick: false };
     // The funnel's first step; the question, once; and whatever did not go out last time goes now (js/stats.js).
     Stats.step(this, 'open'); Stats.ask(this); Stats.flush(this);
   }
@@ -3224,15 +3248,15 @@ class Game {
     const items = this.menuItems(); if (!(i >= 0 && i < items.length)) return;
     const id = items[i];
     // Nothing to come back to: the button shakes its head and stays where it is.
-    if (id === 'continue' && !this.save) { m.shake = 0.35; this.audio.sfxThud(); return; }
+    if (id === 'continue' && !this.save && !this.heavenBack()) { m.shake = 0.35; this.audio.sfxThud(); return; }
     this.audio.sfxCard();
     if (id === 'levels') { m.panel = 'levels'; m.sub = 0; m.tripPick = false; return; }
     if (id === 'best') { m.panel = 'best'; return; }
     if (id === 'unlocks') { Codex.openUnlocks(this); return; }
     if (id === 'settings') { m.panel = 'settings'; m.sub = 0; return; }
-    if (id === 'continue') { this.resumeRun(); return; }
+    if (id === 'continue') { if (this.save) this.resumeRun(); else this.continueToHeaven(); return; }
     if (id === 'discord') { this.openDiscord(); return; }
-    if (this.askedShowroom && !this.dev.hidden) { this.startShowroom(); return; }
+    if (this.askedShowroom && !this.dev.hidden) { this.startShowroom(this.askedFactory); return; }
     this.beginRun(true);
   }
   // A run from its head: NEW GAME, RUN AGAIN, and since 7 Oct 2026 every death (PERMADEATH, `TUNING.permadeath`: "if you
@@ -3240,7 +3264,7 @@ class Game {
   // Everything a run carries is put down; `Heaven.meta` is not touched. A goat who has been up there once starts with
   // `heaven.extraLife.lives` more (Hades' Death Defiance, `Motes.second`).
   beginRun(withIntro) {
-    this.clearRun(); this.boons = []; this.lastBoonActive = false; this.totalKills = 0; this.deaths = 0; this.totalScore = 0; this.henHearts = 0; this.runPaintings = [];
+    this.clearRun(); this.boons = []; this.lastBoonActive = false; this.totalKills = 0; this.deaths = 0; this.totalScore = 0; this.henHearts = 0; this.runPaintings = []; this.spared = [];
     this.beasts = {}; this.crowGift = false; this.runKeys = TUNING.keys.start; this.checkpoint = null; this.beastPlan = null;
     this.forgetLessons(); this.noteRunStart(); this.talRun = null;
     this.runSeed = this.askedSeed || ((Math.random() * 1e9) | 0);
@@ -3252,6 +3276,22 @@ class Game {
   // Whether a death ends this run (`TUNING.permadeath`): never a LEVELS practice or THE SHOWROOM, which go round their floor.
   // (SETTINGS `sameFloor`, a playtest's, or the death card's small PLAYTEST line for this one death, `sameOnce`: the old way.)
   permadeath() { return !!TUNING.permadeath && !this.runJumped && !this.showroomOn && !(this.settings && this.settings.sameFloor) && !this.sameOnce; }
+  // CONTINUE with no run waiting (13 Oct 2026, his word: "continue should always be there; if it is not a new save, it
+  // takes you to the last place you were"): under PERMADEATH a run that ended left him up in the pasture, so a browser
+  // that has died or been up there goes back up, and the edge starts the next run. Only a browser that has done neither
+  // has nothing to come back to.
+  heavenBack() {
+    if (this.save) return false;
+    if (!Heaven.meta) Heaven.load();
+    const M = Heaven.meta; return !!(M && (M.visits > 0 || M.died));
+  }
+  continueToHeaven() {
+    this.runJumped = false; this.sameOnce = false; this.forgetLessons();
+    // the edge lays a floor off these when a death does not end the run (the playtest setting): a clean head of THE ALTAR
+    if (this.levelIndex === undefined) this.levelIndex = 0;
+    if (!this.levelBoons) { this.levelBoons = []; this.levelArtifacts = []; this.levelCape = null; }
+    Heaven.enter(this, { visit: true });
+  }
   // A new tab, never this one: the run on the title stays where it was. Framed as the artifact a
   // popup can be refused, so a plain link click is the fallback.
   openDiscord() {
@@ -3294,17 +3334,17 @@ class Game {
     this.quitToTitle();
   }
   // ABANDON RUN: a death where he stands (killer GIVING UP, counted, the run's report closed, the save cleared under
-  // PERMADEATH) and the title at once, no card (9 Oct 2026 playtest: it went up to heaven, "not the menu"; the souls of the
-  // run are not lost, a death banks them as ever). From heaven, a LEVELS practice or THE SHOWROOM there is no run to give
-  // up: it is QUIT TO TITLE.
+  // PERMADEATH) and straight up to heaven, no card (13 Oct 2026, his word: "if I press abandon run, send me to heaven!";
+  // from 9 Oct it went to the title). The souls of the run are not lost, a death banks them as ever. From heaven, a LEVELS
+  // practice or THE SHOWROOM there is no run to give up: it is QUIT TO TITLE.
   abandonRun() {
     const ok = this.level && !this.level.def.heaven && !this.showroomOn && this.goat && this.pausedIn() !== 'heaven';
     if (!ok) { this.quitToTitle(); return; }
-    this.state = 'play'; this.boonChoice = null;
+    this.state = 'play'; this.boonChoice = null; this.menu.panel = null;
     this.goat.hurtBy = 'abandon'; this.goat.hp = 0;
     this.onGoatDied();
     this.card = null; this.deathPainting = null;
-    this.showTitle();
+    Heaven.enter(this);
   }
   // Leaving a floor half played puts it aside (7 Oct 2026, the user: "a death ends the run, but quitting to the menu
   // brings you back, on CONTINUE, to the place you were"): the save carries where he stood and what of the floor is
@@ -3315,6 +3355,7 @@ class Game {
     if (this.showroomOn && this.godBeforeShowroom !== undefined) this.dev.god = this.godBeforeShowroom;
     this.showroomOn = false;
     // Up in heaven the death that sent him there is already counted and saved: leaving is not another.
+    if (this.heaven) Stats.heaven(this, this.heaven.t);
     if (aside) this.saveRun(true);
     this.showTitle();
   }
@@ -3352,13 +3393,14 @@ class Game {
     this.levelHp = null; this.nextHp = null;   // practice starts whole (`goat.floorHeal` is a run's)
     if (this.showroomOn && !showroom && this.godBeforeShowroom !== undefined) this.dev.god = this.godBeforeShowroom;
     this.showroomOn = !!showroom;
+    if (!showroom) this.factoryOn = false;
     this.extraLives = 0; this.livesMax = 0;   // practice carries no extra life (`beginRun` gives a real run its own)
     this.ogreMet = 0;
     // THE DARK (the row, or `#dark` on any row) is started at its own place in the run.
     if (dark || this.askedDark) { li = DARK_LEVEL.darkOf; trip = false; }
     // Not `clearRun`: the run waiting under CONTINUE is still there when he comes back from practice.
     this.artifacts = []; this.levelArtifacts = null; this.cape = null; this.levelCape = null; this.talRun = null;
-    this.boons = []; this.lastBoonActive = false; this.totalKills = 0; this.deaths = 0; this.totalScore = 0; this.henHearts = 0;
+    this.boons = []; this.lastBoonActive = false; this.totalKills = 0; this.deaths = 0; this.totalScore = 0; this.henHearts = 0; this.spared = [];
     this.beasts = {}; this.crowGift = false; this.runKeys = TUNING.keys.start;
     this.forgetLessons();
     this.runJumped = true;   // a run started off LEVELS: its codes say so (`runCode`)
@@ -3382,10 +3424,14 @@ class Game {
   // THE SHOWROOM (js/showroom.js): every object and every floor's stone on one dev floor, walked with
   // GOD on. Held by `showroomOn` through a death or NEW LEVEL; its stairs, the title and any other way
   // into a floor let it go.
-  startShowroom() {
+  // `factory` (12 Oct 2026): THE FACTORY's test floor instead (js/factory.js, `FACTORY_LEVEL`), held the same way.
+  startShowroom(factory) {
     // GOD as it was before the showroom comes back when it is left (8 Oct 2026: after its stairs the next floors kept GOD's x2 pace).
     if (!this.showroomOn) this.godBeforeShowroom = !!this.dev.god;
-    this.dev.god = true;
+    // THE FACTORY is a fight to feel, not a floor to walk about: GOD stays as it was (its playtest: GOD hid every blow)
+    if (!factory) this.dev.god = true;
+    else if (this.godBeforeShowroom !== undefined) this.dev.god = this.godBeforeShowroom;
+    this.factoryOn = !!factory;
     this.startAtLevel(0, false, false, true);
   }
   // CONTINUE is the head of the furthest level the run reached, with the souls it was carrying there.
@@ -3404,6 +3450,7 @@ class Game {
     this.boons = (s.boons || []).map((id) => BOONS.find((b) => b.id === id)).filter(Boolean);
     this.totalKills = s.totalKills || 0; this.deaths = s.deaths || 0; this.totalScore = s.score || 0;
     this.henHearts = s.henHearts || 0;
+    this.spared = Array.isArray(s.spared) ? s.spared.filter((k) => typeof k === 'string').slice(0, 40) : [];   // THE COWARD (js/coward.js)
     this.beasts = s.beasts || {}; this.crowGift = !!s.crowGift; this.runKeys = Math.max(0, s.keys | 0);
     if (Array.isArray(s.towers) && !(this.runPaintings && this.runPaintings.length)) this.runPaintings = s.towers.map((v) => (v ? (v === 2 ? { died: true } : {}) : undefined));
     this.extraLives = Math.max(0, s.lives | 0);   // the extra life a run starts with (`beginRun`), if it is not spent
@@ -3552,7 +3599,7 @@ class Game {
     const cape = this.levelCape === undefined ? this.cape : this.levelCape;
     const trip = this.levelTripAt === undefined ? this.tripAt : this.levelTripAt;
     this.save = { v: 1, level: this.levelIndex, boons: boons.map((b) => b.id), totalKills: this.totalKills,
-      deaths: this.deaths, score: this.totalScore, runSeed: this.runSeed, beastEarly: !!this.beastEarly, henHearts: this.henHearts || 0, tripAt: trip === undefined ? -1 : trip,
+      deaths: this.deaths, score: this.totalScore, runSeed: this.runSeed, beastEarly: !!this.beastEarly, henHearts: this.henHearts || 0, spared: (this.spared || []).slice(), tripAt: trip === undefined ? -1 : trip,
       darkAt: this.darkAt === undefined ? -1 : this.darkAt,
       beasts: this.beasts || {}, crowGift: this.levelCrowGift === undefined ? !!this.crowGift : !!this.levelCrowGift,
       artifacts: arts.map((a) => ({ id: a.id, tier: a.tier })), cape: cape ? cape.id : null, third: (this.levelTalRun && this.levelTalRun.third) || 0,
@@ -3602,6 +3649,7 @@ class Game {
       try { localStorage.setItem(DEATH_KEY, JSON.stringify(st)); } catch (e) {}
     }
     this.deaths++; this.state = 'dead'; this.slowTimer = 1.4; Painting.quickRect = null;
+    EndBoss.gloat(this);   // THE WARDEN's last word over him, if it was his room
     // THICK FLOORS (`crowdFor`) end with the first death, however he leaves the card (QUIT TO TITLE counted nothing up there).
     if (Heaven.meta && !this.showroomOn && !this.runJumped && !Heaven.meta.died) { Heaven.meta.died = true; Heaven.saveSoon(); }
     // What heaven has that is new (js/heaven.js `freshNews`): while there is any, the card offers only ASCEND.
@@ -3722,14 +3770,14 @@ class Game {
   killedBy(by) {
     if (!by) return null;
     if (typeof by === 'string') return KILLED_BY[by] || null;
-    const name = by.kind === 'bearer' ? (by.champion ? 'BUTCHER' : by.shieldman ? 'SHIELDMAN' : by.thrower ? 'THROWER' : by.shaman ? 'SHAMAN' : 'CLUBMAN') : KILLED_BY[by.kind];
+    const name = by.kind === 'bearer' ? (by.champion ? 'BUTCHER' : by.shieldman ? 'SHIELDMAN' : by.thrower ? 'THROWER' : by.shaman ? 'SHAMAN' : by.automaton ? 'THE AUTOMATON' : by.welder ? 'THE WELDER' : by.sawbot ? 'SAWBOT' : by.arm ? 'THE ARM' : 'CLUBMAN') : KILLED_BY[by.kind];
     if (!name) return null;
     return (by.boss || by.kind === 'butcher' || by.kind === 'ratogre' ? 'THE ' : /^[AEIOU]/.test(name) ? 'AN ' : 'A ') + name;
   }
   levelCleared() {
     // THE SHOWROOM's stairs lead back round to its own start (8 Oct 2026 playtest: climbing them out into THE YARD
     // as a practice run with GOD still on "broke everything"); it is a floor to walk about, not a way into a run.
-    if (this.showroomOn) { this.startShowroom(); this.devToast('THE SHOWROOM AGAIN'); return; }
+    if (this.showroomOn) { const f = this.factoryOn; this.startShowroom(f); this.devToast(f ? 'THE FACTORY AGAIN' : 'THE SHOWROOM AGAIN'); return; }
     if (!this.showroomOn) { Motes.flush(this); Heaven.earn(this, TUNING.heaven.pay.floor); Heaven.reached(levelIndexOf(this.level.def) + 1); Heaven.arrived(this, levelIndexOf(this.level.def) + 1); Heaven.floorCleared(this, this.levelIndex); }
     this.showroomOn = false;
     Stats.cleared(this);
@@ -3798,6 +3846,7 @@ class Game {
       // `stateTimer`: a beat before the card takes a press, as the death card waits, the second half
       // of a double click on the picture's CONTINUE started a new run before this was ever read.
       this.state = 'win'; this.stateTimer = 0.8; if (!this.runJumped) this.clearRun();
+      this.thanks = { t: 0 };   // THANK YOU FOR PLAYING first, the run's card after it (`Renderer.drawThanks`)
       if (!this.runJumped && !this.offBoard()) this.noteRunBest(this.totalScore);
       const b = this.runJumped ? (this.best || this.loadBest()) : this.noteEscape();
       this.lastCode = this.runCode(null);
@@ -3874,7 +3923,7 @@ class Game {
     for (let k = 1.2; k < l / TILE && [T.WALL, T.PIT].includes(this.world.tileAtPx(spot.x, spot.y)); k += 0.5) spot = { x: ent.x + (cx - ent.x) / l * k * TILE, y: ent.y + (cy - ent.y) / l * k * TILE };
     g.x = spot.x; g.y = spot.y; g.safeX = g.x; g.safeY = g.y; g.safeTrail = [];
     this.cageOpen = true; this.goatRoom = at;
-    this.cam.x = g.x; this.cam.y = g.y; this.camFollow = null; this.camTrack = null; this.camHold = undefined; this.camRoomMid = null; this.pathTrail = [{ x: g.x, y: g.y }];
+    this.cam.x = g.x; this.cam.y = g.y; this.camFollow = null; this.camTrack = null; this.camHold = undefined; this.camRoomMid = null; this.camLens = this.camLensGoal = null; this.pathTrail = [{ x: g.x, y: g.y }];
     this.world.computeFlow(g.x, g.y);
     this.world.computeVis(g.x, g.y, TUNING.fog.radius, this.mods.oracle ? TUNING.fog.oracle : 0);
   }
@@ -4123,6 +4172,12 @@ class Game {
     if (this.state === 'boon') { this.boonArm = Math.max(0, this.boonArm - dt); this.boonT = (this.boonT || 0) + dt; this.watchBoonMorph(); this.updateEffects(dt); this.clearEdges(); return; }
     // A LEVELS practice win goes back to the title: RUN AGAIN from it started a real run whose first
     // save wrote over the run waiting under CONTINUE (LEVELS promises to touch no save).
+    // THANK YOU FOR PLAYING (`TUNING.thanks`): held until a press once `pressAt` is past, then the card waits its own beat.
+    if (this.state === 'win' && this.thanks) {
+      this.thanks.t += dt;
+      if (this.thanks.t >= TUNING.thanks.pressAt && (this.input.lmbPressed || this.input.spacePressed)) { this.thanks = null; this.stateTimer = 0.8; }
+      this.clearEdges(); return;
+    }
     if (this.state === 'win') { this.stateTimer -= dt; if (this.stateTimer <= 0 && (this.input.lmbPressed || this.input.spacePressed) && this.runJumped) { this.copyCode(); this.showTitle(); }
     else if (this.stateTimer <= 0 && (this.input.lmbPressed || this.input.spacePressed)) { this.copyCode(); this.beginRun(true); } this.clearEdges(); return; }
     if (this.state !== 'play') { this.clearEdges(); return; }
@@ -4188,7 +4243,16 @@ class Game {
     // A goat in the air over a man (LEAPFROG) is over the hole too; he lands on floor or not at all.
     // So is one mid-roll (THE CHASM, 6 Oct 2026: "E rolls over a drop too"): the tumble carries him over a
     // narrow one, and a roll that ends over the hole drops him the frame it ends.
-    if (!this.goat.dead && !this.goat.leap && this.goat.state !== 'carried' && this.goat.state !== 'roll' && w.isPitPx(this.goat.x, this.goat.y)) { this.goatFalls(); this.clearEdges(); return; }
+    // The lip is generous (13 Oct 2026 playtest: "coyote time at a platform's edge, and let me come up to it"): floor within
+    // `fall.ledge` px of his middle still holds him, and past that he goes down after `fall.coyote` s, so a hoof over the
+    // edge for a beat, or a turn on the very lip, keeps him up. Floor further than `fall.deep` px drops him at once, so a
+    // one-tile gap is still the roll's to cross (its middle is half a tile from either side).
+    { const g = this.goat, F = TUNING.fall, pit = (x, y) => w.isPitPx(x, y);
+      const held = (d) => !pit(g.x - d, g.y) || !pit(g.x + d, g.y) || !pit(g.x, g.y - d) || !pit(g.x, g.y + d);
+      const can = !g.dead && !g.leap && g.state !== 'carried' && g.state !== 'roll' && pit(g.x, g.y);
+      const over = can && !held(F.ledge), deep = can && !held(F.deep);
+      g.overDrop = over ? (g.overDrop || 0) + dt : 0;
+      if (deep || (over && g.overDrop >= F.coyote)) { g.overDrop = 0; this.goatFalls(); this.clearEdges(); return; } }
     // Nothing simulates two rooms away or further: the room he is in and the one next door still
     // patrol, chase and swing exactly as before, but a man past that has nobody to hear or see him
     // and nothing he does costs a frame. Room index is a fair proxy for distance because the
@@ -4279,6 +4343,8 @@ class Game {
     if (this.supper) EndBoss.supperStep(this, dt);
     if (this.glimpse) EndBoss.glimpseStep(this, dt);   // THE ROAD: the Warden seen across the chasm with her (js/endboss.js)   // THE LAST SUPPER: the chair, his lines, what breaks it, his way out (js/endboss.js)
     Sacrifice.update(this, dt);   // THE SACRIFICE ALTAR: a heart a second for whatever stands on it (js/sacrifice.js)
+    Coward.update(this, dt);      // THE COWARD: spared once the goat walks on and leaves him be (js/coward.js)
+    Machines.update(this, dt);   // THE FACTORY's presses, belts and burners (js/machines.js)
     w.updateFire(dt);
     Status.update(this, dt);
     Talisman.update(this, dt);   // the mouse's talismans (js/talismans.js)
@@ -4483,11 +4549,24 @@ class Game {
     // back the lens out, and a room a little too tall for the resting lens then fit, dropped the
     // fight, zoomed back in, stopped fitting, the picture jumped between the room's middle and the
     // boss several times a second on a 16:10 screen (playtest, 30 Sep 2026).
-    const v = this.renderer.view({ zoom: this.renderer.zoomFit * C.zoomRest });
+    // The lens by the room (12 Oct 2026, "in big rooms back out to 1, in smaller ones in to 1.1; heaven got worse"):
+    // `camera.lens` is in `zoomFit`; a room that fits whole under it keeps it, a bigger one (and heaven) takes it back
+    // off (`camLens` = 1 / lens), a corridor keeps what the last room had. Asked of the room, never the live zoom.
     const room = this.level && roomAt(this.level, this.goat.x, this.goat.y);
-    // The HUD's weight at the bottom (`hudLift`): the frame sits that much lower, and a held room must fit under it too.
-    const lift = this.touch.active || this.renderer.portrait || (this.level && this.level.def.heaven) ? 0 : C.hudLift * v.h;
-    const fits = room && room.w * TILE <= v.w - C.fitMargin && room.h * TILE <= v.h - C.fitMargin - 2 * lift;
+    const heavenOn = !!(this.level && this.level.def.heaven), lensOff = 1 / (this.renderer.lens || 1);
+    const fitsAt = (z) => {
+      const vv = this.renderer.view({ zoom: this.renderer.zoomFit * C.zoomRest * z });
+      // The HUD's weight at the bottom (`hudLift`): the frame sits that much lower, and a held room must fit under it too.
+      const lf = this.touch.active || this.renderer.portrait || heavenOn ? 0 : C.hudLift * vv.h;
+      return !!room && room.w * TILE <= vv.w - C.fitMargin && room.h * TILE <= vv.h - C.fitMargin - 2 * lf;
+    };
+    if (heavenOn) this.camLensGoal = lensOff;
+    else if (room) this.camLensGoal = fitsAt(1) ? 1 : lensOff;
+    else if (this.camLensGoal == null) this.camLensGoal = 1;
+    this.camLens = (this.camLens == null ? this.camLensGoal : this.camLens) + (this.camLensGoal - (this.camLens == null ? this.camLensGoal : this.camLens)) * (1 - Math.exp(-C.lensLerp * dt));
+    const v = this.renderer.view({ zoom: this.renderer.zoomFit * C.zoomRest * this.camLensGoal });
+    const lift = this.touch.active || this.renderer.portrait || heavenOn ? 0 : C.hudLift * v.h;
+    const fits = fitsAt(this.camLensGoal);
     // Held is a blend, not a switch (1 Oct 2026, the playtests' camera note: "between two rooms it
     // throws itself from room one to room two, show the state in between, a smooth follow"). How
     // far he is in from the room's edge, over `blend` tiles, is how much of the room's middle the
@@ -4543,7 +4622,7 @@ class Game {
     this.camFollow.y = lerp(this.camTrack.y, mid.y, this.camHold) + lift;
     const k = 1 - Math.exp(-C.lerp * dt);
     this.cam.x += (this.camFollow.x - this.cam.x) * k; this.cam.y += (this.camFollow.y - this.cam.y) * k;
-    const targetZoom = this.renderer.zoomFit * lerp(C.zoomRest, C.zoomFast, clamp(spd, 0, 1)) * lerp(1, F.zoom, this.camFight);
+    const targetZoom = this.renderer.zoomFit * this.camLens * lerp(C.zoomRest, C.zoomFast, clamp(spd, 0, 1)) * lerp(1, F.zoom, this.camFight);
     this.cam.zoom += (targetZoom - this.cam.zoom) * (1 - Math.exp(-C.zoomLerp * dt));
     const v2 = this.renderer.view(this.cam);
     // The leash: a roll or a blast can outrun the lerp; the goat is not let near the edge. It pulls
@@ -4905,6 +4984,9 @@ class Game {
   goatFalls() {
     const g = this.goat, F = TUNING.fall;
     if (g.dead || g.state === 'falling') return;
+    // the board his hoof left, for the coyote roll (`Goat.update`'s falling branch): only while nothing is in his mouth,
+    // which goes down with him below
+    g.lip = !g.holding && !this.world.isPitPx(g.safeX, g.safeY) ? { x: g.safeX, y: g.safeY } : null; g.coyoteT = F.coyoteRoll;
     g.state = 'falling'; g.timer = F.time + F.back; g.vx *= 0.3; g.vy *= 0.3; g.landed = false;
     // Land somewhere with room behind it. `safeX/safeY` is the exact board his hoof was leaving,
     // which is also the board the same step can drop him off of again; the trail holds a few seconds
@@ -4960,7 +5042,7 @@ class Game {
     if (!g.landed) {
       g.landed = true;
       g.x = g.safeX; g.y = g.safeY; g.vx = 0; g.vy = 0;
-      this.cam.x = g.x; this.cam.y = g.y; this.camLead.x = 0; this.camLead.y = 0; this.camFollow = null; this.camTrack = null; this.camHold = undefined; this.camRoomMid = null;
+      this.cam.x = g.x; this.cam.y = g.y; this.camLead.x = 0; this.camLead.y = 0; this.camFollow = null; this.camTrack = null; this.camHold = undefined; this.camRoomMid = null; this.camLens = this.camLensGoal = null;
       this.world.computeFlow(g.x, g.y);
       g.damage(F.damage, this, 0, 0, true, 'fall');
       this.audio.sfxThud(); this.shake(5);
@@ -5098,9 +5180,10 @@ class Game {
     // this is the innermost loop in the game.
     const act = this.liveEnemies;
     for (let i = 0; i < act.length; i++) {
-      const a = act[i]; if (a.dead || a.held || a.ghosted || a.state === 'hop') continue;
+      // `aloft` is THE AUTOMATON standing (js/factory.js): his body is high over everyone, his feet push for themselves.
+      const a = act[i]; if (a.dead || a.held || a.ghosted || a.state === 'hop' || a.aloft) continue;
       for (let j = i + 1; j < act.length; j++) {
-        const b = act[j]; if (b.dead || b.held || b.ghosted || b.state === 'hop') continue;
+        const b = act[j]; if (b.dead || b.held || b.ghosted || b.state === 'hop' || b.aloft) continue;
         const dx = b.x - a.x, dy = b.y - a.y, min = a.r + b.r;
         if (dx * dx + dy * dy >= min * min) continue;
         const d = Math.sqrt(dx * dx + dy * dy);
@@ -5116,7 +5199,7 @@ class Game {
     }
     for (const e of act) {
       // Over a man's back (LEAPFROG) he touches nobody until he lands; nor does an ogre in the air.
-      if (e.dead || e.held || e.ghosted || g.dead || g.leap || e.state === 'hop') continue;
+      if (e.dead || e.held || e.ghosted || g.dead || g.leap || e.state === 'hop' || e.aloft) continue;
       const dx = e.x - g.x, dy = e.y - g.y, min = e.r + g.r;
       if (dx * dx + dy * dy >= min * min) continue;
       const d = Math.sqrt(dx * dx + dy * dy);
@@ -5131,7 +5214,7 @@ class Game {
       // the run is standing in a one-tile doorway on purpose, and shouldering him down the corridor
       // ahead of you is not a way past him. Everybody else gives ground.
       // From windup to recovery the lip holds him like a wall (`Goat.update`), against a shove too.
-      const gs = g.state === 'windup' || g.state === 'lunge' || g.state === 'recover', heavy = e.kind === 'butcher' || e.kind === 'ratogre' || e.sentry;
+      const gs = g.state === 'windup' || g.state === 'lunge' || g.state === 'recover', heavy = e.kind === 'butcher' || e.kind === 'ratogre' || e.sentry || e.welder || e.automaton;
       const gp = heavy ? 1 : 0.4;
       if (gs) this.nudge(g, -nx * push * gp, -ny * push * gp); else { g.x -= nx * push * gp; g.y -= ny * push * gp; }
       if (!heavy) this.nudge(e, nx * push * 0.6, ny * push * 0.6);
@@ -5245,6 +5328,8 @@ class Game {
         // A boulder takes a body the way a head takes it: one blow's worth off it, and a man thrown
         // into one twice has broken it. Whatever the speed, the rock pays; at killing speed he does too.
         if (e.state === 'flung' && e !== g && p.kind === 'rock' && -vn > ph.knockHitSpeed) p.crackRock(this);
+        // THE FACTORY's machines the same (js/factory-props.js): a body thrown into one cracks it, and dies on it as on stone below
+        if (e.state === 'flung' && e !== g && p.kind === 'machine' && -vn > ph.knockHitSpeed) FACTORY_PROPS.crack(this, p, -nx, -ny);
         // A body thrown into a barrel sends it on rolling, and still meets it as hard as a wall.
         if (e.state === 'flung' && e !== g && p.kind === 'barrel' && -vn > TUNING.prop.barrel.knock) p.roll(this, -nx, -ny, -vn * TUNING.prop.barrel.pass, e);
         // A body landing on a table knocks the supper off it (js/scatter.js).
@@ -5592,7 +5677,8 @@ class Game {
     const cold = e.kind === 'wraith';
     this.flash(cold ? PALETTE.witchHi : PALETTE.blood, big ? 0.24 : cold ? 0.16 : 0.11);
     const direction = hyp(e.vx,e.vy) > 20 ? Math.atan2(e.vy,e.vx) : Math.atan2(dy,dx);
-    this.fx.death(e,cause,Math.cos(direction),Math.sin(direction));
+    // THE AUTOMATON leaves a wreck, not a corpse (js/factory.js): the snapshot's canvas is a man's size.
+    if (e.automaton && typeof Automaton !== 'undefined') Automaton.wreck(this, e); else if (e.arm && typeof Arm !== 'undefined') Arm.wreck(this, e); else this.fx.death(e,cause,Math.cos(direction),Math.sin(direction));
     if (cause !== 'fall') this.ring(e.x, e.y, J.impact.killRing * TILE, cold ? PALETTE.witchHi : PALETTE.bone, J.impact.killLife, 5);
     // A death is heard over everything (`GameAudio.sfxDeath`): its own sound on the bus nothing ducks,
     // the rest stepping back round it, deeper for a big man or a chain. Over an edge his fall is the
@@ -5805,7 +5891,7 @@ class Game {
     if (!e || e.dead || e.held || e.kind === 'dog' || this.state !== 'play') return;
     // The dead and the mouse's ogre have no words: they used to fall back on the clubman's, and a
     // wraith said BLESSED MEAT and the rat ogre begged MERCY over a man he had just killed.
-    if (e.kind === 'wraith' || e.kind === 'ratogre') return;
+    if (e.kind === 'wraith' || e.kind === 'ratogre' || e.mute) return;   // `mute`: THE FACTORY's machines (js/factory.js)
     if (chance !== undefined && Math.random() > chance) return;
     if (this.barkCd > 0 || e.barkCd > 0) return;
     // One line on screen at a time; a boss may talk over it, never a third (9 Oct 2026 playtest:

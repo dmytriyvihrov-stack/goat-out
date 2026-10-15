@@ -288,7 +288,7 @@ const THROWER_PIXELS = (() => {
     g.outline(OL); g.clean(OL);
     cache.set(key, g); return g;
   }
-  return { W, H, FOOT, UP, N, ANCHOR, sprite };
+  return { W, H, FOOT, UP, N, ANCHOR, sprite, OL };
 })();
 if (typeof module !== 'undefined') module.exports = THROWER_PIXELS;
 
@@ -299,6 +299,7 @@ if (typeof document !== 'undefined') {
   const BAKE = 2, baked = new Map();
   THROWER_PIXELS.TX = 0.84;
   THROWER_PIXELS.canvas = (g) => {
+    g = PROP_PIXELS.inked(g, THROWER_PIXELS.OL);   // ONE STYLE (`ART_PASS.ink`): the outline retinted, the bake keyed by the grid it paints
     let c = baked.get(g); if (c) return c;
     c = document.createElement('canvas'); c.width = g.w * BAKE; c.height = g.h * BAKE;
     const x = c.getContext('2d');

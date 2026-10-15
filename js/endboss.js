@@ -24,7 +24,7 @@
 const ENDBOSS_KEY = 'goatout.endboss';
 // What a floor's last man is called on the LEVELS page (`drawLevelPick`).
 const END_BOSS_NAMES = { bearer: 'CLUBMAN', seer: 'MAGE', butcher: 'OGRE', champion: 'BUTCHER', hunter: 'RIFLEMAN',
-  dog: 'HOUND', shield: 'SHIELDMAN', thrower: 'THROWER', shaman: 'SHAMAN', wraith: 'WRAITH' };
+  dog: 'HOUND', shield: 'SHIELDMAN', thrower: 'THROWER', shaman: 'SHAMAN', wraith: 'WRAITH', sawbot: 'SAWBOT', welder: 'WELDER', automaton: 'THE AUTOMATON' };
 
 const EndBoss = {
   data: null,
@@ -172,8 +172,9 @@ const EndBoss = {
     else if (S.kind === 'mage') this.endMage(game);
     else if (S.kind === 'ogre') this.endOgre(game);
     else if (S.kind === 'supper') this.endSupperScene(game);
+    else if (S.kind === 'turn') Warden.endTurn(game, S);
     game.endScene = null;
-    if (S.kind !== 'supper') this.release(game);   // the supper's men stay at the table: the offer is what wakes them
+    if (S.kind !== 'supper' && S.kind !== 'turn') this.release(game);   // the supper's men stay at the table: the offer is what wakes them
   },
 
   // The scene's step, in place of the floor's.
@@ -183,11 +184,11 @@ const EndBoss = {
     if (game.beastTalk) { Beast.updateTalk(game, dt); return; }
     S.t += dt;
     const skip = S.seen && S.t > C.skipAfter && (game.input.lmbPressed || game.input.spacePressed);
-    if (skip || S.t > (S.long ? TUNING.endBoss.ogre.long.cap : S.kind === 'supper' ? TUNING.endBoss.supper.scene.cap : C.cap)) { this.end(game); return; }
+    if (skip || S.t > (S.long ? TUNING.endBoss.ogre.long.cap : S.kind === 'supper' ? TUNING.endBoss.supper.scene.cap : S.kind === 'turn' ? TUNING.warden.turn.cap : C.cap)) { this.end(game); return; }
     S.bars = S.done ? Math.max(0, S.bars - dt * 4) : Math.min(1, S.bars + dt * 3);
     const look = S.kind === 'twin' ? this.stepTwin(game, dt) : S.kind === 'mage' ? this.stepMage(game, dt)
       : S.kind === 'rifle' ? this.stepRifle(game, dt) : S.kind === 'butcher' || S.kind === 'clubman' ? this.stepRally(game, dt)
-      : S.kind === 'supper' ? this.stepSupper(game, dt) : this.stepOgre(game, dt);
+      : S.kind === 'supper' ? this.stepSupper(game, dt) : S.kind === 'turn' ? Warden.stepTurn(game, dt) : this.stepOgre(game, dt);
     if (!game.endScene) return;
     // lines age, and a flash wears off: nobody's own update runs through a scene, so a man flashed on a beat stayed white to its end
     for (const o of game.enemies) { if (o.say) { o.say.life -= dt; if (o.say.life <= 0) o.say = null; } if (o.flash > 0) o.flash = Math.max(0, o.flash - dt); }
@@ -196,7 +197,7 @@ const EndBoss = {
     // `camAt`: the picture goes whole to one of them (the supper's Warden, then the goat), not between the two
     const cx = S.camAt ? S.camAt.x : (g.x + o.x) / 2, cy = S.camAt ? S.camAt.y : (g.y + o.y) / 2;
     game.cam.x += (cx - game.cam.x) * k; game.cam.y += (cy - game.cam.y) * k;
-    game.cam.zoom += (game.renderer.zoomFit * (S.kind === 'supper' ? TUNING.endBoss.supper.scene.zoom : C.zoom) - game.cam.zoom) * (1 - Math.exp(-K.zoomLerp * dt));
+    game.cam.zoom += (game.renderer.zoomFit * (S.kind === 'supper' ? TUNING.endBoss.supper.scene.zoom : S.kind === 'turn' ? TUNING.warden.turn.zoom : C.zoom) - game.cam.zoom) * (1 - Math.exp(-K.zoomLerp * dt));
     g.facing = Math.atan2(o.y - g.y, o.x - g.x);
   },
 
@@ -767,7 +768,8 @@ const EndBoss = {
   // The Warden big, for the box: the front view off js/warden-pixels.js, his hand up.
   wardenPortrait(R, ctx, k) {
     if (typeof WARDEN_PIXELS === 'undefined' || !WARDEN_PIXELS.draw) return;
-    const z = k * 0.9, sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+    // the box's portrait keeps one size whatever texel he is drawn at on the floor (`ART_PASS.grain`)
+    const z = k * 0.9 * (WARDEN_PIXELS.TX_OWN ? WARDEN_PIXELS.TX_OWN / WARDEN_PIXELS.TX : 1), sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
     ctx.save(); ctx.scale(z, z); WARDEN_PIXELS.draw(ctx, Math.PI / 2, false, R.t, 0, { pose: 'raise', warden: true }); ctx.restore();
     ctx.imageSmoothingEnabled = sm;
   },
@@ -776,6 +778,13 @@ const EndBoss = {
     const S = game.supper; if (!S) return;
     const T = TUNING.endBoss.supper, g = game.goat, w = S.warden;
     if (w.say) { w.say.life -= dt; if (w.say.life <= 0) w.say = null; }
+    // THE FLAYED down: the goat's last word over him, in the box with his own picture (13 Oct 2026, his ask)
+    if (S.phase === 'done' && S.knockAt !== undefined && game.timer >= S.knockAt && !game.beastTalk) {
+      S.knockAt = undefined;
+      if (!g.dead) Beast.talk(game, { kind: 'goat', x: g.x, y: g.y }, T.knock.lines, false, { name: 'THE GOAT', sound: () => game.audio.sfxBleat(300, 0.2, 0.5),
+        portrait: (R, ctx, k) => Codex.portrait(R, game, 0, 0, 40 * k * 1.3, game.mods, Shop.wearOf(game), 'knock') });
+      return;
+    }
     if (S.phase === 'offer') {
       S.t += dt;
       if (S.t >= S.lineAt && S.lineN < T.lines.length) { game.say(w, T.lines[S.lineN]); S.lineN++; S.lineAt = S.t + T.lineGap; }
@@ -810,9 +819,18 @@ const EndBoss = {
     if (S.phase === 'fight') { if (w.dead && !w.wardenGone) { S.phase = 'done'; game.doom = false; this.unseal(game); } return; }
     if (S.phase === 'monster') {
       const m = S.monster;
-      if (!m || m.dead) { S.phase = 'done'; game.doom = false; this.unseal(game); return; }
+      if (!m || m.dead) { S.phase = 'done'; game.doom = false; this.unseal(game); if (m && !game.goat.dead) S.knockAt = game.timer + T.knock.wait; return; }
       Warden.fistFire(game, m, dt);
     }
+  },
+  // The goat dead in his room (`Game.onGoatDied`, 12 Oct 2026 playtest): he laughs, and says it over the soul going up.
+  gloat(game) {
+    const S = game.supper; if (!S || S.phase === 'wait' || S.phase === 'scene' || S.phase === 'done') return;
+    const m = S.monster && !S.monster.dead ? S.monster : S.warden && !S.warden.dead ? S.warden : null;
+    if (!m) return;
+    const G = TUNING.warden.gloat;
+    game.floatText(m.x, m.y - 70, G.laugh, PALETTE.blood); game.say(m, G.line); m.say.life = G.life; m.say.max = G.life + 0.1;   // nobody's clock runs under the death card: shown whole from the start
+    game.audio.sfxGrowl();
   },
   // The supper done: the stone behind is `updateBossShut`'s to take down again.
   unseal(game) {
@@ -837,7 +855,9 @@ const EndBoss = {
     const dx = g.x - w.x, dy = g.y - w.y, d = hyp(dx, dy) || 1;
     const p = new Prop(w.x + dx / d * TILE * 1.3, w.y + dy / d * TILE * 1.3, 'platter'); p.open = true; p.phase = 0; game.props.push(p);
     game.audio.sfxSteel(); game.audio.sfxThud(); game.thud(p.x, p.y, 4); game.particles(p.x, p.y, 8, PALETTE.ashHi, 110);
-    game.floatText(p.x, p.y - 26, 'EMPTY', PALETTE.bone); game.say(w, T.drop.line);
+    game.floatText(p.x, p.y - 26, 'EMPTY', PALETTE.bone);
+    // his word in the box (12 Oct 2026 playtest: a line over his head went by unread); the floor waits on the page
+    Beast.talk(game, { kind: 'warden', x: w.x, y: w.y }, T.drop.lines, false, { name: 'THE WARDEN', sound: () => game.audio.sfxGrowl(), portrait: (R, ctx, k) => this.wardenPortrait(R, ctx, k) });
     const D = this.load(); D.seen.supper = true; this.save();
   },
   // He laughs, every man at the table is up, the chair is what it was, the grass was never there, and the dome goes up over
@@ -886,6 +906,7 @@ const EndBoss = {
       this.bone(R.ctx, e.x + Math.round(Math.sin(t * 4.5) * 3), e.y - 30 + bob, 0.25 + Math.sin(t * 4.5) * 0.25, 1.4);
     }
     if (!S) return;
+    if (S.kind === 'turn') { Warden.drawTurn(R, game); return; }
     if (S.bone && S.bone.life > 0) this.bone(R.ctx, S.bone.x, S.bone.y, S.bone.spin, 1.4);
     if (S.ewe && !S.ewe.gone && (S.carrier || S.mage) && game.inSight(S.carrier || S.mage)) R.drawSheep(S.ewe);
   },

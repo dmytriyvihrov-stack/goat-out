@@ -28,7 +28,7 @@ const Shaman = {
   // the spirit is cast whenever his turn comes round (the user's: "he must alternate it with the control").
   can(o) {
     return !!o && !o.dead && o.kind === 'bearer' && !o.champion && !o.shield && !o.shieldman && !o.thrower && !o.shaman
-      && !o.boss && !o.soul && !o.keeper && !o.blessing && !o.sentry && !o.scripted && !o.held && !o.liftedBy && o.state !== 'flung';
+      && !o.boss && !o.soul && !o.keeper && !o.blessing && !o.sentry && !o.scripted && !o.coward && !o.held && !o.liftedBy && o.state !== 'flung';
   },
   // His own room's clubmen he can see within `reach` tiles, nearest first, up to `max`.
   targets(e, game) {

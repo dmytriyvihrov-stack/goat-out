@@ -17,6 +17,30 @@ Tags: **bug** something is wrong; **feel** it works and does not read; **number*
 
 ## Batches
 
+### 13 Oct 2026, THE FACTORY's first playtest (his 15 notes and three screenshots)
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | bug | the welders' fire hurts a tile further than the flames | The jet hurts only where its own fire lies (`Welder.spray`, `isBurningPx`). |
+| 2 | number | they aim from too far | `welder.fire.aim` 2.6 → 2.0 tiles (the jet still reaches 3.2). |
+| 3 | bug | they fire through their own (screenshot) | `Welder.friendInCone`: a man of his own in the cone before the goat holds the jet. |
+| 4 | system | robots immune to poison, but poison + fire may blow them up | `Sawbot.soak` / `heat` / `burst`: soaked and hot at once, it goes off as a puddle does. |
+| 5 | art | factory walls in the factory's look, something else instead of columns (said twice) | Iron cap and pipe face off `wall-iron-straight`; boilers and cabinets for pillars. |
+| 6 | system | here it is not teeth, it is fire (screenshot of the grates) | Factory grates are burners (`p.flame`). |
+| 7 | bug | bombs and the rest can be thrown over the chasm, men rather fall | A bomb fell the frame it crossed a lip; now only when it comes down over one (crates already flew over). |
+| 8 | content | a long room, a chasm inside, a narrow way; bridges between drops; the wide pressing walls | THE CATWALK (room 11): gaps, a one-tile bridge, two wide presses over the walk. |
+| 9 | number | a bit more room under the automaton's legs | `legs.spread` about a quarter wider, `look.shin` 62 → 74, `footR` 11 → 10. |
+| 10 | art | a hit leg goes white to red, not the outline (screenshot) | The piston rod goes red on a leg with a blow or out; the red ring on the floor and the knee's red are gone. |
+| 11 | content | 1-2 bombs on the level | Two loose bombs in THE RING (one before), one on THE CATWALK's landing, plus the machine. |
+| 12 | system | a machine handing out bombs among fire traps: press, wait or run, throw, the blast drops him unhurt | THE BOMB MACHINE (`dispenser`), a burner fence round it; `automaton.blastFall`. |
+| 13 | art | show the automaton's body after death; a robot flies to pieces on death | His wreck stays on the floor (`game.wrecks`); the sawbot comes apart in plates (`CombatFX.scrap`). |
+| 14 | art | the robot's chainsaw arm bigger | A chainsaw bar of cells off its hand, posed with the swing (`TUNING.sawbot.saw`). |
+| 15 | system | fire makes the robot red, and touching the goat (not the headbutt) it hurts | `Sawbot.heat`: red-hot `heat.time` s, a heart a touch every `heat.cd` s. |
+| 16 | text | less text in the automaton fight | The leg, fall and meat words are gone, THE LEGS once; the ring's floor words gone; the boss bar's line kept. |
+
+Still open, his to say: whether the welder's jet should also stop at a man of his own (it lights the floor through him); the
+sawbot's touch while hot hurts once every 0.9 s (first guess); the saw's reach is unchanged, only its picture grew.
+
 ### 11 Oct 2026, seventh batch (his three notes)
 
 | # | tag | note | what shipped |
@@ -255,6 +279,7 @@ Read one way and built that way; his word settles it.
 ## Open
 
 ### system
+- (14 Oct) THE FACTORY's machines, ideas from other games' trap rooms not built (`output/trap-rooms-2026-10-14/REFERENCES.md`): a press on a plate the cult sets off by walking over it, a belt that turns on an amber flash, a lever that stops or fires one machine, THE FEED (a belt carrying men to a press). (THE LESSON, one room with each machine and nobody in it, was built the same day.)
 - (8 Oct) **UPGRADED SKILLS** (`meta.upgraded`, the god's third ask: a hundred souls and a corrupted one): only the name exists. What it does is not built.
 - (8 Oct) a heaven upgrade that raises the heal between floors (`goat.floorHeal`, 2 since 9 Oct): "a tree upgrade later".
 - (7 Oct) the other stands (hen, crow, pig, rabbit, husky, fish) have plain costs; still to build: corrupted-soul costs, finds and secrets as conditions, and chains of their own (the concept's pond, nest, flock).

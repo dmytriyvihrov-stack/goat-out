@@ -189,7 +189,7 @@ const WARDEN_PIXELS = (() => {
     const g = finish(kind === 'front' ? front(o, turn, m) : kind === 'side' ? side(o, m) : back(o, turn, m));
     v = { g, flip: m }; cache.set(key, v); return v;
   }
-  return { W, H, FOOT, sprite, VIEWS };
+  return { W, H, FOOT, sprite, VIEWS, OL };
 })();
 if (typeof module !== 'undefined') module.exports = WARDEN_PIXELS;
 
@@ -197,13 +197,22 @@ if (typeof module !== 'undefined') module.exports = WARDEN_PIXELS;
 // origin, inside the frame `PaintedArt.character` has already leaned. The pose off his state (js/warden.js) or `e.pose`.
 if (typeof document !== 'undefined') {
   const UP = 4, baked = new Map();
-  WARDEN_PIXELS.TX = 0.72;
+  // ONE STYLE (12 Oct 2026, `ART_PASS.grain`): his own texel, 0.72 world px (76 rows for a man 55 px tall, the finest grain
+  // on the floor, half THE FLAYED's beside him), or the cast's, the goat's and the clubman's 0.95, which makes him 72 px tall,
+  // a hair under the ogre. `TX` is whichever is on; `applyGrain` sets it and how tall the renderer takes him to be.
+  WARDEN_PIXELS.TX_OWN = 0.72; WARDEN_PIXELS.TX_CAST = 0.95; WARDEN_PIXELS.TX = 0.72;
+  WARDEN_PIXELS.applyGrain = () => {
+    const on = typeof ART_PASS !== 'undefined' && ART_PASS.grain; WARDEN_PIXELS.TX = on ? WARDEN_PIXELS.TX_CAST : WARDEN_PIXELS.TX_OWN;
+    if (typeof PIXEL_EXTENT !== 'undefined') PIXEL_EXTENT.warden = Math.round(WARDEN_PIXELS.FOOT * WARDEN_PIXELS.TX);
+  };
+  WARDEN_PIXELS.applyGrain();
   WARDEN_PIXELS.canvas = (sp) => {
-    let c = baked.get(sp); if (c) return c;
-    const g = sp.g; c = document.createElement('canvas'); c.width = g.w * UP; c.height = g.h * UP;
+    const g = PROP_PIXELS.inked(sp.g, WARDEN_PIXELS.OL);   // ONE STYLE (`ART_PASS.ink`): the outline retinted, the bake keyed by the grid it paints
+    let c = baked.get(g); if (c) return c;
+    c = document.createElement('canvas'); c.width = g.w * UP; c.height = g.h * UP;
     const x = c.getContext('2d');
     for (let j = 0; j < g.h; j++) for (let i = 0; i < g.w; i++) { const v = g.get(i, j); if (v) { x.fillStyle = v; x.fillRect(i * UP, j * UP, UP, UP); } }
-    baked.set(sp, c); return c;
+    baked.set(g, c); return c;
   };
   WARDEN_PIXELS.poseOf = (e) => {
     if (!e) return 'idle';

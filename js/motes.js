@@ -32,7 +32,7 @@ const Motes = {
   // for a boss (a champion or a soul-bearer).
   count(e) {
     const P = TUNING.heaven.motes.per;
-    const kind = e.kind === 'bearer' ? (e.thrower ? 'thrower' : e.shieldman ? 'shield' : e.champion ? 'champion' : 'bearer') : e.kind;
+    const kind = e.kind === 'bearer' ? (e.thrower ? 'thrower' : e.shieldman ? 'shield' : e.champion ? 'champion' : e.automaton ? 'automaton' : e.welder ? 'welder' : 'bearer') : e.kind;
     return (P[kind] || 1) + (e.boss ? P.boss : 0);
   },
   // Out of the body a beat after he dies (`delay`), it rises slowly (`riseT`) and hangs there; after `wait` s

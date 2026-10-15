@@ -55,18 +55,49 @@
   table.rg td, table.rg th { text-align: center; padding: 3px 2px; min-width: 26px; font-size: 13px; }
   table.rg td.f { text-align: left; white-space: nowrap; padding-right: 8px; }
   table.rg td.x { color: rgba(239,230,208,0.25); }
+  /* SUMMARY / PLAYERS (12 Oct 2026, Google Forms' Summary / Individual) and the skill tags. */
+  .views button.on { background: #e0ac3e; color: #17131c; }
+  .pbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 14px; }
+  .pbar select { font: 15px Alegreya, serif; background: var(--panel); color: var(--ink); border: 1px solid #e0ac3e; padding: 5px 8px; max-width: 100%; }
+  .tag { display: inline-block; font: 700 12px 'Alegreya SC', serif; padding: 1px 7px; border-radius: 3px; color: #17131c; white-space: nowrap; }
+  .tag.beginner { background: #6fc28a; } .tag.middle { background: #e0ac3e; } .tag.pro { background: #e3604f; } .tag.new { background: #8a8780; }
+  .tag.big { font-size: 22px; padding: 3px 14px; }
+  tr.pick { cursor: pointer; } tr.pick:hover td { background: rgba(224,172,62,0.12); }
+  .chip { display: inline-block; font-size: 12px; padding: 0 5px; margin: 1px; border-radius: 2px; }
+  .chip.ok { background: rgba(111,194,138,0.3); } .chip.died { background: rgba(227,96,79,0.35); } .chip.left { background: rgba(138,135,128,0.35); }
+  .wide { grid-column: 1 / -1; }
   pre { white-space: pre-wrap; font: 12px/1.35 ui-monospace, Consolas, monospace; color: var(--dim); max-height: 300px; overflow: auto; }
+  /* The build picker (13 Oct 2026): every build by its date, newest first, and on the pointer what was in it (CHANGELOG.md). */
+  .bpick { position: relative; }
+  .blist { position: absolute; top: calc(100% + 4px); left: 0; z-index: 5; display: flex; flex-wrap: wrap; width: min(820px, calc(100vw - 32px));
+    background: var(--panel); border: 1px solid #e0ac3e; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+  .blist[hidden] { display: none; }
+  .blist .rows { flex: 1 1 330px; max-height: min(70vh, 560px); overflow: auto; border-right: 1px solid var(--line); }
+  .blist .info { flex: 1 1 330px; padding: 10px 14px; max-height: min(70vh, 560px); overflow: auto; font-size: 13.5px; }
+  .blist .info h3 { font: 700 15px 'Alegreya SC', serif; color: var(--gold); margin: 0 0 2px; }
+  .blist .info .when { color: var(--dim); font-size: 13px; margin-bottom: 8px; }
+  .blist .info h4 { font: 700 13px 'Alegreya SC', serif; color: var(--ink); margin: 8px 0 2px; }
+  .blist .info ul { margin: 0; padding-left: 18px; } .blist .info li { margin: 1px 0; }
+  .brow { display: grid; grid-template-columns: 56px 64px 1fr auto; gap: 8px; align-items: baseline; width: 100%; text-align: left;
+    background: none; border: 0; border-bottom: 1px solid var(--line); padding: 6px 10px; font: 13.5px Alegreya, serif; color: var(--ink); cursor: pointer; }
+  .brow b { font: 700 13.5px 'Alegreya SC', serif; color: var(--gold); }
+  .brow .d, .brow .n { color: var(--dim); font-size: 13px; white-space: nowrap; }
+  .brow .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .brow:hover, .brow:focus, .brow.on { background: rgba(224,172,62,0.14); outline: none; }
+  .brow.sel b::after { content: ' ✓'; }
+  .chip.on { background: rgba(120,160,227,0.35); }
 </style>
 </head>
 <body>
 <header>
   <h1>Run Stats</h1>
+  <span class="views"><button id="vSum" title="Every player together">SUMMARY</button><button id="vOne" title="One player at a time">PLAYERS</button></span>
   <label class="file">OPEN FILES <input id="files" type="file" accept=".json" multiple hidden></label>
   <button id="server">SERVER</button>
   <button id="local">THIS BROWSER</button>
-  <select id="build"></select>
+  <span class="bpick"><button id="buildBtn" aria-haspopup="listbox" aria-expanded="false" title="Pick a build; the pointer on one shows what was in it">ALL BUILDS &#9662;</button><div id="buildList" class="blist" hidden></div></span>
   <label class="chk"><input id="easy" type="checkbox"> with easy mode</label>
-  <span class="range"><label for="from">FROM</label><input id="from" type="date"><label for="to">TO</label><input id="to" type="date"><button id="allTime" title="Every date">ALL DATES</button></span>
+  <span class="range"><label for="from">FROM</label><input id="from" type="date"><label for="to">TO</label><input id="to" type="date"><button id="allTime" title="Every date">ALL DATES</button><button id="wkPrev" title="A week back">&#8249;</button><button id="wkThis" title="Monday to Sunday of this week">THIS WEEK</button><button id="wkNext" title="A week on">&#8250;</button><span id="wkName" style="font:13px Alegreya,serif;color:var(--dim)"></span></span>
   <span id="status"></span>
 </header>
 <main id="main"><div class="empty">Loading…</div></main>
@@ -82,13 +113,15 @@ const nameOf = (() => {
   return (id) => id == null ? '-' : m[String(id).split(':')[0]] ? m[String(id).split(':')[0]] + (String(id).includes(':') ? ' ' + 'I'.repeat(+String(id).split(':')[1]) : '') : String(id);
 })();
 const WHO = { clubman: 'Clubman', shieldman: 'Shieldman', butcher: 'Butcher', ogre: 'Ogre', hunter: 'Rifleman', dog: 'Hound', seer: 'Mage', wraith: 'Wraith', ratogre: 'Rat ogre',
-  fire: 'Fire', witchfire: 'Witchfire', spike: 'Grating', bomb: 'Bomb', mill: 'Wheel', fall: 'Drop', rifle: 'Stray bullet', spire: 'Rock spire', chandelier: 'Chandelier', poison: 'Poison', powder: 'Spilt powder' };
+  fire: 'Fire', witchfire: 'Witchfire', spike: 'Grating', bomb: 'Bomb', mill: 'Wheel', fall: 'Drop', rifle: 'Stray bullet', spire: 'Rock spire', chandelier: 'Chandelier', poison: 'Poison', powder: 'Spilt powder',
+  altar: 'Sacrifice altar', toss: 'Thrower (tossed)', abandon: 'Giving up', shield: 'Shieldman', thrower: 'Thrower', shaman: 'Shaman', warden: 'The Warden', flayed: 'The Flayed', brute: 'Butcher', dive: 'Helldive', fist: 'Thrower', blast: 'Blast' };
 const HOW = { wall: 'Wall', body: 'Another body', blade: 'Sword swing', sword: 'Thrown sword', door: 'Door', bomb: 'Bomb', blast: 'Ogre blast', chandelier: 'Chandelier', powder: 'Powder',
   hen: 'Hen', antlers: 'Stag antlers', burn: 'Fire', boom: 'Explosion', poison: 'Poison', fall: 'Drop', mill: 'Wheel', spike: 'Grating', spire: 'Rock spire', headbutt: 'Headbutt',
   club: 'Friendly club', shot: 'Bullet', unmade: 'Unmade', hit: 'Other blow', rock: 'Boulder', barrel: 'Barrel', table: 'Table', crate: 'Crate', weapon: 'Stand of arms', corpse: 'Thrown corpse', dev: 'Dev' };
 const who = (k) => { const b = String(k || '?').replace('*', ''); return (WHO[b] || HOW[b] || b) + (String(k).endsWith('*') ? ' (boss)' : ''); };
 const how = (k) => HOW[k] || k;
-const COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#9085e9', '#e34948', '#8a8780'];
+// Sixteen apart (12 Oct 2026: "don't show Other, give the details"): a stack shows every cause by its own colour.
+const COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#9085e9', '#e34948', '#4fc3d9', '#b8d14a', '#a0522d', '#f2e6c2', '#c04fd0', '#6d8fa8', '#ff9f80', '#7a7a2e', '#8a8780'];
 const FLOOR_ORDER = (f) => (f[0] === 'L' ? 0 : 0.5) + parseInt(f.slice(1), 10) * 1 + (f[0] === 'N' ? 0.4 : f[0] === 'T' ? 0.3 : 0);
 
 let REPORTS = [];
@@ -146,8 +179,11 @@ function sanitize(r) {
   }));
   if (!floors.length) return null;
   const E = O(r.end);
-  return { id, player, build, at, done: N(r.done) || at, flags: S(r.flags, 8) || '', release: !!r.release, floors,
+  // A life still being played when it was sent (`end.how` 'on', js/stats.js `Stats.live`) has no `done`: `upto` is
+  // when it was last heard of, and `seq` how many times it had been sent (the fuller copy wins in `add`).
+  return { id, player, build, at, done: N(r.done) || N(r.upto) || at, upto: N(r.upto), seq: N(r.seq), flags: S(r.flags, 8) || '', release: !!r.release, floors,
     mirror: (Array.isArray(r.mirror) ? r.mirror : []).slice(0, 40).map((x) => S(x, 30)).filter(Boolean),
+    heaven: Array.isArray(r.heaven) && r.heaven.length === 2 ? [N(r.heaven[0]), N(r.heaven[1])] : null,   // [visits, seconds] up there before this life
     dryMax: typeof r.dryMax === 'number' && Number.isFinite(r.dryMax) ? r.dryMax : null, dryEnd: typeof r.dryEnd === 'number' && Number.isFinite(r.dryEnd) ? r.dryEnd : null,
     end: { how: S(E.how, 8) || '?', f: S(E.f, 4), by: S(E.by, 24), kills: N(E.kills), t: N(E.t), room: N(E.room), code: S(E.code, 120),
       role: S(E.role, 12), rooms: N(E.rooms) } };
@@ -171,15 +207,27 @@ function addSteps(list) {
   }
   return n;
 }
+// How whole a copy of a life is, as the worker weighs it (tools/stats-worker/worker.js `wholeness`): an ending over a
+// copy sent while it was still being played, then the later of those sends, then more floors, then more play.
+const wholeness = (r) => [r.end.how !== 'on' ? 1 : 0, r.seq || 0, r.floors.length, r.floors.reduce((n, F) => n + F.time, 0)];
+const fuller = (a, b) => { const x = wholeness(a), y = wholeness(b); for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return y[i] > x[i]; return false; };
+// The same life may come from this browser, a file and the server (13 Oct 2026), and a life still being played comes
+// again each time it is sent: the fullest copy of each id is kept, whichever source brought it.
 function add(list, label) {
-  const seen = new Set(REPORTS.map((r) => r.id));
-  let n = 0, bad = 0;
+  const at = new Map(REPORTS.map((r, i) => [r.id, i]));
+  let n = 0, up = 0, bad = 0, newest = 0;
   for (const raw of list) {
     let r = null; try { r = sanitize(raw); } catch (e) { r = null; }
     if (!r) { bad++; continue; }
-    if (!seen.has(r.id)) { REPORTS.push(r); seen.add(r.id); n++; }
+    newest = Math.max(newest, r.done || r.at);
+    const i = at.get(r.id);
+    if (i === undefined) { at.set(r.id, REPORTS.length); REPORTS.push(r); n++; }
+    else if (fuller(REPORTS[i], r)) { REPORTS[i] = r; up++; }
   }
-  $('status').textContent = `${REPORTS.length} lives · ${n} new from ${label}` + (bad ? ` · ${bad} malformed, skipped` : '');
+  // The newest life the source holds, so an empty week reads as "nothing came in" and not as "the dates hide it".
+  $('status').textContent = `${REPORTS.length} lives · ${n} new from ${label}` + (up ? ` · ${up} brought up to date` : '')
+    + (newest ? ` · its newest ${new Date(newest).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : '')
+    + (bad ? ` · ${bad} malformed, skipped` : '');
   builds(); draw();
 }
 function fromLocal() {
@@ -189,9 +237,40 @@ function fromLocal() {
 $('local').onclick = fromLocal;
 // The worker: its address and READ_KEY, asked once and kept here (never in the game, never in git).
 const SRV_KEY = 'goatout.stats.server';
-async function fromServer(ask) {
+// What the server gave last, kept in this browser (13 Oct 2026, "load every session from the server, and only then cut
+// it by the dates"): IndexedDB, since a few thousand lives outgrow localStorage. It is laid in when the page opens, and
+// the server is asked again at once if its key is kept here. SERVER always fetches the whole of it, every page back to
+// the first life; FROM / TO only ever filter what is loaded (`draw`), they never choose what is fetched.
+const CACHE_DB = 'goatout.stats.cache';
+function cacheDb() {
+  return new Promise((ok, no) => {
+    if (typeof indexedDB === 'undefined') { no(new Error('no IndexedDB')); return; }
+    const q = indexedDB.open(CACHE_DB, 1);
+    q.onupgradeneeded = () => q.result.createObjectStore('kv');
+    q.onsuccess = () => ok(q.result); q.onerror = () => no(q.error);
+  });
+}
+async function cacheIo(key, val) {
+  const db = await cacheDb();
+  return new Promise((ok, no) => {
+    const st = db.transaction('kv', val === undefined ? 'readonly' : 'readwrite').objectStore('kv');
+    const q = val === undefined ? st.get(key) : st.put(val, key);
+    q.onsuccess = () => ok(q.result); q.onerror = () => no(q.error);
+  });
+}
+async function fromCache() {
+  try {
+    const c = await cacheIo('server');
+    if (!c || !Array.isArray(c.reports)) return;
+    addSteps(stepsOf(c.steps || []));
+    add(reportsOf(c.reports), `the server's copy of ${new Date(c.at).toLocaleString()}`);
+  } catch (e) { /* no copy kept (a private window, a file:// page): the page works without it */ }
+}
+// `ask`: ask the address and key again (SERVER with Shift). `auto`: the page opening, never a prompt.
+async function fromServer(ask, auto) {
   let srv = null;
   try { srv = JSON.parse(localStorage.getItem(SRV_KEY) || 'null'); } catch (e) {}
+  if (auto && !srv) return;
   if (!srv || ask) {
     const url = prompt('Worker address (https://goat-stats.<you>.workers.dev):', srv ? srv.url : (typeof TUNING !== 'undefined' && TUNING.stats && TUNING.stats.url) || '');
     if (!url) return;
@@ -202,13 +281,14 @@ async function fromServer(ask) {
   }
   $('status').textContent = 'asking the server…';
   try {
-    // Newest first, a page of 5000 at a time, walked back until a short page (a worker from before
-    // the paging has no X-Oldest-Got and gives its one page as it always did).
+    // Newest first, a page of 5000 at a time, walked back until a short page: every life the server holds, whatever
+    // the dates say (a worker from before the paging has no X-Oldest-Got and gives its one page as it always did).
+    // The cap is only against a server that never stops answering.
     const head = { Authorization: 'Bearer ' + srv.key };
     let got = [], before = 0;
-    for (let page = 0; page < 40; page++) {
-      const r = await fetch(srv.url + '/reports' + (before ? '?before=' + before : ''), { headers: head });
-      if (r.status === 401) { $('status').textContent = 'the server refused the key'; return fromServer(true); }
+    for (let page = 0; page < 2000; page++) {
+      const r = await fetch(srv.url + '/reports' + (before ? '?before=' + before : ''), { headers: head, cache: 'no-store' });
+      if (r.status === 401) { $('status').textContent = 'the server refused the key'; return auto ? null : fromServer(true); }
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const part = await r.json(), oldest = +r.headers.get('X-Oldest-Got') || 0;
       got = got.concat(part);
@@ -217,22 +297,28 @@ async function fromServer(ask) {
       before = oldest;
     }
     // The steps are their own table; a worker from before them answers 404, and the funnel is then the lives' alone.
-    try { const s = await fetch(srv.url + '/steps', { headers: head }); if (s.ok) addSteps(stepsOf(await s.json())); } catch (e) {}
-    add(reportsOf(got), 'the server');
+    let steps = [];
+    try { const s = await fetch(srv.url + '/steps', { headers: head, cache: 'no-store' }); if (s.ok) steps = await s.json(); } catch (e) {}
+    addSteps(stepsOf(steps));
+    try { await cacheIo('server', { url: srv.url, at: Date.now(), reports: got, steps }); } catch (e) {}
+    add(reportsOf(got), `the server (all ${new Set(got.map((x) => x && x.id)).size} it holds)`);
   } catch (e) { $('status').textContent = 'server: ' + e.message; }
 }
 $('server').onclick = (e) => fromServer(e.shiftKey);
 $('files').onchange = async (e) => { for (const f of e.target.files) { try { const x = JSON.parse(await f.text()); addSteps(stepsOf(x)); add(reportsOf(x), f.name); } catch (err) { $('status').textContent = f.name + ': not a stats file'; } } };
 document.addEventListener('dragover', (e) => e.preventDefault());
 document.addEventListener('drop', async (e) => { e.preventDefault(); for (const f of e.dataTransfer.files) { try { const x = JSON.parse(await f.text()); addSteps(stepsOf(x)); add(reportsOf(x), f.name); } catch (err) {} } });
-$('build').onchange = draw; $('easy').onchange = draw;
+$('easy').onchange = draw;
 // The dates to look at (6 Oct 2026: "let me pick from when to look"): FROM and TO are whole days in this
 // browser's own time, either may be empty, and the pick is kept in this browser.
 const RANGE_KEY = 'goatout.stats.range';
 function rangeOf() {
   const day = (v, end) => { if (!v) return null; const t = new Date(v + (end ? 'T23:59:59.999' : 'T00:00:00')).getTime(); return Number.isFinite(t) ? t : null; };
   const from = day($('from').value, false), to = day($('to').value, true);
-  return { from, to, on: from != null || to != null, has: (t) => (from == null || t >= from) && (to == null || t <= to) };
+  // `has` a moment; `life` a life, by any part of it (13 Oct 2026: a life begun late on Sunday and played past midnight
+  // is in Monday's week too, as is one still being played, last heard of `done`).
+  return { from, to, on: from != null || to != null, has: (t) => (from == null || t >= from) && (to == null || t <= to),
+    life: (r) => (from == null || Math.max(r.at, r.done || r.at) >= from) && (to == null || r.at <= to) };
 }
 function rangeSaved() {
   try { localStorage.setItem(RANGE_KEY, JSON.stringify({ from: $('from').value, to: $('to').value })); } catch (e) {}
@@ -240,15 +326,153 @@ function rangeSaved() {
 try { const g = JSON.parse(localStorage.getItem(RANGE_KEY) || 'null'); if (g) { $('from').value = g.from || ''; $('to').value = g.to || ''; } } catch (e) {}
 $('from').onchange = $('to').onchange = () => { rangeSaved(); draw(); };
 $('allTime').onclick = () => { $('from').value = ''; $('to').value = ''; rangeSaved(); draw(); };
-function builds() {
-  const cur = $('build').value;
-  const bs = [...new Set(REPORTS.map((r) => r.build).concat(Object.values(STEPS).flatMap((o) => Object.values(o).map((v) => v.build))))].sort();
-  $('build').innerHTML = '<option value="">ALL BUILDS</option>' + bs.map((b) => `<option value="${esc(b)}">${esc(b)}</option>`).join('');
-  $('build').value = bs.includes(cur) ? cur : '';
+// Weeks (12 Oct 2026: "pick the dates by week"): Monday to Sunday, as the devlog counts them. THIS WEEK lays the
+// current one; the arrows step the picked week (or the week FROM falls in) one back or on.
+const ymd = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const mondayOf = (d) => { d = new Date(d.getFullYear(), d.getMonth(), d.getDate()); d.setDate(d.getDate() - (d.getDay() + 6) % 7); return d; };
+function setWeek(mon) {
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+  $('from').value = ymd(mon); $('to').value = ymd(sun); rangeSaved(); draw();
 }
+function stepWeek(n) {
+  const base = $('from').value ? mondayOf(new Date($('from').value + 'T00:00:00')) : mondayOf(new Date());
+  base.setDate(base.getDate() + 7 * n); setWeek(base);
+}
+function weekName() {
+  const f = $('from').value, t = $('to').value; let w = '';
+  if (f && t) { const m = mondayOf(new Date(f + 'T00:00:00')), d = (new Date(t + 'T00:00:00') - m) / 864e5;
+    if (ymd(m) === f && Math.round(d) === 6) { const k = Math.round((mondayOf(new Date()) - m) / (7 * 864e5)); w = k === 0 ? 'this week' : k === 1 ? 'last week' : k > 1 ? k + ' weeks ago' : 'ahead'; } }
+  $('wkName').textContent = w;
+}
+$('wkThis').onclick = () => setWeek(mondayOf(new Date()));
+$('wkPrev').onclick = () => stepWeek(-1);
+$('wkNext').onclick = () => stepWeek(1);
+// ---------- the builds (13 Oct 2026: "tie each build to a date and add its biggest changes, so a hover shows what was in it") ----------
+// Read off CHANGELOG.md beside the game (tools/serve.js serves it; opened as a file the fetch fails, and a build is then
+// its number and the day its first life or step was seen). The numbers started again at 0.001 on 9 Oct 2026 after 2.07,
+// so a build is placed by its date, never by its number. Several headings may share a number (parallel sessions):
+// the build is all of them. A heading reads 'N, D Mon YYYY: TITLE', 'N, published D Mon YYYY: TITLE', 'N, TITLE, D Mon
+// YYYY' or 'N, TITLE' (1.74 and older carry no date); its lead points are its bullets' bold openings.
+let BUILD_SEL = '', CHANGES = null;
+const MONTHS = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+function parseChangelog(md) {
+  const out = Object.create(null); let cur = null, order = 0;
+  for (const line of md.split(/\r?\n/)) {
+    const h = /^## (.+)$/.exec(line);
+    if (h) {
+      cur = null; order++;
+      const m = /^(\d+\.\d+[a-z]?)(?=[\s,:(]|$)/.exec(h[1]);   // '0.017', '1.65c'; 'Unreleased' and named batches have none
+      if (!m) continue;
+      const dm = /(\d{1,2}) (jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]* (\d{4})/i.exec(h[1]);
+      const date = dm ? new Date(+dm[3], MONTHS[dm[2].toLowerCase()], +dm[1], 12).getTime() : null;
+      let title = h[1].slice(m[0].length).replace(/^\s*\([^)]*\)/, '').replace(/^[\s,:]+/, '');
+      if (dm) {
+        const i = title.indexOf(dm[0]), after = title.slice(i + dm[0].length).replace(/^\s*\([^)]*\)/, '');
+        title = /^\s*:/.test(after) ? after.replace(/^\s*:\s*/, '') : title.slice(0, i).replace(/^published\s*/i, '').replace(/[\s,:]+$/, '');
+      }
+      const B = out[m[1]] = out[m[1]] || { order, entries: [] };
+      cur = { title: title.trim(), date, leads: [] };
+      B.entries.push(cur);
+      continue;
+    }
+    // A bullet's bold opening, its punctuation off the end: '- **THE SAWBOT** (the user: ...' gives 'THE SAWBOT'.
+    // An entry whose bullets have none (the oldest) shows their first words instead.
+    const b = cur && cur.leads.length < 6 && /^- \*\*(.+?)\*\*/.exec(line);
+    if (b) cur.leads.push(b[1].replace(/`/g, '').replace(/[\s.:,;]+$/, '').slice(0, 110));
+    else if (cur && /^- /.test(line) && (cur.plain = cur.plain || []).length < 4) cur.plain.push(line.slice(2).replace(/[`*]/g, '').split(/[:(.;]/)[0].trim().slice(0, 90));
+  }
+  for (const B of Object.values(out)) for (const e of B.entries) { if (!e.leads.length && e.plain) e.leads = e.plain.filter(Boolean); delete e.plain; }
+  for (const B of Object.values(out)) {
+    const ds = B.entries.map((e) => e.date).filter((d) => d != null);
+    B.first = ds.length ? Math.min(...ds) : null; B.last = ds.length ? Math.max(...ds) : null;
+  }
+  return out;
+}
+async function loadChanges() {
+  try {
+    const r = await fetch('../CHANGELOG.md', { cache: 'no-store' });
+    if (!r.ok) return;
+    CHANGES = parseChangelog(await r.text());
+    builds();
+  } catch (e) { /* opened as a file, or no changelog beside it: the builds are their numbers */ }
+}
+const shortDay = (t) => new Date(t).toLocaleDateString([], { day: 'numeric', month: 'short' });
+// Every build the loaded lives and steps name, with what is known of it: its date (the changelog's, else the first
+// life seen on it), its headings and lead points, and how many lives of it are loaded.
+function buildInfo() {
+  const seen = Object.create(null), lives = Object.create(null);
+  const saw = (b, t) => { if (!b) return; if (!(b in seen) || t < seen[b]) seen[b] = t; };
+  for (const r of REPORTS) { saw(r.build, r.at); lives[r.build] = (lives[r.build] || 0) + 1; }
+  for (const o of Object.values(STEPS)) for (const v of Object.values(o)) saw(v.build, v.at);
+  // Newest day first; on one day the new line (0.001 on) after the old (2.07 and the 0.1 of the very start), then the
+  // higher number, then the changelog's own order.
+  const line = (b) => /^0\.\d{3}/.test(b) ? 1 : 0;
+  return Object.keys(seen).map((b) => {
+    const C = CHANGES && CHANGES[b], dated = !!(C && C.last != null);
+    const when = dated ? C.last : seen[b];
+    const day = dated ? (shortDay(C.first) === shortDay(C.last) ? shortDay(C.last) : shortDay(C.first) + ' to ' + shortDay(C.last)) : shortDay(seen[b]);
+    return { b, when, ymd: ymd(new Date(when)), order: C ? C.order : 1e9, day, dated, C, lives: lives[b] || 0, seen: seen[b] };
+  }).sort((x, y) => (x.ymd < y.ymd ? 1 : x.ymd > y.ymd ? -1 : 0) || line(y.b) - line(x.b) || (parseFloat(y.b) || 0) - (parseFloat(x.b) || 0) || x.order - y.order);
+}
+// The pointer's view of one build: each heading under its number, and its lead points.
+function buildCard(x) {
+  if (!x) return '<h3>ALL BUILDS</h3><div class="when">Every build together. Point at one to see what was in it.</div>';
+  const when = x.dated ? x.day : 'first seen ' + x.day;
+  let h = `<h3>${esc(x.b)}</h3><div class="when">${esc(when)} · ${x.lives} ${x.lives === 1 ? 'life' : 'lives'} loaded</div>`;
+  if (!x.C) return h + `<div class="when">${CHANGES ? 'No heading for it in CHANGELOG.md.' : 'CHANGELOG.md could not be read (open this page through tools/serve.js to see what was in each build).'}</div>`;
+  for (const e of x.C.entries.slice(0, 4)) {
+    h += `<h4>${esc(e.title || '(no title)')}${e.date != null && x.C.entries.length > 1 ? ' <span style="color:var(--dim);font:13px Alegreya,serif">' + esc(shortDay(e.date)) + '</span>' : ''}</h4>`;
+    if (e.leads.length) h += '<ul>' + e.leads.slice(0, x.C.entries.length > 1 ? 3 : 5).map((l) => `<li>${esc(l)}</li>`).join('') + '</ul>';
+  }
+  if (x.C.entries.length > 4) h += `<div class="when">and ${x.C.entries.length - 4} more headings under ${esc(x.b)}</div>`;
+  return h;
+}
+// The same as plain text, for the button's own tooltip once a build is picked.
+const buildText = (x) => !x ? '' : x.b + ' · ' + (x.dated ? x.day : 'first seen ' + x.day) + (x.C ? '\n' + x.C.entries.slice(0, 3).map((e) => e.title + (e.leads.length ? '\n  ' + e.leads.slice(0, 4).join('\n  ') : '')).join('\n') : '');
+function builds() {
+  const list = buildInfo();
+  if (BUILD_SEL && !list.some((x) => x.b === BUILD_SEL)) BUILD_SEL = '';
+  const sel = list.find((x) => x.b === BUILD_SEL);
+  $('buildBtn').innerHTML = (sel ? esc(sel.b) + ' · ' + esc(sel.day) : 'ALL BUILDS') + ' &#9662;';
+  $('buildBtn').title = sel ? buildText(sel) : 'Pick a build; the pointer on one shows what was in it';
+  const row = (x) => `<button class="brow${x && x.b === BUILD_SEL || (!x && !BUILD_SEL) ? ' sel' : ''}" role="option" data-b="${x ? esc(x.b) : ''}">` +
+    (x ? `<b>${esc(x.b)}</b><span class="d"${x.dated ? '' : ' style="font-style:italic" title="Not in CHANGELOG.md: the day its first life was seen"'}>${esc(x.day)}</span><span class="t">${esc(x.C && x.C.entries[0] ? x.C.entries[0].title : '')}</span><span class="n">${x.lives || ''}</span>`
+      : `<b>ALL</b><span class="d"></span><span class="t">Every build</span><span class="n">${REPORTS.length || ''}</span>`) + '</button>';
+  $('buildList').innerHTML = `<div class="rows" role="listbox">${row(null)}${list.map(row).join('')}</div><div class="info" id="buildInfo">${buildCard(sel)}</div>`;
+  $('buildList')._info = list;
+}
+function buildOpen(on) {
+  const p = $('buildList');
+  p.hidden = !on; $('buildBtn').setAttribute('aria-expanded', on ? 'true' : 'false');
+  if (!on) return;
+  // Under the button, slid left as far as it must to stay on the screen (the header wraps, the button may sit far right).
+  p.style.left = '0px';
+  const r = p.getBoundingClientRect(), over = r.right - (window.innerWidth - 12);
+  if (over > 0) p.style.left = -Math.min(over, Math.max(0, r.left - 12)) + 'px';
+  const s = p.querySelector('.brow.sel'); if (s) s.focus({ preventScroll: true });
+}
+$('buildBtn').onclick = (e) => { e.stopPropagation(); buildOpen($('buildList').hidden); };
+// The card beside the list follows the pointer (and the keys), so what was in a build is read before it is picked.
+const buildShow = (t) => { const r = t && t.closest && t.closest('.brow'); if (!r) return; const x = ($('buildList')._info || []).find((v) => v.b === r.dataset.b); $('buildInfo').innerHTML = buildCard(x); };
+$('buildList').addEventListener('mouseover', (e) => buildShow(e.target));
+$('buildList').addEventListener('focusin', (e) => buildShow(e.target));
+$('buildList').addEventListener('click', (e) => {
+  const r = e.target.closest('.brow'); if (!r) return;
+  BUILD_SEL = r.dataset.b || ''; buildOpen(false); builds(); draw();
+});
+$('buildList').addEventListener('keydown', (e) => {
+  const rows = [...$('buildList').querySelectorAll('.brow')], i = rows.indexOf(document.activeElement);
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); const j = Math.max(0, Math.min(rows.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1))); rows[j].focus(); }
+  if (e.key === 'Escape') { buildOpen(false); $('buildBtn').focus(); }
+});
+document.addEventListener('click', (e) => { if (!$('buildList').hidden && !e.target.closest('.bpick')) buildOpen(false); });
 
 // ---------- the counting ----------
 const inc = (o, a, b, n = 1) => { (o[a] = o[a] || Object.create(null))[b] = (o[a][b] || 0) + n; };
+// A life sent while it was still being played (13 Oct 2026, js/stats.js `Stats.live`): how it reads, and its last
+// floor, the one it is on, which it has neither cleared nor died on yet.
+const stillOn = (r, F) => r.end.how === 'on' && !F.cleared && F === r.floors[r.floors.length - 1];
+const endWord = (how) => how === 'on' ? 'still playing' : how || '?';
 function count(R) {
   const C = { lives: R.length, players: new Set(R.map((r) => r.player)).size, deaths: Object.create(null), hurt: Object.create(null), kills: Object.create(null), blows: Object.create(null), wins: 0,
     souls: Object.create(null), soulFloor: Object.create(null), released: 0, shop: Object.create(null), milk: 0, ogre: 0, beasts: Object.create(null), floorsReached: Object.create(null), cleared: Object.create(null), lifeTime: 0 };
@@ -258,7 +482,8 @@ function count(R) {
     if (E.how === 'death') inc(C.deaths, E.f || '?', E.by || '?');
     C.lifeTime += E.t || 0;
     for (const F of r.floors || []) {
-      C.floorsReached[F.f] = (C.floorsReached[F.f] || 0) + 1;
+      // The floor a life is still on (sent while it was being played, `end.how` 'on') is neither cleared nor died on yet.
+      if (!stillOn(r, F)) C.floorsReached[F.f] = (C.floorsReached[F.f] || 0) + 1;
       if (F.cleared) C.cleared[F.f] = (C.cleared[F.f] || 0) + 1;
       for (const h of F.hurt || []) inc(C.hurt, F.f, h.by, h.n);
       for (const [k, [n, kills]] of Object.entries(F.blows || {})) {
@@ -285,14 +510,14 @@ function count(R) {
 }
 
 // ---------- drawing ----------
-// Stacked columns, one a floor; the stack's parts beyond the top `keep` fold into "Other".
+// Stacked columns, one a floor; every part named (nothing folds into "Other" since 12 Oct 2026).
 function stacked(byFloor, opts = {}) {
   const floors = Object.keys(byFloor).sort(opts.order || ((a, b) => FLOOR_ORDER(a) - FLOOR_ORDER(b)));
   if (!floors.length) return '<div class="empty">Nothing yet.</div>';
   const totals = Object.create(null);
   for (const f of floors) for (const [k, n] of Object.entries(byFloor[f])) totals[k] = (totals[k] || 0) + n;
   const keys = Object.keys(totals).sort((a, b) => totals[b] - totals[a]);
-  const keep = keys.slice(0, 8), other = keys.slice(8);
+  const keep = keys.slice(0, COLORS.length), other = keys.slice(COLORS.length);
   const parts = keep.concat(other.length ? ['__other'] : []);
   const val = (f, k) => k === '__other' ? other.reduce((n, o) => n + (byFloor[f][o] || 0), 0) : byFloor[f][k] || 0;
   const max = Math.max(1, ...floors.map((f) => parts.reduce((n, k) => n + val(f, k), 0)));
@@ -305,12 +530,12 @@ function stacked(byFloor, opts = {}) {
     parts.forEach((k, j) => {
       const v = val(f, k); if (!v) return;
       const h = (H - B - T) * v / top; y -= h;
-      svg += `<rect x="${x}" y="${y}" width="${bw}" height="${Math.max(0, h - 1.5)}" fill="${COLORS[k === '__other' ? 8 : j]}"><title>${esc(f)} · ${esc(k === '__other' ? 'Other' : (opts.name || who)(k))}: ${v}</title></rect>`;
+      svg += `<rect x="${x}" y="${y}" width="${bw}" height="${Math.max(0, h - 1.5)}" fill="${COLORS[k === '__other' ? COLORS.length - 1 : j]}"><title>${esc(f)} · ${esc(k === '__other' ? 'Other' : (opts.name || who)(k))}: ${v}</title></rect>`;
     });
     svg += `<text x="${x + bw / 2}" y="${H - B + 16}" text-anchor="middle">${esc(f)}</text>`;
   });
   svg += '</svg>';
-  const legend = '<div class="legend">' + parts.map((k, j) => `<span><i style="background:${COLORS[k === '__other' ? 8 : j]}"></i>${esc(k === '__other' ? 'Other' : (opts.name || who)(k))}</span>`).join('') + '</div>';
+  const legend = '<div class="legend">' + parts.map((k, j) => `<span><i style="background:${COLORS[k === '__other' ? COLORS.length - 1 : j]}"></i>${esc(k === '__other' ? 'Other' : (opts.name || who)(k))}</span>`).join('') + '</div>';
   return legend + svg;
 }
 function rateTable(rows, head) {
@@ -364,7 +589,28 @@ function mirrorTable(R) {
   const L = R.filter((r) => r.mirror && r.mirror.length).sort((a, b) => a.at - b.at);
   if (!L.length) return '<div class="empty">Nothing yet. Needs lives played after this build.</div>';
   return '<div class="scroll"><table><tr><th>Life</th><th>Bought, in order</th><th class="n">Floors cleared</th><th>Ended</th></tr>' +
-    L.slice(-40).reverse().map((r) => `<tr><td>${new Date(r.at).toLocaleDateString()}</td><td>${esc(r.mirror.map((m) => m.replace(':', ' ')).join(' → '))}</td><td class="n">${buildOf(r).cleared}</td><td>${esc((r.end || {}).how || '?')}</td></tr>`).join('') + '</table></div>';
+    L.slice(-40).reverse().map((r) => `<tr><td>${new Date(r.at).toLocaleDateString()}</td><td>${esc(r.mirror.map((m) => m.replace(':', ' ')).join(' → '))}</td><td class="n">${buildOf(r).cleared}</td><td>${esc(endWord((r.end || {}).how))}</td></tr>`).join('') + '</table></div>';
+}
+// The mirror by player (12 Oct 2026: "see one player's upgrades in the mirror, all of them, to understand what he
+// chose"). A life carries only what was bought since the life before it, so a player's whole glass is his lives' lists
+// joined in order: what he holds now (the top rank of each), and every purchase with the life number it came before.
+const mirrorName = (id, rank) => {
+  try { const m = MIRROR.find((x) => x.id === id); if (m) return ((m.names && m.names[rank - 1]) || m.name) + (m.names ? '' : ' ' + 'I'.repeat(rank)); } catch (e) {}
+  return id + ' ' + rank;
+};
+function mirrorByPlayer(R) {
+  const P = Object.create(null);
+  for (const r of R.slice().sort((a, b) => a.at - b.at)) {
+    const p = P[r.player] = P[r.player] || { lives: 0, buys: [], top: Object.create(null), cleared: 0, last: 0 };
+    p.lives++; p.last = Math.max(p.last, r.done || r.at); p.cleared = Math.max(p.cleared, buildOf(r).cleared);
+    for (const m of r.mirror || []) { const [id, rk] = m.split(':'); p.buys.push({ id, rank: +rk || 1, life: p.lives }); p.top[id] = Math.max(p.top[id] || 0, +rk || 1); }
+  }
+  const rows = Object.entries(P).filter(([, p]) => p.buys.length).sort((a, b) => b[1].last - a[1].last);
+  if (!rows.length) return '<div class="empty">Nothing yet. Needs lives played after this build.</div>';
+  return '<div class="scroll"><table><tr><th>Player</th><th class="n">Lives</th><th class="n">Best floors cleared</th><th>Holds now</th><th>Bought, in order (before life n)</th></tr>' +
+    rows.map(([id, p]) => `<tr><td title="${esc(id)}">${esc(id.slice(0, 8))}</td><td class="n">${p.lives}</td><td class="n">${p.cleared}</td>` +
+      `<td>${esc(Object.entries(p.top).map(([k, r]) => mirrorName(k, r)).join(', '))}</td>` +
+      `<td>${esc(p.buys.map((b) => mirrorName(b.id, b.rank) + ' (' + b.life + ')').join(' → '))}</td></tr>`).join('') + '</table></div>';
 }
 // ---------- room by room ----------
 // (6 Oct 2026: "in which room of the level he died and on which floor: the path matters", "the strategy for each
@@ -379,14 +625,15 @@ function roomsOf(R) {
 }
 // A floor by room-number grid: a row a floor, a column a room (room 1 is the one he starts the floor in), a
 // cell shaded by its share of the grid's largest value. `cells[f][i]` the value, `fmt` how it reads, `tip` the hover.
-function roomGrid(cells, rooms, fmt = (v) => String(v), tip = (f, i, v) => fmt(v)) {
+// `total` (f → text), if given, is a last column the whole floor answers (12 Oct 2026: the time of a run beside its rooms').
+function roomGrid(cells, rooms, fmt = (v) => String(v), tip = (f, i, v) => fmt(v), total = null) {
   const floors = sortFloors(cells);
   if (!floors.length) return '<div class="empty">Nothing yet.</div>';
   const cols = Math.max(1, ...floors.map((f) => Math.max(rooms[f] || 0, ...Object.keys(cells[f]).map((i) => +i + 1))));
   const max = Math.max(1e-9, ...floors.flatMap((f) => Object.values(cells[f])));
   let h = '<div class="scroll"><table class="rg"><tr><th>Floor</th>';
   for (let i = 0; i < cols; i++) h += `<th>${i + 1}</th>`;
-  h += '</tr>';
+  h += (total ? '<th>TOTAL</th>' : '') + '</tr>';
   for (const f of floors) {
     h += `<tr><td class="f">${esc(f)}</td>`;
     for (let i = 0; i < cols; i++) {
@@ -394,6 +641,7 @@ function roomGrid(cells, rooms, fmt = (v) => String(v), tip = (f, i, v) => fmt(v
       if (v == null) { h += `<td class="x">${rooms[f] && i >= rooms[f] ? '' : '·'}</td>`; continue; }
       h += `<td style="background:rgba(224,172,62,${(0.12 + 0.7 * v / max).toFixed(2)})" title="${esc(f + ', room ' + (i + 1) + ': ' + tip(f, i, v))}">${esc(fmt(v))}</td>`;
     }
+    if (total) h += `<td class="f">${esc(total(f))}</td>`;
     h += '</tr>';
   }
   return h + '</table></div>';
@@ -410,7 +658,13 @@ function timeGrid(R) {
   for (const r of R) for (const F of r.floors) for (const x of F.rm) { inc(sum, F.f, x.i, x.t); inc(cnt, F.f, x.i); }
   const cells = Object.create(null);
   for (const f of Object.keys(sum)) { cells[f] = Object.create(null); for (const i of Object.keys(sum[f])) cells[f][i] = sum[f][i] / cnt[f][i]; }
-  return roomGrid(cells, roomsOf(R), (v) => String(Math.round(v)), (f, i, v) => Math.round(v) + ' s on average, ' + cnt[f][i] + ' visits');
+  // TOTAL: the whole floor's clock on average (its rooms, corridors and cards), over the lives that walked onto it.
+  const ft = Object.create(null), fn = Object.create(null);
+  for (const r of R) for (const F of r.floors) { ft[F.f] = (ft[F.f] || 0) + F.time; fn[F.f] = (fn[F.f] || 0) + 1; }
+  const runs = R.map((r) => r.floors.reduce((n, F) => n + F.time, 0)).filter((t) => t > 0);
+  const avg = runs.length ? runs.reduce((a, b) => a + b, 0) / runs.length : 0;
+  return (runs.length ? `<p style="color:var(--dim);margin:0 0 8px">A run lasts <b>${mmss(avg)}</b> on average (longest ${mmss(Math.max(...runs))}, over ${runs.length} lives).</p>` : '') +
+    roomGrid(cells, roomsOf(R), (v) => String(Math.round(v)), (f, i, v) => Math.round(v) + ' s on average, ' + cnt[f][i] + ' visits', (f) => fn[f] ? mmss(ft[f] / fn[f]) : '');
 }
 // What he did in the rooms of each floor, as shares of them (empty rooms left out: nothing to choose there).
 function stratByFloor(R) {
@@ -464,7 +718,7 @@ function floorTimeTable(R) {
   for (const r of R) for (const F of r.floors) {
     const o = T[F.f] = T[F.f] || { lives: 0, clear: [], rooms: [], died: [] };
     o.lives++; if (F.rooms) o.rooms.push(F.rooms);
-    if (F.cleared && F.time > 0) o.clear.push(F.time); else if (F.time > 0) o.died.push(F.time);
+    if (F.cleared && F.time > 0) o.clear.push(F.time); else if (F.time > 0 && !stillOn(r, F)) o.died.push(F.time);
   }
   const floors = sortFloors(T);
   if (!floors.length) return '<div class="empty">Nothing yet.</div>';
@@ -539,7 +793,7 @@ const PART_NAME = { start: 'First room', q1: 'First third', q2: 'Middle third', 
 function endsAlong(R) {
   const out = Object.create(null);
   for (const r of R) {
-    if (r.end.how === 'win' || !r.end.f) continue;
+    if (r.end.how === 'win' || r.end.how === 'on' || !r.end.f) continue;   // escaped, or not ended yet
     const F = r.floors.filter((x) => x.f === r.end.f).pop(), n = r.end.rooms || (F && F.rooms) || 0;
     if (n < 2) continue;
     const i = r.end.room, p = i <= 0 ? 'start' : i >= n - 1 ? 'last' : ['q1', 'q2', 'q3'][Math.min(2, Math.floor(3 * (i - 1) / Math.max(1, n - 2)))];
@@ -554,9 +808,11 @@ function pathOf(r) {
   const st = Object.create(null); for (const x of F.rm) st[x.i] = x.s[0].toUpperCase();
   return ' · path ' + F.path.map(([i]) => (i + 1) + (st[i] || '')).join(' ');
 }
-// A player's first day is the day of his first life here; any later day he plays he came back.
+// A player's first day is the day of his first life here; any later day he plays he came back. Days are this
+// browser's own, as FROM and TO are (13 Oct 2026: they were UTC, so a life after midnight in Kyiv fell on the day before).
+const localDay = (t) => ymd(new Date(t));
 function byDay(R) {
-  const day = (t) => new Date(t).toISOString().slice(5, 10), first = Object.create(null), seen = Object.create(null), out = Object.create(null);
+  const day = (t) => localDay(t).slice(5), first = Object.create(null), seen = Object.create(null), out = Object.create(null);
   for (const r of R.slice().sort((a, b) => a.at - b.at)) { if (!(r.player in first)) first[r.player] = day(r.at); }
   for (const r of R) {
     const d = day(r.at), k = r.player + d; if (seen[k]) continue; seen[k] = 1;
@@ -572,8 +828,10 @@ const FUNNEL = [['open', 'Opened the game'], ['start', 'Started a run'], ['death
 // (lives from before the steps existed, a step lost on the way). Anyone with a step opened the game, and
 // anyone past it started a run. `R` is every life of every build; `build` keeps the players who came in
 // on it (the build of their first step).
-// `rg` (the date range) keeps the players whose first step falls inside it, and counts their steps up to its TO.
-function funnelOf(R, build, rg) {
+// `rg` (the date range) keeps the players who played inside it, any life of theirs or any step taken there (13 Oct
+// 2026: keeping only those whose FIRST step fell inside it lost every player who came back, "my friend played and I
+// can't find him"), and counts their steps up to its TO. `onlyNew` is the old reading: players who came in inside it.
+function funnelOf(R, build, rg, onlyNew) {
   const P = Object.create(null);
   const put = (pl, k, at, b) => { const o = P[pl] = P[pl] || Object.create(null); if (!o[k] || o[k].at > at) o[k] = { at, build: b }; };
   for (const [pl, o] of Object.entries(STEPS)) for (const [k, v] of Object.entries(o)) put(pl, k, v.at, v.build);
@@ -594,11 +852,12 @@ function funnelOf(R, build, rg) {
       if (r.end.how === 'win') put(pl, 'win', end, r.build);
     }
   }
-  const out = Object.create(null); let players = 0;
-  for (const o of Object.values(P)) {
+  const out = Object.create(null), played = Object.create(null); let players = 0;
+  if (rg && rg.on) for (const r of R) if (rg.life(r)) played[r.player] = true;
+  for (const [pl, o] of Object.entries(P)) {
     const first = Object.values(o).sort((a, b) => a.at - b.at)[0];
     if (!first || (build && first.build !== build)) continue;
-    if (rg && rg.on && !rg.has(first.at)) continue;
+    if (rg && rg.on && (onlyNew ? !rg.has(first.at) : !(played[pl] || Object.values(o).some((v) => rg.has(v.at))))) continue;
     players++;
     const keys = new Set(Object.keys(o).filter((k) => !rg || rg.to == null || o[k].at <= rg.to).concat('open'));
     if ([...keys].some((k) => k !== 'open')) keys.add('start');
@@ -619,23 +878,39 @@ function funnelTable(F) {
 const sec = (title, sub, body) => `<section><h2>${title}</h2><p class="sub">${sub}</p>${body}</section>`;
 
 function draw() {
-  const b = $('build').value, easy = $('easy').checked;
+  const b = BUILD_SEL, easy = $('easy').checked;
   const clean = REPORTS.filter((r) => (easy || !/E/.test(r.flags || '')) && !/[XJBT]/.test(r.flags || ''));   // B: the autoplay bot, T: PLAYTESTER MODE's gifts
-  // The date range: a life by the moment it began, the funnel by each player's first step (`funnelOf`).
-  const rg = rangeOf(); $('from').parentNode.classList.toggle('on', rg.on);
+  // The date range only filters what is loaded: a life by any part of it (`rangeOf().life`), the funnel by the
+  // players who played in it (`funnelOf`). Everything is loaded whatever the dates say.
+  const rg = rangeOf(); $('from').parentNode.classList.toggle('on', rg.on); weekName();
   const dates = rg.on ? ` · ${rg.from != null ? 'from ' + esc($('from').value) : 'up'} to ${rg.to != null ? esc($('to').value) : 'today'}` : '';
-  const R = clean.filter((r) => (!b || r.build === b) && rg.has(r.at));
-  const FN = funnelOf(clean, b, rg);
-  const funnel = `<section class="funnel"><h2>The funnel${dates}</h2><p class="sub">${FN.players} players${b ? ' who came in on ' + esc(b) : ''}${rg.on ? ' whose first step falls in these dates' : ''}, each counted once at every step taken.
+  const R = clean.filter((r) => (!b || r.build === b) && rg.life(r));
+  const FN = funnelOf(clean, b, rg, FNEW);
+  // What the filters leave out, said out loud (13 Oct 2026: a week picked on Monday hid Sunday's friend, and nothing said so).
+  const outDates = clean.filter((r) => (!b || r.build === b) && !rg.life(r)).length, otherBuild = b ? clean.filter((r) => r.build !== b).length : 0;
+  const flagged = REPORTS.length - clean.length, newest = REPORTS.reduce((m, r) => Math.max(m, r.done || r.at), 0);
+  const why = [outDates && `${outDates} fall outside these dates`, otherBuild && `${otherBuild} are another build`,
+    flagged && `${flagged} are left out by their flags (god mode, a LEVELS start, the bot, playtester gifts${easy ? '' : ', easy mode'})`].filter(Boolean);
+  const left = REPORTS.length ? `<p class="sub">Showing <b>${R.length}</b> of the ${REPORTS.length} lives loaded${why.length ? ': ' + why.join(', ') : ''}.
+    The newest of them was last heard of ${esc(new Date(newest).toLocaleString())}.</p>` : '';
+  const fnew = rg.on ? ` <label class="chk" style="display:inline-flex"><input id="fnew" type="checkbox"${FNEW ? ' checked' : ''}> only players whose first step falls in these dates</label>` : '';
+  const funnel = `<section class="funnel"><h2>The funnel${dates}</h2><p class="sub">${FN.players} players${b ? ' who came in on ' + esc(b) : ''}${rg.on ? (FNEW ? ' whose first step falls in these dates' : ' who played in these dates (a life or a step inside them), with every step each had taken by TO') : ''}, each counted once at every step taken.
     Only players who said yes to the title's question are counted (itch.io's own page counts everyone who opened it).
-    Dying and clearing floor 1 can come in either order.</p>${funnelTable(FN)}</section>`;
+    Dying and clearing floor 1 can come in either order.${fnew}</p>${left}${funnelTable(FN)}</section>`;
   if (!R.length && FN.players && !(rg.on && clean.length)) { $('main').innerHTML = funnel; return; }
   if (!R.length && rg.on && clean.length) { $('main').innerHTML = funnel + '<div class="empty">No lives in these dates. Press ALL DATES to see every life.</div>'; return; }
   if (!R.length) { $('main').innerHTML = '<div class="empty">No lives here yet. Play one, press THIS BROWSER, or open a file the dev drawer\'s SAVE STATS wrote, or press SERVER.</div>'; return; }
+  if (VIEW === 'player') { $('main').innerHTML = playerView(R, clean); return; }
+  const tf = $('tagf') ? $('tagf').value : TAGF;
+  const RT = tf ? R.filter((r) => skillOf(clean, r.player).tag === tf) : R;
+  $('main').innerHTML = funnel + playersSection(R, clean) + (RT.length ? body(RT) : '<div class="empty">No lives of that kind of player here.</div>');
+}
+// Everything under the funnel, for any set of lives: every player (SUMMARY) or one (PLAYERS).
+function body(R) {
   const C = count(R);
   const deaths = R.filter((r) => r.end && r.end.how === 'death').length;
   const furthest = Object.create(null); for (const r of R) for (const F of r.floors || []) furthest[r.id] = F.f;
-  const days = Object.create(null); for (const r of R) (days[r.player] = days[r.player] || new Set()).add(new Date(r.at).toISOString().slice(0, 10));
+  const days = Object.create(null); for (const r of R) (days[r.player] = days[r.player] || new Set()).add(localDay(r.at));
   const back = Object.values(days).filter((s) => s.size > 1).length;
   const tiles = [[C.lives, 'lives'], [C.players, 'players'], [back, 'players who came back another day'], [deaths, 'deaths'], [C.wins, 'escapes'],
     [Math.round(C.lifeTime / Math.max(1, C.lives)) + 's', 'seconds into the last floor, on average'], [C.released, 'souls released unspent']];
@@ -647,8 +922,12 @@ function draw() {
   const blows = Object.entries(C.blows).sort((a, b) => b[1].kills - a[1].kills);
   const EV = ['here', 'freed', 'yes', 'no', 'paid', 'saved', 'with', 'dead', 'lost', 'coop'];
   const EVN = { here: 'On the floor', freed: 'Let out', yes: 'Said yes', no: 'Said no', paid: 'Paid early', saved: 'Saved at stairs', with: 'With him at the end', dead: 'Died', lost: 'Left behind', coop: 'Never let out' };
-  $('main').innerHTML =
-    funnel + '<div class="tiles">' + tiles.map(([v, l]) => `<div class="tile"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join('') + '</div><div class="grid">' +
+  // Heaven between lives and the animals let out (12 Oct 2026, "track the average time in heaven, and the animals freed").
+  const hv = R.reduce((a, r) => r.heaven ? [a[0] + r.heaven[0], a[1] + r.heaven[1]] : a, [0, 0]);
+  if (hv[0]) tiles.push([mmss(hv[1] / hv[0]), `in heaven a visit, on average (${hv[0]} visits)`]);
+  const bz = beastSums(R);
+  if (bz.here) tiles.push([bz.freed + ' / ' + bz.here, `animals let out of those met (${Math.round(100 * bz.freed / bz.here)}%), ${bz.saved} brought to the stairs`]);
+  return '<div class="tiles">' + tiles.map(([v, l]) => `<div class="tile"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join('') + '</div><div class="grid">' +
     sec('Where the goat dies', 'Deaths on each floor, by what took the last heart.', stacked(C.deaths)) +
     sec('What hurts him', 'Hearts lost on each floor, by what took them.', stacked(C.hurt)) +
     sec('How the cult dies', 'Kills on each floor, by what finished the man.', stacked(C.kills, { name: how })) +
@@ -677,15 +956,154 @@ function draw() {
       blows.map(([k, o]) => `<tr><td>${esc(how(k))}</td><td class="n">${o.blows}</td><td class="n">${o.kills}</td><td>${esc(Object.entries(o.by).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([e, n]) => who(e) + ' ' + n).join(', '))}</td></tr>`).join('') + '</table></div>') +
     sec('Every enemy', 'Per kind: hearts it took from him, lives it ended, and how many of it he finished and with how many blows.', enemyTable(R)) +
     sec('Bought in heaven', 'The mirror ranks bought before each life, in the order he bought them.', mirrorTable(R)) +
+    sec('The mirror by player', 'Every player who bought at the mirror, newest first: what he holds on the glass now, and every rank in the order he bought it, the number being the life it came before. Hover the player for his whole id.', mirrorByPlayer(R)) +
     sec('Last lives', 'The most recent lives, newest first. Click one to see the whole report. The path is the last floor\'s rooms in the order he walked into them, each marked F fought, S unseen, R ran, E empty.',
       '<div class="scroll">' + R.slice().sort((a, b) => (b.done || b.at) - (a.done || a.at)).slice(0, 30).map((r) => {
         const E = r.end || {}, bd = buildOf(r);
-        return `<details><summary>${new Date(r.done || r.at).toLocaleString()} · ${esc(r.build)} · ${esc(E.how || '?')} on ${esc(E.f || '?')} room ${N(E.room) + 1}${E.rooms ? ' of ' + E.rooms : ''}${E.by ? ' · ' + esc(who(E.by)) : ''} · ${bd.cleared} floors cleared · ${N(E.kills)} kills · ${bd.ids.length ? esc(bd.ids.map(nameOf).join(', ')) : 'no souls'}${r.dryMax != null ? ' · longest with nothing new ' + mmss(r.dryMax) : ''}${esc(pathOf(r))}</summary><pre>${esc(JSON.stringify(r, null, 1))}</pre></details>`;
+        return `<details><summary>${new Date(r.done || r.at).toLocaleString()} · ${esc(r.build)} · ${esc(endWord(E.how))} on ${esc(E.f || '?')} room ${N(E.room) + 1}${E.rooms ? ' of ' + E.rooms : ''} · run ${mmss(r.floors.reduce((n, F) => n + F.time, 0))}${E.by ? ' · ' + esc(who(E.by)) : ''} · ${bd.cleared} floors cleared · ${N(E.kills)} kills · ${bd.ids.length ? esc(bd.ids.map(nameOf).join(', ')) : 'no souls'}${r.dryMax != null ? ' · longest with nothing new ' + mmss(r.dryMax) : ''}${esc(pathOf(r))}</summary><pre>${esc(JSON.stringify(r, null, 1))}</pre></details>`;
       }).join('') + '</div>') +
     '</div>';
 }
+// ---------- players (12 Oct 2026) ----------
+// "Like Google Forms": SUMMARY is every player together, PLAYERS one at a time with a picker, and every player
+// carries a tag off how he plays. The tag is read off all his clean lives (every build, every date), so it holds
+// still while the page's filters move; what is shown under it follows the filters.
+let VIEW = 'summary', PICK = '', TAGF = '', FNEW = false;   // FNEW: the funnel's "only players new in these dates"
+try { const v = JSON.parse(localStorage.getItem('goatout.stats.view') || 'null'); if (v) { VIEW = v.view || VIEW; PICK = v.pick || ''; TAGF = v.tagf || ''; } } catch (e) {}
+const viewSaved = () => { try { localStorage.setItem('goatout.stats.view', JSON.stringify({ view: VIEW, pick: PICK, tagf: TAGF })); } catch (e) {} };
+function setView(v) { VIEW = v; viewSaved(); $('vSum').classList.toggle('on', v === 'summary'); $('vOne').classList.toggle('on', v === 'player'); draw(); }
+$('vSum').onclick = () => setView('summary');
+$('vOne').onclick = () => setView('player');
+$('vSum').classList.toggle('on', VIEW === 'summary'); $('vOne').classList.toggle('on', VIEW === 'player');
+// A row or a name with `data-player` opens that player; the picker and its arrows step through them.
+$('main').addEventListener('click', (e) => {
+  const t = e.target.closest('[data-player]'); if (!t) return;
+  PICK = t.dataset.player; setView('player'); window.scrollTo(0, 0);
+});
+$('main').addEventListener('change', (e) => {
+  if (e.target.id === 'ppick') { PICK = e.target.value; viewSaved(); draw(); }
+  if (e.target.id === 'tagf') { TAGF = e.target.value; viewSaved(); draw(); }
+  if (e.target.id === 'fnew') { FNEW = e.target.checked; draw(); }
+});
+
+const floorNo = (f) => parseInt(String(f).slice(1), 10) || 0;
+function beastSums(R) {
+  const o = { here: 0, freed: 0, saved: 0, dead: 0, lost: 0 };
+  for (const r of R) for (const F of r.floors) for (const b of F.beasts) if (b.ev in o) o[b.ev]++;
+  return o;
+}
+// What a player's lives add up to: how far, how often he died for it, how fast a floor goes, how many ways he kills.
+function playerFacts(L) {
+  L = L.slice().sort((a, b) => a.at - b.at);
+  const p = { lives: L.length, wins: 0, deaths: 0, cleared: 0, best: 0, bestF: '-', play: 0, clearT: [], hows: new Set(), souls: 0, stealth: 0, rooms: 0,
+    heaven: [0, 0], first: L.length ? L[0].at : 0, last: 0, days: new Set(), builds: new Set(), beasts: beastSums(L), buys: 0 };
+  for (const r of L) {
+    const E = r.end || {};
+    if (E.how === 'win') p.wins++; if (E.how === 'death') p.deaths++;
+    p.last = Math.max(p.last, r.done || r.at); p.days.add(localDay(r.at)); p.builds.add(r.build);
+    if (r.heaven) { p.heaven[0] += r.heaven[0]; p.heaven[1] += r.heaven[1]; }
+    p.buys += (r.mirror || []).length;
+    for (const F of r.floors) {
+      p.play += F.time;
+      if (F.cleared) { p.cleared++; p.clearT.push(F.time); }
+      const n = floorNo(F.f) + (F.cleared ? 0.5 : 0);
+      if (n > p.best) { p.best = n; p.bestF = F.f; }
+      for (const k of Object.keys(F.blows)) { const [, hw] = k.split('|'); if (hw && hw !== 'dev' && F.blows[k][1]) p.hows.add(hw); }
+      p.souls += F.souls.filter((s) => s.took).length;
+      for (const x of F.rm) if (x.s !== 'empty') { p.rooms++; if (x.s === 'stealth') p.stealth++; }
+    }
+  }
+  return p;
+}
+// The tag (his ask: "beginner, middle, pro, off speed, deaths, the mechanics learned"). A score out of 100:
+//   progress 40: the best floor reached of eight, an escape the whole of it;
+//   survival 25: floors cleared against deaths (a restart on the same floor is a death too);
+//   pace 15: the median clear of a floor, `TAG_PACE.fast` s or less all of it, `TAG_PACE.slow` s or more none;
+//   mechanics 20: the ways he has killed (wall, body, door, fire, a blade, the drop...) of `MECH_ALL`, and unseen rooms.
+// Under 35 BEGINNER, under 65 MIDDLE, else PRO. One life with nothing cleared is NEW: too little to say.
+const TAG_PACE = { fast: 300, slow: 900 }, MECH_ALL = 8, TAG_AT = { middle: 35, pro: 65 };
+function skillFrom(p) {
+  const prog = p.wins ? 40 : Math.min(40, 40 * p.best / 8);
+  const surv = 25 * p.cleared / Math.max(1, p.cleared + p.deaths);
+  const pace = p.clearT.length ? 15 * clamp01((TAG_PACE.slow - med(p.clearT)) / (TAG_PACE.slow - TAG_PACE.fast)) : 0;
+  const mech = Math.min(20, 20 * p.hows.size / MECH_ALL + (p.rooms ? 6 * p.stealth / p.rooms : 0));
+  const score = Math.round(prog + surv + pace + mech);
+  const tag = p.lives < 2 && !p.cleared ? 'new' : score >= TAG_AT.pro ? 'pro' : score >= TAG_AT.middle ? 'middle' : 'beginner';
+  return { tag, score, parts: { prog, surv, pace, mech } };
+}
+const clamp01 = (v) => Math.max(0, Math.min(1, v));
+const TAG_NAME = { new: 'NEW', beginner: 'BEGINNER', middle: 'MIDDLE', pro: 'PRO' };
+const tagHtml = (t, big) => `<span class="tag ${t}${big ? ' big' : ''}">${TAG_NAME[t]}</span>`;
+let SKILL_CACHE = { src: null, n: 0, map: null };
+// Per player off every clean life he has, cached until the lives change.
+function skillOf(clean, player) {
+  if (SKILL_CACHE.src !== clean || SKILL_CACHE.n !== clean.length) {
+    const by = Object.create(null); for (const r of clean) (by[r.player] = by[r.player] || []).push(r);
+    const map = Object.create(null); for (const [k, L] of Object.entries(by)) { const p = playerFacts(L); map[k] = Object.assign(skillFrom(p), { facts: p }); }
+    SKILL_CACHE = { src: clean, n: clean.length, map };
+  }
+  return SKILL_CACHE.map[player] || { tag: 'new', score: 0, parts: { prog: 0, surv: 0, pace: 0, mech: 0 }, facts: playerFacts([]) };
+}
+const dayOf = (t) => t ? new Date(t).toLocaleDateString() : '-';
+// SUMMARY's table of players: one row each, the newest first; a click opens him.
+function playersSection(R, clean) {
+  const ids = [...new Set(R.map((r) => r.player))];
+  const rows = ids.map((id) => { const L = R.filter((r) => r.player === id); return { id, sk: skillOf(clean, id), p: playerFacts(L) }; }).sort((a, b) => b.p.last - a.p.last);
+  const n = { new: 0, beginner: 0, middle: 0, pro: 0 }; for (const x of rows) n[x.sk.tag]++;
+  const filter = `<select id="tagf"><option value="">CHARTS: EVERY PLAYER</option>${['pro', 'middle', 'beginner', 'new'].map((t) => `<option value="${t}"${TAGF === t ? ' selected' : ''}>CHARTS: ${TAG_NAME[t]} ONLY (${n[t]})</option>`).join('')}</select>`;
+  return `<div class="grid"><section class="wide"><h2>Players</h2><p class="sub">Every player in these dates, last seen first. The tag is read off all his lives:
+    how far he gets, how often he dies for it, how fast a floor goes, and how many ways he has learned to kill. Click a player to see his own history.
+    ${['pro', 'middle', 'beginner', 'new'].map((t) => tagHtml(t) + ' ' + n[t]).join(' &nbsp; ')} &nbsp; ${filter}</p>
+    <div class="scroll" style="max-height:420px"><table><tr><th>Player</th><th>Tag</th><th class="n">Score</th><th class="n">Lives</th><th class="n">Escapes</th><th>Best floor</th>
+    <th class="n">Floors cleared</th><th class="n">Deaths</th><th class="n">A floor takes</th><th class="n">Played</th><th class="n">Ways to kill</th><th class="n">In heaven</th><th class="n">Animals out</th><th>Last seen</th></tr>` +
+    rows.map(({ id, sk, p }) => `<tr class="pick" data-player="${esc(id)}" title="${esc(id)}"><td>${esc(id.slice(0, 10))}</td><td>${tagHtml(sk.tag)}</td><td class="n">${sk.score}</td><td class="n">${p.lives}</td>
+      <td class="n">${p.wins || ''}</td><td>${esc(p.bestF)}</td><td class="n">${p.cleared}</td><td class="n">${p.deaths}</td><td class="n">${p.clearT.length ? mmss(med(p.clearT)) : ''}</td>
+      <td class="n">${mmss(p.play)}</td><td class="n">${p.hows.size}</td><td class="n">${p.heaven[0] ? mmss(p.heaven[1] / p.heaven[0]) + ' × ' + p.heaven[0] : ''}</td>
+      <td class="n">${p.beasts.here ? p.beasts.freed + '/' + p.beasts.here : ''}</td><td>${dayOf(p.last)}</td></tr>`).join('') + '</table></div></section></div>';
+}
+// PLAYERS: the picker, his card, every life of his as a row, and every chart for him alone.
+function playerView(R, clean) {
+  const ids = [...new Set(R.map((r) => r.player))];
+  if (!ids.length) return '<div class="empty">No players in these dates.</div>';
+  const last = Object.create(null); for (const r of R) last[r.player] = Math.max(last[r.player] || 0, r.done || r.at);
+  ids.sort((a, b) => last[b] - last[a]);
+  if (!ids.includes(PICK)) PICK = ids[0];
+  const at = ids.indexOf(PICK), L = R.filter((r) => r.player === PICK).sort((a, b) => b.at - a.at);
+  const sk = skillOf(clean, PICK), p = playerFacts(L), P = sk.parts;
+  const opt = ids.map((id) => { const s = skillOf(clean, id); return `<option value="${esc(id)}"${id === PICK ? ' selected' : ''}>${TAG_NAME[s.tag]} · ${esc(id.slice(0, 10))} · ${R.filter((r) => r.player === id).length} lives · ${dayOf(last[id])}</option>`; }).join('');
+  const bar = `<div class="pbar"><button data-player="${esc(ids[(at - 1 + ids.length) % ids.length])}" title="The player before">&#8249;</button>
+    <select id="ppick">${opt}</select><button data-player="${esc(ids[(at + 1) % ids.length])}" title="The next player">&#8250;</button>
+    <span style="color:var(--dim)">player ${at + 1} of ${ids.length}, last seen first · <span title="${esc(PICK)}">${esc(PICK)}</span></span></div>`;
+  const why = `<p class="sub">Score <b>${sk.score}</b> of 100, off all his lives: progress ${Math.round(P.prog)}/40 (best ${esc(sk.facts.bestF)}${sk.facts.wins ? ', escaped ' + sk.facts.wins + '×' : ''}),
+    survival ${Math.round(P.surv)}/25 (${sk.facts.cleared} floors cleared for ${sk.facts.deaths} deaths), pace ${Math.round(P.pace)}/15
+    (${sk.facts.clearT.length ? mmss(med(sk.facts.clearT)) + ' a cleared floor' : 'no floor cleared'}), mechanics ${Math.round(P.mech)}/20
+    (${sk.facts.hows.size} ways to kill: ${esc([...sk.facts.hows].map(how).join(', ') || 'none')}${sk.facts.rooms ? '; ' + Math.round(100 * sk.facts.stealth / sk.facts.rooms) + '% of rooms unseen' : ''}).
+    ${TAG_AT.middle} makes MIDDLE, ${TAG_AT.pro} makes PRO.</p>`;
+  const tiles = [[p.lives, 'lives'], [p.wins, 'escapes'], [p.bestF, 'best floor'], [mmss(p.play), 'played in all (floor clocks)'],
+    [p.days.size, p.days.size === 1 ? 'day' : 'days he played'], [dayOf(p.first), 'first seen'],
+    [p.heaven[0] ? mmss(p.heaven[1] / p.heaven[0]) : '-', `in heaven a visit (${p.heaven[0]} visits, ${mmss(p.heaven[1])} in all)`],
+    [p.beasts.here ? p.beasts.freed + ' / ' + p.beasts.here : '-', `animals let out of those met, ${p.beasts.saved} brought to the stairs`]];
+  const lives = '<div class="scroll"><table><tr><th>When</th><th>Build</th><th>Floors</th><th class="n">Run</th><th>Ended</th><th class="n">Kills</th><th>Souls taken</th><th>Mirror before it</th><th class="n">Heaven before it</th><th>Animals</th></tr>' +
+    L.map((r) => {
+      const E = r.end || {}, fl = r.floors.map((F, i) => `<span class="chip ${F.cleared ? 'ok' : i === r.floors.length - 1 && E.how === 'death' ? 'died' : stillOn(r, F) ? 'on' : 'left'}" title="${esc(F.name || F.f)}: ${mmss(F.time)}, ${F.kills} kills">${esc(F.f)}</span>`).join('');
+      const souls = r.floors.flatMap((F) => F.souls.filter((s) => s.took).map((s) => nameOf(s.took)));
+      const an = r.floors.flatMap((F) => F.beasts.filter((b) => b.ev === 'freed' || b.ev === 'saved').map((b) => b.kind + (b.ev === 'saved' ? ' ✓' : '')));
+      return `<tr><td>${new Date(r.at).toLocaleString()}</td><td>${esc(r.build)}</td><td>${fl}</td><td class="n">${mmss(r.floors.reduce((n, F) => n + F.time, 0))}</td>
+        <td>${esc(endWord(E.how))}${E.how === 'on' && r.upto ? ' (last heard ' + esc(new Date(r.upto).toLocaleString()) + ')' : ''}${E.by ? ' · ' + esc(who(E.by)) : ''}${E.f ? ' · ' + esc(E.f) + ' room ' + (N(E.room) + 1) : ''}</td><td class="n">${N(E.kills)}</td>
+        <td>${esc(souls.join(', '))}</td><td>${esc((r.mirror || []).map((m) => { const [id, rk] = m.split(':'); return mirrorName(id, +rk || 1); }).join(', '))}</td>
+        <td class="n">${r.heaven ? mmss(r.heaven[1]) + (r.heaven[0] > 1 ? ' (' + r.heaven[0] + ')' : '') : ''}</td><td>${esc(an.join(', '))}</td></tr>`;
+    }).join('') + '</table></div>';
+  return bar + `<div class="grid"><section class="wide"><h2>${tagHtml(sk.tag, true)} &nbsp; ${esc(PICK.slice(0, 10))}</h2>${why}
+    <div class="tiles">${tiles.map(([v, l]) => `<div class="tile"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join('')}</div></section>
+    <section class="wide"><h2>His lives</h2><p class="sub">Newest first. A floor in green he cleared, in red he died on, in grey he left, in blue he was still on when the life was last sent (STILL PLAYING: no ending has come in yet). The mirror and heaven columns are what he did up there before that life began.</p>${lives}</section></div>
+    <h2 style="margin:18px 0 8px">Everything else, for him alone</h2>` + body(L);
+}
+
 fromLocal();
-if (!REPORTS.length) draw();
+if (!REPORTS.length) { builds(); draw(); }
+// What was in each build (CHANGELOG.md), the server's last copy, then the server itself if its key is kept here.
+loadChanges();
+fromCache().then(() => fromServer(false, true));
 </script>
 </body>
 </html>

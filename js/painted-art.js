@@ -124,11 +124,17 @@ class PaintedArt extends AltarArt {
   // on every other column and row, so each seam joins a column of texels to its own mirror image
   // and the stones carry on across it. `h` is no longer read; `tx`, `ty` are the tile.
   floorSwatch(def, h, boards, tx = 0, ty = 0) {
-    const R = this.rooms(def), id = boards ? R.boards : R.floor, base = this.swatch(id, def.floor);
+    const R = this.rooms(def);
+    if (R.image) boards = false;   // a floor that is a picture (THE FACTORY's plates) keeps it round a hole, never boards
+    const id = boards ? R.boards : R.floor, base = this.swatch(id, def.floor);
     // The floor as one seamless sheet in world space (`FLOOR_SHEET`), unless the ART tab asks for the
     // packed swatch stamped a tile at a time.
     const kind = ART_PASS.floors && (boards ? 'boards' : R.sheet);
-    if (kind) return FLOOR_SHEET.tile(base, kind, id + def.floor + kind, tx, ty);
+    // a canon whose floor is a picture (THE FACTORY's, `PIXEL_ROOMS.factory.image`) hands its 6 x 6 tiles over first, under
+    // a key of its own per look (`FACTORY_PIXELS.floorLook`: the level's `flook` or the ART tab's), so a switch is a new bake
+    let skey = id + def.floor + kind;
+    if (kind && R.image && !boards && typeof FACTORY_PIXELS !== 'undefined') { skey += '@' + FACTORY_PIXELS.floorLook(def).name; FACTORY_PIXELS.seedFloor(def, skey); }
+    if (kind) return FLOOR_SHEET.tile(base, kind, skey, tx, ty);
     const flip = !boards && R.mirror ? (tx & 1) | (ty & 1) << 1 : 0;
     if (!flip) return base;
     this.flips ||= new Map();
@@ -205,11 +211,12 @@ class PaintedArt extends AltarArt {
   // exposed side is only the edge of the cap: a dark outline where it drops to the floor, a lit lip
   // inside it on the north and west (the light is from the top left), a shaded one on the east.
   // This is only that overlay, `wallCap` goes down under it.
-  wallTile(def, mask) {
+  wallTile(def, mask, noFace) {
     this.wallTiles ||= new Map();
     // With the sheets on (`ART_PASS.floors`) the brick face is not in this overlay: `drawWall` lays it
     // from one strip in world space first, and the lips and shadows here go over it as before.
-    const strip = ART_PASS.floors, key = def.wall + '|' + mask + (strip ? '|s' : '');
+    // `noFace`: THE FACTORY's iron wall lays its own face first, whatever the switch.
+    const strip = ART_PASS.floors || !!noFace, key = def.wall + '|' + mask + (strip ? '|s' : '');
     if (this.wallTiles.has(key)) return this.wallTiles.get(key);
     const W = PIXEL_ROOMS.wall, T = 64, F = W.faceH, o = 2, tile = document.createElement('canvas');
     tile.width = tile.height = T;
@@ -249,6 +256,17 @@ class PaintedArt extends AltarArt {
   // `tx`, `ty` pick the cap's part of the sheet; left out, they are read off the position.
   drawWall(ctx, def, x, y, mask, tx = Math.round(x / TILE), ty = Math.round(y / TILE)) {
     const P = PIXEL_ROOMS.wall.sheet;
+    // THE FACTORY's wall is iron (13 Oct 2026 playtest: "the walls in the factory's own look"): the riveted band as its cap,
+    // the brick-and-pipe rows as its face (js/factory-pixels.js), the same lips and outline over them.
+    if (def.factory && typeof FACTORY_PIXELS !== 'undefined') {
+      const cap = FACTORY_PIXELS.wallCap(def), F = PIXEL_ROOMS.wall.faceH, face = (mask & 4) && FACTORY_PIXELS.wallFace(F, def);
+      if (cap) {
+        ctx.drawImage(cap, ((tx % P) + P) % P * 64, ((ty % P) + P) % P * 64, 64, 64, x, y, TILE, TILE);
+        if (face) ctx.drawImage(face, ((tx % 15) + 15) % 15 * 64, 0, 64, F, x, y + (64 - F) / 64 * TILE, TILE, F / 64 * TILE);
+        ctx.drawImage(this.wallTile(def, mask, true), x, y, TILE, TILE);
+        return;
+      }
+    }
     ctx.drawImage(this.wallCap(def), ((tx % P) + P) % P * 64, ((ty % P) + P) % P * 64, 64, 64, x, y, TILE, TILE);
     if (ART_PASS.floors && (mask & 4)) {
       const W = PIXEL_ROOMS.wall, F = W.faceH;
@@ -288,7 +306,8 @@ class PaintedArt extends AltarArt {
         if (n&&s&&w&&e) {
           ctx.drawImage(this.floorSwatch(def,h,false,x,y),px,py,TILE+PIXEL_ROOMS.bleed,TILE+PIXEL_ROOMS.bleed);
           renderer.shadow(px+16,py+27,13,5);
-          PIXEL_ENV.draw(ctx,'pillar',px+16,py+31,27);
+          // THE FACTORY stands a boiler or a cabinet where a pillar would be (13 Oct 2026 playtest: "not columns")
+          if (!(def.factory && typeof FACTORY_PIXELS !== 'undefined' && FACTORY_PIXELS.pillar(ctx,px+16,py+31,h))) PIXEL_ENV.draw(ctx,'pillar',px+16,py+31,27);
           continue;
         }
         // an open diagonal counts only where both its sides are stone: an inside corner of the outline
@@ -296,7 +315,7 @@ class PaintedArt extends AltarArt {
         if(!n&&!e&&!stone(x+1,y-1))m|=16; if(!s&&!e&&!stone(x+1,y+1))m|=32;
         if(!s&&!w&&!stone(x-1,y+1))m|=64; if(!n&&!w&&!stone(x-1,y-1))m|=128;
         this.drawWall(ctx,def,px,py,m,x,y);
-        if (s&&x%5===1&&h%3!==0&&!w&&!e) this.stamp(ctx,'banner',px+16,py+18,13,17,0.2);
+        if (s&&x%5===1&&h%3!==0&&!w&&!e&&!def.factory) this.stamp(ctx,'banner',px+16,py+18,13,17,0.2);
         continue;
       }
       if (t===T.PIT) continue;
@@ -621,7 +640,8 @@ class PaintedArt extends AltarArt {
   // 1.66: the butcher (the brute until 1.72) wears the old Butcher's sheet (skull, apron, cleaver) and that kind is
   // the ogre, drawn by js/ogre-pixels.js (`butcher.scale` a size up). The red-robed `brute` sheet is
   // unused for now.
-  characterKey(e) { if(e.kind==='butcher')return e.flayed?'flayed':'ogre'; if(e.kind==='ratogre')return 'ratogre'; return e.kind==='bearer'?(e.warden?'warden':e.champion?'butcher':e.shieldman?'spartan':e.thrower?'thrower':e.shaman?'shaman':'clubman'):e.kind==='seer'?'mage':e.kind==='dog'?'hound':['hunter','wraith'].includes(e.kind)?e.kind:null; }
+  // THE FACTORY's machines (js/factory.js, js/factory-pixels.js): `automaton`, `welder`, `sawbot`.
+  characterKey(e) { if(e.kind==='butcher')return e.flayed?'flayed':'ogre'; if(e.kind==='ratogre')return 'ratogre'; return e.kind==='bearer'?(e.warden?'warden':e.automaton?'automaton':e.welder?'welder':e.sawbot?'sawbot':e.arm?'arm':e.champion?'butcher':e.shieldman?'spartan':e.thrower?'thrower':e.shaman?'shaman':e.coward?'coward':'clubman'):e.kind==='seer'?'mage':e.kind==='dog'?'hound':['hunter','wraith'].includes(e.kind)?e.kind:null; }
 
   // The art is a top-down slab at the collision footprint, with no frame or square padding.
   doorSlab(ctx,p,wdt,hgt) {
@@ -728,6 +748,10 @@ class PaintedArt extends AltarArt {
       ctx.globalAlpha=a0;}
     if(e.state==='floored'||e.state==='stunned'){if(e.kind&&key!=='sheep')this.knockdown(ctx,e);else ctx.rotate(0.7);}
     if(e.liftedBy)ctx.rotate(Math.cos(e.liftedBy.facing)<0?1.45:-1.45);   // across the thrower's fist (js/thrower.js)
+    // THE COWARD in his corner (js/coward.js): hunched down from the feet and shaking, harder the nearer the goat (`e.fear`),
+    // in whole pixels so he trembles rather than swims.
+    if(e.coward&&e.state==='cower'){const C=TUNING.coward,f=e.fear||0.25,sh=Math.sin(renderer.t*47+(e.x||0))*C.tremble*f;
+      ctx.translate(Math.round(sh*1.6)/1.6,0);ctx.scale(1+(1-C.crouch)*0.4,C.crouch-0.04*f);}
     // ON THE RUN (`TUNING.enemyAnim.run`, 10 Oct 2026): a man steps on a phase the distance he covers drives (`e.runP`, a
     // cycle every `stride` px; render only, kept on him the way `lieState` is), his feet moved by `PIXEL_ART.gait`, and his
     // body bobs on each footfall, rocks side to side and leans into the run, harder after the goat (`e.aware`).
@@ -756,6 +780,8 @@ class PaintedArt extends AltarArt {
     else if(key==='warden'&&typeof WARDEN_PIXELS!=='undefined'&&WARDEN_PIXELS.draw)WARDEN_PIXELS.draw(ctx,angle,moving,renderer.t,e.x,e);
     // The shaman in his pelt and headdress, the rattle up through either cast (js/shaman-pixels.js).
     else if(key==='shaman'&&typeof SHAMAN_PIXELS!=='undefined'&&SHAMAN_PIXELS.draw)SHAMAN_PIXELS.draw(ctx,angle,moving,renderer.t,e.x,e);
+    // THE FACTORY's machines off their own atlas (js/factory-pixels.js): the sawbot, the welder, the automaton with his legs posed live.
+    else if((key==='sawbot'||key==='welder'||key==='automaton'||key==='arm')&&typeof FACTORY_PIXELS!=='undefined')FACTORY_PIXELS.draw(ctx,key,angle,moving,renderer.t,e.x,e);
     else{
       // The goat's cape (js/cape-pixels.js): behind his frame on the front view, over it on the rest, in
       // step with his stride. `capeId` is lent by `drawGoat` for the one draw.
@@ -764,7 +790,9 @@ class PaintedArt extends AltarArt {
       const cw=cs!==null?{t:renderer.t,k:moving?Math.min(1,Math.hypot(e.vx||0,e.vy||0)/TUNING.goat.speed):0}:null;
       if(cs!==null)CAPE_PIXELS.draw(ctx,this.capeId,'behind',angle,cs,cw);
       // BIG and LONG are drawn whole by `PIXEL_ART.horns`: the frame under them goes without its packed horns (`bare`).
+      PIXEL_ART.penitent=!!e.coward||key==='coward';   // THE COWARD's own robe and open face (`COWARD_STUDY`), for this one draw
       PIXEL_ART.draw(ctx,pixel,angle,moving,renderer.t,e.x,key==='sheep'&&this.hornMods&&this.hornMods.horn&&this.hornMods.horn.look,runP);
+      PIXEL_ART.penitent=false;
       if(cs!==null)CAPE_PIXELS.draw(ctx,this.capeId,'over',angle,cs,cw);
     }
     if(e.shield)this.board(renderer,e,true);

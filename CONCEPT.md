@@ -103,6 +103,12 @@ fire, so a build reads as a shape rather than as a list of names.
 
 ## Enemies
 
+**The cult grows with him, in new ways, not in numbers** (15 Oct 2026, the user's principle). As the goat grows, the men in
+front of him must grow too, and they must grow by asking him something new. When all eight floors were the same few kinds,
+the late floors pressed by count, and that was not interesting. A deeper floor, or a wing of its own like THE FACTORY (two or
+three floors where no clubman stands, the sawbot in his place), is earned by a kind or a machine that needs a strategy the
+floors before never asked for. Pillar 7 says the same of the rooms; this is the run's version of it.
+
 | | Behaviour |
 |---|---|
 | **Bearer** | Melee. About half a second of windup with a visible swing arc. Dies to any wall, throw, fire or friendly fire. |

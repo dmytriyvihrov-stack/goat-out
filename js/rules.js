@@ -14,7 +14,7 @@ const lessonOf = (L) => { const c = (L.controls || []).find((k) => k.part === 2)
 const quiet = (L, r) => r.index === 0 || SET_PIECE.has(r.role) || r.isAmbush || r.isRest || r.isCalm || r.index === lessonOf(L);
 const ORDINARY = new Set(['canon', 'mix', 'trap']);
 
-const kindOf = (s) => (s.champion ? 'champion' : s.shield ? 'shield' : s.thrower ? 'thrower' : s.shaman ? 'shaman' : s.kind);   // the tables' pseudo-kinds back (gen.js `threatKind`)
+const kindOf = (s) => (s.champion ? 'champion' : s.shield ? 'shield' : s.thrower ? 'thrower' : s.shaman ? 'shaman' : s.sawbot ? 'sawbot' : s.welder ? 'welder' : s.automaton ? 'automaton' : s.arm ? 'arm' : s.kind);   // the tables' pseudo-kinds back (gen.js `threatKind`)
 const roomAt = (L, x, y) => L.rooms.find((r) => x >= r.x * TILE && x < (r.x + r.w) * TILE && y >= r.y * TILE && y < (r.y + r.h) * TILE);
 // Every tile he can walk to from where he starts (stone and holes stop him), as flags by tile index.
 // A chasm's tiles (`L.gaps`) are a roll across, not a hole: he gets over them.
@@ -738,6 +738,14 @@ const GEN_RULES = [
       }
       return true;
     } },
+  // `brazierOffWall` (12 Oct 2026 playtest): a bowl of coals by a wall is flush on it or leaves a goat's way behind it.
+  { id: 'braziers', text: 'A brazier by a wall stands flush on the stone or leaves a goat width behind it, never a strip of floor too narrow to pass.',
+    check: (L) => {
+      const fires = L.props.filter((p) => p.kind === 'brazier' && !p.roast);
+      if (!fires.length) return null;
+      for (const f of fires) { const gap = brazierSqueeze(L.tiles, L.W, f); if (gap) return `a ${gap.toFixed(0)} px strip behind a brazier at ${Math.floor(f.x / TILE)},${Math.floor(f.y / TILE)}`; }
+      return true;
+    } },
   // `shiftOffTables`, `onTable`: a table's top is two tiles square whatever block it was drawn as, and
   // nothing loose stands under it (30 Sep 2026: a template's crate drawn half into a one-row table).
   { id: 'ontable', text: 'Nothing loose, a crate, a bomb, a barrel, a stand of arms, a coop, a bowl of milk, a boulder, stands on a table\'s top.',
@@ -893,6 +901,34 @@ const GEN_RULES = [
       if (L.spawns.some((sp) => hyp(sp.x - a.x, sp.y - a.y) < S.spawnGap * TILE)) return 'a man laid on the altar';
       if (r.enter && hyp(r.enter.x - a.x, r.enter.y - a.y) < S.enterGap * TILE) return 'the altar in the way in';
       if (!walkedFrom(L)[ty * L.W + tx]) return 'nobody can walk to the altar';
+      return true;
+    } },
+  { id: 'coward', text: 'THE COWARD (js/coward.js) hides only on the floors in TUNING.coward.levels, in the corner of an ordinary room with men in it, not the last; the corner a spared one waits in has a tuft tile toward the room. Both on plain floor with stone on two sides at a right angle, off the doorways, clear of furniture and the men, in a room with no drop, and he can walk to them.',
+    check: (L) => {
+      const C = TUNING.coward, P = L.cowards; if (!P) return null;
+      const li = levelIndexOf(L.def), walk = walkedFrom(L), K = C.corner, n = L.rooms.length;
+      const corner = (s, what) => {
+        const r = L.rooms[s.room], tx = Math.floor(s.x / TILE), ty = Math.floor(s.y / TILE), wall = (x, y) => L.tiles[y * L.W + x] === T.WALL;
+        if (!r || roomAt(L, s.x, s.y) !== r) return `${what} outside his room`;
+        if (r.index >= n - 1) return `${what} in the last room`;
+        if (L.tiles[ty * L.W + tx] !== T.FLOOR) return `${what} not on plain floor`;
+        if (!((wall(tx - 1, ty) || wall(tx + 1, ty)) && (wall(tx, ty - 1) || wall(tx, ty + 1)))) return `${what} not in a corner (${tx},${ty})`;
+        for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) if (L.tiles[y * L.W + x] === T.PIT) return `${what} in a room with a drop (room ${r.index})`;
+        if ((r.enter && hyp(r.enter.x - s.x, r.enter.y - s.y) < K.door * TILE) || (r.exitMouth && hyp(r.exitMouth.x - s.x, r.exitMouth.y - s.y) < K.door * TILE)) return `${what} in a doorway (room ${r.index})`;
+        if (L.props.some((p) => hyp(p.x - s.x, p.y - s.y) < K.props * TILE * 0.95)) return `furniture on ${what}`;
+        if (!walk[ty * L.W + tx]) return `nobody can walk to ${what}`;
+        return null;
+      };
+      if (P.beg) {
+        if (!C.levels.includes(li)) return 'a coward on a floor that has none';
+        const bad = corner(P.beg, 'the coward'); if (bad) return bad;
+        if (!L.spawns.some((s) => s.roomIndex === P.beg.room)) return `the coward alone in room ${P.beg.room}: he hides from a fight`;
+      }
+      if (P.gift) {
+        const bad = corner(P.gift, 'the spared one'); if (bad) return bad;
+        const gx = Math.floor(P.gift.gx / TILE), gy = Math.floor(P.gift.gy / TILE);
+        if (L.tiles[gy * L.W + gx] !== T.FLOOR || !walk[gy * L.W + gx]) return 'the spared one\'s tuft not on floor he can reach';
+      }
       return true;
     } },
   { id: 'posters', text: 'A scrap of cult paper lies on the floor of an ordinary room, under a table or on plain floor clear of the rest, only on a floor with `scraps` (THE DARK); TUNING.prop.poster.perLevel a floor.',

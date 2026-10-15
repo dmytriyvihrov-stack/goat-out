@@ -71,6 +71,8 @@
       ['barrel slowing', () => [1, 0.8, 0.6, 0.4, 0.25].forEach((k, i) => setTimeout(() => audio.sfxStave(k), i * 180))],
       ['cage bar', () => audio.sfxCageHit()], ['cage breaks', () => audio.sfxCage()], ['bell', () => audio.sfxBell()], ['toll', () => audio.sfxToll()], ['card', () => audio.sfxCard()],
       ['kill chain', () => [0, 1, 2, 3, 4].forEach((n) => setTimeout(() => audio.sfxKill(n), n * 260))], ['room goes dark', () => audio.sfxVeil()]]],
+    ['Machines', [['press: the warning, then the slam', () => { audio.sfxHydraulic(0.95); setTimeout(() => { audio.sfxCageHit(); audio.sfxThud(); }, 950); }],
+      ['press: drawn back', () => audio.sfxVent()], ['burner: the gas', () => audio.sfxGas()], ['a room\'s machines stop', () => audio.sfxWinddown()]]],
     ['Fire', [['catches', () => audio.sfxFire()], ['fuse', () => audio.sfxFuse(2)], ['bomb', () => audio.sfxBoom()]]],
     ['Animals', [['hen', () => audio.sfxCluck(false)], ['hen, alarmed', () => audio.sfxCluck(true)], ['goose', () => audio.sfxAnimal('goose')], ['crow', () => audio.sfxAnimal('crow')], ['tortoise', () => audio.sfxAnimal('tortoise')], ['husky, woo', () => audio.sfxHusky('woo')], ['husky, waf', () => audio.sfxHusky('waf')], ['husky, hurt', () => audio.sfxHusky('hurt')]]],
     ['Music (raise the slider)', [['theme: level 1', () => theme(true, false)], ['theme: levels 2-4', () => theme(false, false)], ['theme: level 5+', () => theme(false, true)],

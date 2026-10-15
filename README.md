@@ -118,7 +118,7 @@ rifle, a shieldman, a thrower or a wraith holds that one enemy and nothing else 
 arena without company. After that they arrive mixed, and the mix gets worse as the floor goes on and
 worse again on the floor after.
 
-**Ten enemy types.** Club-swinging Bearers; Butchers in bone aprons and bull-skull masks, too heavy
+**Thirteen enemy types** (three of them THE FACTORY's machines, on a test floor only for now). Club-swinging Bearers; Butchers in bone aprons and bull-skull masks, too heavy
 to carry, who hook you from across a room and drag you to the cleaver; Shieldmen behind a board of
 door planks that takes anything from in front, a headbutt, a crate, a blade, a round, and kills a man
 thrown into it like a wall, but who turn slowly and have a back; Throwers in goat-skull masks, one arm swollen

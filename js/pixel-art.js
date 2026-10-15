@@ -9,6 +9,7 @@
 const PIXEL_EXTENT = {
   goat: 34, clubman: 36, brute: 38, mage: 38, hound: 40, hunter: 38, butcher: 48, wraith: 38,
   chicken: 22, ratogre: 70, ogre: 66, spartan: 36, thrower: 48, shaman: 44, warden: 52, flayed: 80, mouse: 26, goose: 28, raven: 22, turtle: 28, 'sheep-pet': 32,
+  sawbot: 34, welder: 57, automaton: 210, arm: 48,   // THE FACTORY's machines (js/factory-pixels.js)
 };
 // The painted slot names this pass fills. `sheep` is the goat's old slot name, not a sheep.
 const PIXEL_UNIT = {
@@ -17,8 +18,10 @@ const PIXEL_UNIT = {
   spartan: 'spartan',   // the shieldman, off js/spartan-pixels.js
   thrower: 'thrower',   // the thrower, off js/thrower-pixels.js
   shaman: 'shaman',     // the shaman, off js/shaman-pixels.js
+  coward: 'clubman',    // THE COWARD: the clubman's frames in a study of his own (`COWARD_STUDY`, js/coward.js)
   warden: 'warden',     // THE WARDEN, off js/warden-pixels.js (front view only, js/endboss.js's supper)
   flayed: 'flayed',     // THE FLAYED, his second phase, off js/flayed-pixels.js (the ogre's body re-skinned)
+  sawbot: 'sawbot', welder: 'welder', automaton: 'automaton', arm: 'arm',   // THE FACTORY's machines, off js/factory-pixels.js
 };
 
 // The throat of the pixel goat in each of his eight idle facings, world px from the foot (the same
@@ -88,11 +91,22 @@ const ART_PASS = {
   smallProps: false, // native-resolution bomb, husky and fish study; opt in from ART / #smallart
   // the shaman's robe, one of `SHAMAN_PIXELS.ROBES` (6 Oct 2026: DUSK, SOOT, OCHRE); his pick, SOOT
   shaman: 1,
+  // THE FACTORY's floor and wall, an index each into `FACTORY_PIXELS.FLOORS` / `WALLS` (14 Oct 2026, six of each to choose
+  // from; the test floor's rooms wear one combination each, see js/factory.js). His pick is not made yet: PLATES and IRON.
+  ffloor: 0, fwall: 0,
   shadows: true, tells: true, hay: true, cave: true,
   // THE LIT PASS (12 Oct 2026, after the bomb's: "go over the other objects and textures too"): what is round or metal
   // shaded as a drum or a dome, with a glint and the floor's light up its shadowed edge, beside the old drawing
   // (`name@lit` in js/prop-pixels.js, `ENV_STUDY` here, the floors' stones in `FLOOR_SHEET`). The ART tab's LIGHT.
   lit: true,
+  // ONE STYLE (12 Oct 2026, "another round on the consistency of the objects' and the enemies' styles"). `ink`: every
+  // hand-drawn sprite (the ogre, the shieldman, the thrower, the Warden, THE FLAYED, the horse, the pig, every prop in
+  // js/prop-pixels.js) outlined the way the atlas and the shaman are, a dark step of the colour beside the edge, never
+  // one near-black ring round everything (`Grid.ink`; the atlas's edge sits at relative luminance 0.02-0.09 and tinted,
+  // the hand-drawn ring was 0.007 and the same on a red hood as on a bone). `grain`: THE WARDEN at the cast's texel
+  // (0.95 world px, the goat's and the clubman's) instead of his own 0.72, the finest on the floor beside THE FLAYED's
+  // 1.4 (`WARDEN_PIXELS.grainOf`). The ART tab's OUTLINES and WARDEN GRAIN.
+  ink: true, grain: true,
   // A level's `artPass` colours in place of its own, and back: the tuned ones are kept on the level
   // the first time it is switched, so switching off is exact.
   set(on) {
@@ -344,8 +358,79 @@ const STUDY = (() => {
     }
     return out;
   }
-  return { recolour, slim, marks, belt, rgb };
+  // THE COWARD's face (13 Oct 2026, the user's: a clubman "with an open face"). The clubman's white mask, found on the
+  // packed colours (the biggest cream piece in the top half of the frame), is painted as a man's skin cut to `F.skin`; its
+  // eye holes become wide whites with a pupil a cell across, a brow over each raised at its inner end (worry), and a mouth
+  // open under them. Everything on the art's own grid (`CELL`); the back views have no mask and are left alone.
+  // Returns [pixel, rgb] pairs, laid after the robe's recolour and before `slim`, as the belt is.
+  function face(A, W, frames, x0, y0, F) {
+    const out = [], skin = F.skin.map(rgb), white = rgb(F.white), pupil = rgb(F.pupil), brow = rgb(F.brow), mouth = rgb(F.mouth), lip = rgb(F.lip);
+    for (const f of frames) {
+      const fx = f[0] - x0, fy = f[1] - y0, w = f[2], h = f[3], at = (i, j) => ((fy + j) * W + fx + i) * 4;
+      const op = (i, j) => i >= 0 && j >= 0 && i < w && j < h && A[at(i, j) + 3] > 0;
+      const hv = (i, j) => { const p = at(i, j); return hsv(A[p], A[p + 1], A[p + 2]); };
+      let top = h, bot = 0;
+      for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (op(i, j)) { top = Math.min(top, j); bot = Math.max(bot, j); }
+      const half = top + (bot - top) * 0.62, cream = new Uint8Array(w * h);
+      for (let j = top; j <= half; j++) for (let i = 0; i < w; i++) if (op(i, j)) { const [, s, v] = hv(i, j); if (s < 0.42 && v > 0.6) cream[j * w + i] = 1; }
+      // the biggest 4-connected piece of cream is the mask
+      const seen = new Uint8Array(w * h); let mask = null;
+      for (let k = 0; k < w * h; k++) {
+        if (!cream[k] || seen[k]) continue;
+        const piece = [k]; seen[k] = 1;
+        for (let q = 0; q < piece.length; q++) { const i = piece[q] % w, j = (piece[q] / w) | 0;
+          for (const [u, v] of [[i - 1, j], [i + 1, j], [i, j - 1], [i, j + 1]]) { if (u < 0 || v < 0 || u >= w || v >= h) continue; const n = v * w + u; if (cream[n] && !seen[n]) { seen[n] = 1; piece.push(n); } } }
+        if (!mask || piece.length > mask.length) mask = piece;
+      }
+      if (!mask || mask.length < 24) continue;
+      const isM = new Uint8Array(w * h); let i0 = w, i1 = 0, j0 = h, j1 = 0;
+      for (const k of mask) { isM[k] = 1; const i = k % w, j = (k / w) | 0; i0 = Math.min(i0, i); i1 = Math.max(i1, i); j0 = Math.min(j0, j); j1 = Math.max(j1, j); }
+      // the eye holes: dark pixels inside the mask's box with mask on both sides of them in their row
+      const hole = new Uint8Array(w * h);
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+        if (isM[j * w + i] || !op(i, j) || hv(i, j)[2] > 0.35) continue;
+        let l = false, r = false; for (let u = i0; u < i; u++) if (isM[j * w + u]) l = true; for (let u = i + 1; u <= i1; u++) if (isM[j * w + u]) r = true;
+        if (l && r) hole[j * w + i] = 1;
+      }
+      // skin: the mask's own light cut to the ramp
+      const lit = mask.map((k) => { const p = at(k % w, (k / w) | 0); return [p, 0.299 * A[p] + 0.587 * A[p + 1] + 0.114 * A[p + 2]]; }).sort((a, b) => a[1] - b[1]);
+      lit.forEach(([p], n) => { const t = n / lit.length, b = t < 0.12 ? 0 : t < 0.4 ? 1 : t < 0.85 ? 2 : 3; out.push([p, skin[b]]); });
+      const put = (i, j, c) => { if (i >= i0 && i <= i1 && j >= j0 && j <= j1 && (isM[j * w + i] || hole[j * w + i])) out.push([at(i, j), c]); };
+      // each eye: whites, a pupil a cell across low in it (looking up at what is coming), a brow raised toward the nose
+      const eyes = [], eseen = new Uint8Array(w * h), mcx = (i0 + i1) / 2;
+      for (let k = 0; k < w * h; k++) {
+        if (!hole[k] || eseen[k]) continue;
+        const piece = [k]; eseen[k] = 1;
+        for (let q = 0; q < piece.length; q++) { const i = piece[q] % w, j = (piece[q] / w) | 0;
+          for (const [u, v] of [[i - 1, j], [i + 1, j], [i, j - 1], [i, j + 1]]) { if (u < 0 || v < 0 || u >= w || v >= h) continue; const n = v * w + u; if (hole[n] && !eseen[n]) { eseen[n] = 1; piece.push(n); } } }
+        if (piece.length < 4) continue;
+        let a = w, b = 0, c = h, d = 0; for (const n of piece) { const i = n % w, j = (n / w) | 0; a = Math.min(a, i); b = Math.max(b, i); c = Math.min(c, j); d = Math.max(d, j); }
+        eyes.push({ a, b, c, d, piece });
+      }
+      for (const E of eyes) {
+        for (const n of E.piece) out.push([at(n % w, (n / w) | 0), white]);
+        const pc = Math.round((E.a + E.b + 1) / 2 - CELL / 2), pr = Math.max(E.c, E.d + 1 - CELL);
+        for (let v = 0; v < CELL; v++) for (let u = 0; u < CELL; u++) if (hole[(pr + v) * w + pc + u]) out.push([at(pc + u, pr + v), pupil]);
+        const inner = (E.a + E.b) / 2 < mcx ? 1 : -1, bw = E.b - E.a + 1 + 2;
+        for (let u = 0; u < bw; u++) {
+          const i = inner > 0 ? E.a - 1 + u : E.b + 1 - u, rise = Math.round((u / Math.max(1, bw - 1)) * CELL * 0.7), y = E.c - 2 - rise;
+          put(i, y, brow); put(i, y + 1, brow);
+        }
+      }
+      if (eyes.length) {
+        const cx = eyes.reduce((s, E) => s + (E.a + E.b) / 2, 0) / eyes.length, eb = Math.max(...eyes.map((E) => E.d));
+        const my = Math.round(eb + Math.max(CELL, (j1 - eb) * 0.45)), mx = Math.round(cx - CELL);
+        for (let u = 0; u < CELL * 2; u++) { put(mx + u, my, lip); for (let v = 1; v <= CELL; v++) if (!(v === CELL && (u === 0 || u === CELL * 2 - 1))) put(mx + u, my + v, mouth); }
+      }
+    }
+    return out;
+  }
+  return { recolour, slim, marks, belt, face, rgb };
 })();
+// THE COWARD (13 Oct 2026, js/coward.js): the clubman's own frames, slim, his robe in a washed-out red and his mask taken
+// off (`STUDY.face`). Drawn while `PIXEL_ART.penitent` is set, which `PaintedArt.character` sets round him alone.
+const COWARD_STUDY = { name: 'THE COWARD', slim: 0.14, parts: { robe: ['#1f0b12', '#3b131c', '#5e1d29', '#812c35', '#a24245'] }, belt: ['#3a2a1a', '#5e4630', '#86684a', '#a88a62'],
+  face: { skin: ['#5c3424', '#8c5a3e', '#b9825c', '#d8a77c'], white: '#efe8dc', pupil: '#1c1214', brow: '#2c1a14', mouth: '#2a0e10', lip: '#7a3a34' } };
 
 const PIXEL_ART = {
   image: null,
@@ -392,13 +477,14 @@ const PIXEL_ART = {
   // off the hardened atlas into a canvas holding only that unit's box; `ox`, `oy` are where that box
   // sat on the atlas, so the frames keep their packed numbers.
   studyOf(id) {
+    if (id === 'clubman' && this.penitent) return typeof HTMLCanvasElement !== 'undefined' && this.image instanceof HTMLCanvasElement ? this.study(id, 'coward') : null;
     const n = id === 'hunter' ? ART_PASS.hunter : id === 'clubman' ? ART_PASS.clubman : id === 'mage' && ART_PASS.on ? 1 : 0;
     return n && typeof HTMLCanvasElement !== 'undefined' && this.image instanceof HTMLCanvasElement ? this.study(id, n) : null;
   },
   study(id, n) {
     this.studies ||= new Map();
     const key = id + n; let s = this.studies.get(key); if (s) return s;
-    const u = PIXEL_ASSETS.units[id], R = PIXEL_STUDY[id][n], frames = [...u.idle, ...(u.walk || []).flat()];
+    const u = PIXEL_ASSETS.units[id], R = n === 'coward' ? COWARD_STUDY : PIXEL_STUDY[id][n], frames = [...u.idle, ...(u.walk || []).flat()];
     let x0 = 1e9, y0 = 1e9, x1 = 0, y1 = 0;
     for (const f of frames) { x0 = Math.min(x0, f[0]); y0 = Math.min(y0, f[1]); x1 = Math.max(x1, f[0] + f[2]); y1 = Math.max(y1, f[1] + f[3]); }
     const c = document.createElement('canvas'); c.width = x1 - x0; c.height = y1 - y0;
@@ -406,9 +492,11 @@ const PIXEL_ART = {
     const d = x.getImageData(0, 0, c.width, c.height);
     const marks = R.marks ? STUDY.marks(d.data, c.width, frames, x0, y0, R.marks) : [];
     const belt = R.belt ? STUDY.belt(d.data, c.width, frames, x0, y0, STUDY_PARTS.clubman, STUDY_TAN, R.belt) : [];
+    const face = R.face ? STUDY.face(d.data, c.width, frames, x0, y0, R.face) : [];
     if (R.parts) STUDY.recolour(d.data, c.width, frames, x0, y0, STUDY_PARTS[id], R.parts);
     for (const [p, col] of marks) d.data.set(STUDY.rgb(col), p);
     for (const [p, col] of belt) d.data.set(col, p);
+    for (const [p, col] of face) d.data.set(col, p);
     if (R.slim) for (const f of frames) STUDY.slim(d.data, c.width, f, x0, y0, R.slim);
     x.putImageData(d, 0, 0);
     s = { img: c, ox: x0, oy: y0 }; this.studies.set(key, s); return s;
@@ -849,11 +937,14 @@ const PIXEL_ART = {
   // study's colours; null when the unit is drawn off the packed atlas.
   studyFrame(id, f) {
     const s = this.studyOf(id); if (!s) return null;
+    // keyed by the study first: THE COWARD shares the clubman's frames in a study of his own, and one key per frame
+    // made each of the two bake a fresh canvas every time the other was drawn (and the gait bake off every one of them)
     this.studyFrames ||= new Map();
-    let e = this.studyFrames.get(f); if (e && e.s === s) return e.c;
-    const c = document.createElement('canvas'); c.width = f[2]; c.height = f[3];
+    let byF = this.studyFrames.get(s); if (!byF) { byF = new Map(); this.studyFrames.set(s, byF); }
+    let c = byF.get(f); if (c) return c;
+    c = document.createElement('canvas'); c.width = f[2]; c.height = f[3];
     c.getContext('2d').drawImage(s.img, f[0] - s.ox, f[1] - s.oy, f[2], f[3], 0, 0, f[2], f[3]);
-    this.studyFrames.set(f, { s, c }); return c;
+    byF.set(f, c); return c;
   },
   gait(id, d, f, base, step) {
     if (typeof document === 'undefined' || !(this.image instanceof HTMLCanvasElement)) return null;
@@ -1052,18 +1143,21 @@ const PIXEL_ART = {
   // up and in again (a lyre), ringed dark `rings` times along its first `ringTo`. `moose`: a short beam out to the side
   // and a broad flat palm off its end, opening from straight out to straight up, `points` tines along its rim.
   // A cell on the art's own grid (`cell` atlas px), one step of `ramp` (or a soul's look) a cell, outlined like the sprite.
-  hornShapeOf(hn, spread, back, shape, look) {
-    const key = shape + ':' + (look || '');
+  // `grow` (13 Oct 2026): the LONG HORNS soul worn on top of the shape (`hornLooks[shape].grow`): longer, and the soul's
+  // own tines in bone off it, so the soul shows on the BIG and the LONG as it does on the SHORT.
+  hornShapeOf(hn, spread, back, shape, look, grow) {
+    const key = shape + ':' + (look || '') + (grow ? ':grow' : '');
     hn.skins = hn.skins || {};
     if (hn.skins[key]) return hn.skins[key];
-    const A = TUNING.goat.hornLooks[shape], C = A.cell, [bx, by] = hn.base, [tx, ty] = hn.tip;
+    const A = TUNING.goat.hornLooks[shape], C = A.cell, [bx, by] = hn.base, [tx, ty] = hn.tip, G = grow ? A.grow : null;
     const L = Math.max(6, hyp(tx - bx, ty - by)), ux = (tx - bx) / L, uy = (ty - by) / L;
     const sd = back || spread || 1;
     let nx = -uy, ny = ux; if (nx * sd < 0) { nx = -nx; ny = -ny; }
-    const B = L * A.len, pad = Math.ceil(B * 1.9 + A.w0) + C * 2;
+    const B = L * A.len * (G ? G.len : 1), pad = Math.ceil(B * 1.9 + A.w0) + C * 2;
     const W = Math.ceil((hn.w + pad * 2) / C), Hh = Math.ceil((hn.h + pad * 2) / C);
-    const val = new Float32Array(W * Hh).fill(-1);
-    const put = (i, j, v, over) => { if (i < 0 || j < 0 || i >= W || j >= Hh) return; const k = j * W + i; if (over || val[k] < v) val[k] = v; };
+    const val = new Float32Array(W * Hh).fill(-1), bone = new Uint8Array(W * Hh);
+    let boneOn = false;   // what `stamp` lays now is the soul's bone (`grow`), not the horn
+    const put = (i, j, v, over) => { if (i < 0 || j < 0 || i >= W || j >= Hh) return; const k = j * W + i; if (over || val[k] < v) { val[k] = v; bone[k] = boneOn ? 1 : 0; } };
     const stamp = (x, y, r, v, over) => {
       const cx = (x + pad) / C, cy = (y + pad) / C, rc = Math.max(0.5, r / C);
       for (let j = Math.floor(cy - rc); j <= Math.ceil(cy + rc); j++) for (let i = Math.floor(cx - rc); i <= Math.ceil(cx + rc); i++)
@@ -1083,6 +1177,16 @@ const PIXEL_ART = {
         const ring = q < A.ringTo && Math.floor(q * A.rings * 2) % 2 === 1;
         stamp(x, y, (A.w0 + (A.w1 - A.w0) * q) / 2, ring ? 0.05 + q * 0.3 : 0.25 + q * 0.7, true);
       }
+      // the soul's tines: bone off the lyre's outer side, each leaning toward its tip
+      if (G) {
+        boneOn = true;
+        for (const q of G.tineAt.slice(0, G.tines)) {
+          const x = (1 - q) ** 2 * bx + 2 * (1 - q) * q * p1x + q * q * p2x, y = (1 - q) ** 2 * by + 2 * (1 - q) * q * p1y + q * q * p2y;
+          let dx = nx + ux * 0.7, dy = ny + uy * 0.7; const dl = hyp(dx, dy) || 1; dx /= dl; dy /= dl;
+          line(x, y, dx, dy, B * G.tineLen, A.w1 + 1, A.w1 * 0.5, 0.35, 0.95);
+        }
+        boneOn = false;
+      }
     } else {
       // the beam: out to the side (`out`) and up (`rise`)
       // on a side or a diagonal view "out" is back over his body: there the plate stands up (`sideOut`)
@@ -1099,13 +1203,16 @@ const PIXEL_ART = {
         const f = d < 0.8 ? 0.5 : angleDiff(Math.atan2(dy, dx), a0) / span;
         if (f >= -0.08 && f <= 1.08) put(i, j, 0.45 + 0.45 * d / Pc);
       }
-      // the points along its rim, pointing out of it
-      for (let k = 0; k < A.points; k++) {
-        const a = a0 + span * (k + 0.5) / A.points, dx = Math.cos(a), dy = Math.sin(a);
-        line(ex + dx * P * 0.85, ey + dy * P * 0.85, dx, dy, P * A.pointLen, A.pointW, A.pointW * 0.5, 0.8, 1);
+      // the points along its rim, pointing out of it; with the soul on it more of them, longer, and tipped in bone
+      // (a whole point in bone read as a white glove on the front view, 13 Oct 2026)
+      const pts = A.points + (G ? G.points : 0), pl = P * A.pointLen * (G ? G.pointLen : 1);
+      for (let k = 0; k < pts; k++) {
+        const a = a0 + span * (k + 0.5) / pts, dx = Math.cos(a), dy = Math.sin(a), sx = ex + dx * P * 0.85, sy = ey + dy * P * 0.85;
+        line(sx, sy, dx, dy, pl, A.pointW, A.pointW * 0.5, 0.8, 1);
+        if (G) { boneOn = true; line(sx + dx * pl * (1 - G.tip), sy + dy * pl * (1 - G.tip), dx, dy, pl * G.tip, A.pointW * 0.6, A.pointW * 0.4, 0.55, 1); boneOn = false; }
       }
     }
-    const ramp = look ? TUNING.goat.hornLooks[look].ramp : A.ramp;
+    const ramp = look ? TUNING.goat.hornLooks[look].ramp : A.ramp, boneRamp = G && !look ? G.bone : ramp;
     const c = document.createElement('canvas'); c.width = W * C; c.height = Hh * C;
     const x = c.getContext('2d');
     const on = (a, b) => a >= 0 && b >= 0 && a < W && b < Hh && val[b * W + a] >= 0;
@@ -1116,8 +1223,8 @@ const PIXEL_ART = {
         continue;
       }
       // one step of the ramp a cell, never a blend (pixel art): lit on its upper edge, darker on its lower
-      const lit = on(i, j - 1) ? 0 : 0.18, dark = on(i, j + 1) ? 0 : -0.12;
-      x.fillStyle = ramp[Math.floor(clamp(v + lit + dark, 0, 0.999) * ramp.length)];
+      const lit = on(i, j - 1) ? 0 : 0.18, dark = on(i, j + 1) ? 0 : -0.12, rp = bone[j * W + i] ? boneRamp : ramp;
+      x.fillStyle = rp[Math.floor(clamp(v + lit + dark, 0, 0.999) * rp.length)];
       x.fillRect(i * C, j * C, C, C);
     }
     return (hn.skins[key] = { canvas: c, pad });
@@ -1150,7 +1257,7 @@ const PIXEL_ART = {
       const mdy = pair ? now.reduce((a, h, i) => a + h.base[1] - ref[i].base[1], 0) / now.length : f[5] - fi[5];
       const dx = Math.round(mdx), dy = Math.round(mdy);
       ref.forEach((rh) => {
-        const spread = Math.abs(rh.base[0] - refMid) > 4 ? Math.sign(rh.base[0] - refMid) : 0, a = this.hornShapeOf(rh, spread, back, shape, look);
+        const spread = Math.abs(rh.base[0] - refMid) > 4 ? Math.sign(rh.base[0] - refMid) : 0, a = this.hornShapeOf(rh, spread, back, shape, look, antler);
         if (look) { ctx.shadowColor = H[look].glow; ctx.shadowBlur = H[look].blur * (0.75 + 0.25 * Math.sin(t * 7 + rh.base[0])); }
         ctx.drawImage(a.canvas, dx - a.pad, dy - a.pad); ctx.shadowBlur = 0;
       });
@@ -1162,7 +1269,7 @@ const PIXEL_ART = {
       if (look) { ctx.shadowColor = H[look].glow; ctx.shadowBlur = H[look].blur * (0.75 + 0.25 * Math.sin(t * 7 + bx)); }
       // BIG and LONG keep their own shape (the moose's, the gazelle's); LONG HORNS the soul grows the SHORT into an antler
       if (shape || antler) {
-        const spread = Math.abs(bx - mid) > 4 ? Math.sign(bx - mid) : 0, a = shape ? this.hornShapeOf(hn, spread, back, shape, look) : this.antlerOf(hn, spread, back, look);
+        const spread = Math.abs(bx - mid) > 4 ? Math.sign(bx - mid) : 0, a = shape ? this.hornShapeOf(hn, spread, back, shape, look, antler) : this.antlerOf(hn, spread, back, look);
         ctx.drawImage(a.canvas, -a.pad, -a.pad);
       } else ctx.drawImage(this.hornSkin(hn, look), 0, 0);
       ctx.shadowBlur = 0;
@@ -1230,7 +1337,7 @@ const PIXEL_ART = {
 PIXEL_ART.init();
 if (typeof location !== 'undefined') {
   // Not in the itch build, which honours no tool address (`js/release.js` loads later: read its flag).
-  if (!(typeof window !== 'undefined' && window.GOAT_RELEASE) && /aspacked/.test(location.hash)) Object.assign(ART_PASS, { hunter: 0, clubman: 0, floors: false, shadows: false, tells: false, hay: false, cave: false, lit: false });
+  if (!(typeof window !== 'undefined' && window.GOAT_RELEASE) && /aspacked/.test(location.hash)) Object.assign(ART_PASS, { hunter: 0, clubman: 0, floors: false, shadows: false, tells: false, hay: false, cave: false, lit: false, ink: false, grain: false });
   else ART_PASS.set(true);
 }
 
@@ -1428,6 +1535,7 @@ const FLOOR_SHEET = (() => {
     cobble: (s, P, r) => courses(s, P, r, [20, 22, 24], [18, 28], 2, 3, 0.6),
     setts: (s, P, r) => courses(s, P, r, [26], [36, 50], 2, 1, 0.8),
     slabs: (s, P, r) => courses(s, P, r, [40], [56, 96], 2, 1),
+    plates: (s, P, r) => courses(s, P, r, [64], [64], 2, 1),   // THE FACTORY's stand-in: square plates (the picture replaces it)
     boards, earth, paving,
   };
   // A wall's brick face the same way: one strip `N` tiles long and `F` texels deep, courses of bricks
@@ -1496,6 +1604,9 @@ const PIXEL_ROOMS = {
   drop: { floor: 'floors-05', boards: 'floors-05', sheet: 'boards' },
   niche: { floor: 'floors-02', boards: 'floors-06', sheet: 'paving' },
   hollow: { floor: 'floors-09', boards: 'floors-06', sheet: 'paving' },
+  // THE FACTORY (js/factory.js): riveted plate off its own picture (`image`, js/factory-pixels.js `seedFloor`), `plates` the
+  // procedural stand-in `FLOOR_SHEET` paints until the picture is in.
+  factory: { floor: 'floors-04', boards: 'floors-04', sheet: 'plates', image: 'floor-plates' },
 };
 // Packed items drawn recoloured while `ART_PASS[name]` is on (`PIXEL_ENV.study`): `v` scales the value,
 // `s` the saturation. The straw was the brightest thing in any room, a fifth over the goat himself

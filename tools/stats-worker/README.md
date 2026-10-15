@@ -27,6 +27,12 @@ Deployed 1 Oct 2026 at https://goat-stats.dimache.workers.dev (account subdomain
 
 Reports come back newest first, 5 000 a page: `/reports?before=<got>` is the next page (`X-Oldest-Got` names it). Ids must be the game's own shape (`p-`/`r-` and base 36).
 
+Since 13 Oct 2026 the game also sends a life while it is still being played (`end.how` `on`, at every floor cleared and
+when the tab is put away; `js/stats.js` `Stats.live`), and `/report` keeps the fullest copy of a life by its id (an
+ending over any `on`, then the higher `seq`), where it used to keep the first one. Until the worker is deployed again
+(`npx wrangler deploy` from this folder) it refuses those copies as `not a report`, which costs nothing: the ending
+still goes out as before. No schema change.
+
 Edit `worker.js`, then `npx wrangler deploy` again. A new column: add it to `schema.sql` as an
 `ALTER TABLE` and run step 4's command with that file. Look at the data directly with
 `npx wrangler d1 execute goat-stats --remote --command "SELECT end_floor, killer, COUNT(*) FROM reports GROUP BY 1, 2"`,

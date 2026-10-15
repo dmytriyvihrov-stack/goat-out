@@ -1,0 +1,14 @@
+{
+  "sprites": 60,
+  "failures": [],
+  "checks": [
+    "PNG dimensions match manifest",
+    "atlas rectangles within bounds",
+    "native alpha binary"
+  ],
+  "notChecked": [
+    "runtime animation",
+    "collision",
+    "floor seamlessness"
+  ]
+}

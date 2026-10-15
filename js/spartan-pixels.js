@@ -168,11 +168,12 @@ if (typeof document !== 'undefined') {
   const UP = 4, baked = new Map();
   SPARTAN_PIXELS.TX = 0.92;
   SPARTAN_PIXELS.canvas = (sp) => {
-    let c = baked.get(sp); if (c) return c;
-    const g = sp.g; c = document.createElement('canvas'); c.width = g.w * UP; c.height = g.h * UP;
+    const g = PROP_PIXELS.inked(sp.g, SPARTAN_PIXELS.P.ol);   // ONE STYLE (`ART_PASS.ink`): the outline retinted, the bake keyed by the grid it paints
+    let c = baked.get(g); if (c) return c;
+    c = document.createElement('canvas'); c.width = g.w * UP; c.height = g.h * UP;
     const x = c.getContext('2d');
     for (let j = 0; j < g.h; j++) for (let i = 0; i < g.w; i++) { const v = g.get(i, j); if (v) { x.fillStyle = v; x.fillRect(i * UP, j * UP, UP, UP); } }
-    baked.set(sp, c); return c;
+    baked.set(g, c); return c;
   };
   // A fat man waddles: his stride is slower than a clubman's and he rocks from foot to foot with it.
   SPARTAN_PIXELS.draw = (ctx, angle, moving, t, x) => {

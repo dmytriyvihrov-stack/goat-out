@@ -21,7 +21,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const { execSync } = require('child_process');
-const { ROOT, ARTIFACT_URL, scriptsOf, jsOnDisk } = require('../script-lists');
+const { ROOT, ARTIFACT_URL, ARTIFACT_URLS, scriptsOf, jsOnDisk } = require('../script-lists');
 
 const GEN_FILES = ['js/gen.js', 'js/rooms.js', 'js/rules.js', 'js/tuning.js'];
 
@@ -63,7 +63,7 @@ function checkPublish(input) {
 
   const out = [];
   const url = String(input.url || '').replace(/\/+$/, '');
-  if (url !== ARTIFACT_URL) out.push(url
+  if (!ARTIFACT_URLS.includes(url)) out.push(url
     ? `url is ${url}, not the game's own ${ARTIFACT_URL}`
     : `no url: this would publish a SECOND artifact. The game lives at ${ARTIFACT_URL}`);
 

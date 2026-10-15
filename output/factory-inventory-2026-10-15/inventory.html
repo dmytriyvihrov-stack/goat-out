@@ -1,0 +1,236 @@
+<title>Factory Inventory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,600;1,400&family=Alegreya+SC:wght@500;700&family=Jacquard+24&display=swap">
+<style>
+/* One narrow column of cards, a sticky bar with the count and filters; the game's own dark stone and bone (the testing ledger's look). */
+:root {
+  --bg: #17130f; --panel: #211b16; --line: #3a3027; --fg: #efe6d0; --dim: #a8977c;
+  --blood: #c0392b; --amber: #f2aa30; --ok: #7fae5a;
+  --display: 'Jacquard 24', 'Alegreya SC', Georgia, serif;
+  --head: 'Alegreya SC', Georgia, serif;
+  --body: 'Alegreya', Georgia, 'Times New Roman', serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 17px/1.45 var(--body); margin: 0; }
+.wrap { max-width: 860px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 60px; }
+h1 { font: 400 52px/1 var(--display); margin: 8px 0 4px; letter-spacing: 0.5px; }
+.lede { color: var(--dim); margin: 0 0 14px; max-width: 65ch; }
+.lede b { color: var(--fg); font-weight: 600; }
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line);
+  display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding-block: 10px; }
+.count { font: 700 15px var(--head); letter-spacing: 0.06em; font-variant-numeric: tabular-nums; }
+.meter { flex: 1 1 160px; height: 8px; background: var(--line); display: flex; min-width: 120px; }
+.meter i { display: block; height: 100%; }
+.filters { display: flex; gap: 6px; flex-wrap: wrap; }
+button { font: 600 14px var(--head); letter-spacing: 0.05em; color: var(--fg); background: var(--panel); border: 1px solid var(--line);
+  padding: 5px 10px; cursor: pointer; border-radius: 3px; }
+button:hover { border-color: var(--dim); }
+button:focus-visible, textarea:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.sync { font-size: 13px; color: var(--dim); margin-left: auto; }
+h2 { font: 700 20px var(--head); letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); margin: 28px 0 10px; text-wrap: balance; }
+.list { display: grid; gap: 10px; }
+.item { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--line); padding: 10px 14px; min-width: 0; }
+.item[data-s="keep"] { border-left-color: var(--ok); }
+.item[data-s="del"] { border-left-color: var(--blood); }
+.item[data-s="change"] { border-left-color: var(--amber); }
+.item h3 { font: 700 18px var(--head); margin: 0; letter-spacing: 0.03em; }
+.what { margin: 4px 0 2px; font-size: 15px; color: var(--fg); max-width: 70ch; }
+.where { margin: 0 0 8px; font-size: 13px; color: var(--dim); }
+.status { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.status button[data-v="keep"][aria-pressed="true"] { background: var(--ok); border-color: var(--ok); color: #10140c; }
+.status button[data-v="change"][aria-pressed="true"] { background: var(--amber); border-color: var(--amber); color: #1a1208; }
+.status button[data-v="del"][aria-pressed="true"] { background: var(--blood); border-color: var(--blood); color: var(--fg); }
+textarea { width: 100%; margin-top: 8px; min-height: 2.4em; resize: vertical; background: var(--bg); color: var(--fg);
+  border: 1px solid var(--line); font: 15px/1.4 var(--body); padding: 6px 8px; }
+.ro .status button, .ro textarea { pointer-events: none; opacity: 0.6; }
+@media (prefers-reduced-motion: no-preference) { .meter i { transition: width .3s; } }
+@media (max-width: 480px) { h1 { font-size: 40px; } .sync { margin-left: 0; width: 100%; } }
+</style>
+
+<div class="wrap">
+  <h1>THE FACTORY: всё, что в нём есть</h1>
+  <p class="lede">Каждый враг, ловушка, предмет, пол, стена и комната уровня FACTORY (TEST). У каждого: ОСТАВИТЬ, ПОМЕНЯТЬ или УДАЛИТЬ и заметка. Отметки сохраняются, Claude их потом читает и делает. Открыть уровень: <b>DEV TOOLS → FACTORY (TEST)</b>; заводские вещи подписаны в <b>SHOWROOM</b>.</p>
+  <div class="bar">
+    <span class="count" id="count">0 / 0</span>
+    <div class="meter" id="meter" aria-hidden="true"></div>
+    <div class="filters" role="group" aria-label="Фильтр">
+      <button data-f="all" aria-pressed="true">ВСЕ</button>
+      <button data-f="left" aria-pressed="false">БЕЗ ОТМЕТКИ</button>
+      <button data-f="change" aria-pressed="false">ПОМЕНЯТЬ</button>
+      <button data-f="del" aria-pressed="false">УДАЛИТЬ</button>
+    </div>
+    <span class="sync" id="sync">загружаю отметки…</span>
+  </div>
+  <div id="groups"></div>
+</div>
+
+<script>
+// The factory's inventory as of 15 Oct 2026 (js/factory.js, js/factory-props.js, js/factory-pixels.js, js/machines.js).
+// Marks live in the db (marks/<id>): { status: keep | change | del, note }, never here.
+const GROUPS = [
+  { name: 'Враги', items: [
+    { id: 'sawbot', title: 'ПИЛОБОТ (SAWBOT)', what: 'Железный дубинщик с бензопилой, 2 сердца. Огонь и яд не берут: огонь раскаляет докрасна (касание жжёт), яд пропитывает, вместе взрыв. С 15.10 стоит вместо всех обычных врагов и перепрыгивает провалы.', where: 'Почти в каждой комнате' },
+    { id: 'welder', title: 'СВАРЩИК (WELDER)', what: 'Торс на гусеницах, ездит по одной линии вперёд-назад, жжёт конусом огня. С 15.10 замечает раньше и стреляет раньше. Не лезет в огонь, не выезжает из комнаты, не идёт к провалам.', where: 'THE WELDERS LANE, THE WORKSHOP и др.' },
+    { id: 'automaton', title: 'АВТОМАТОН (босс)', what: 'Железная рама на четырёх ногах. Топчет; застрявшая нога выбивается одним ударом, две ноги выбиты = падает, тело открыто, 2 сердца за падение, всего 5.', where: 'THE RING' },
+    { id: 'arm', title: 'РУКА (THE ARM)', what: 'Привинченный манипулятор с кольцом: хватает, поднимает, бьёт об пол. С 15.10: из захвата только кувырок (крик только со станом), удар рогами глушит её и она отпускает, удар об пол бьёт всех живых в радиусе, роботов и сварщиков нет.', where: 'THE ARMS (3 штуки)' },
+  ] },
+  { name: 'Ловушки и машины', items: [
+    { id: 'press-s', title: 'ПРЕСС МАЛЫЙ', what: 'Две челюсти между стенами на таймере: дрожит с полосатой лентой, бьёт, давит что между.', where: 'THE CRUSHER, THE PRESS GATE и др.' },
+    { id: 'press-w', title: 'ПРЕСС ШИРОКИЙ', what: 'То же, шесть тайлов шириной; бывает быстрый.', where: 'THE CATWALK, THE GANTRY' },
+    { id: 'ram', title: 'ТАРАН (RAM)', what: 'Половина пресса из стены, бьёт вперёд и отбрасывает. В THE HAMMERS с 15.10 бьёт до противоположной стены.', where: 'THE HAMMERS, THE CATWALK' },
+    { id: 'belt', title: 'КОНВЕЙЕР', what: 'Везёт козла, людей и вещи по своей линии.', where: 'THE LINE, THE BELTS, THE CAROUSEL, THE GANTRY' },
+    { id: 'burner', title: 'ГОРЕЛКА', what: 'Решётка в полу: холодная, светится (подсказка), горит.', where: 'THE BURNERS, THE GRILL (150 штук волной)' },
+    { id: 'firegrate', title: 'ОГНЕННАЯ РЕШЁТКА', what: 'Наступил = через миг огонь. С 15.10 катящуюся бочку не поджигает, остановившуюся на ней поджигает.', where: 'THE GRATES' },
+    { id: 'chasm', title: 'ПРОВАЛ', what: 'Полоса пропасти поперёк комнаты, кувырок переносит.', where: 'THE DROP, THE CATWALK' },
+    { id: 'bridge', title: 'МОСТ', what: 'Только картинка: мостик между провалами.', where: 'THE CATWALK' },
+    { id: 'dispenser', title: 'БОМБОМАТ (THE BOMB MACHINE)', what: 'Удар рогами = выдаёт бомбу, по одной.', where: 'THE RING' },
+  ] },
+  { name: 'Заводская мебель (ломается)', items: [
+    { id: 'boiler', title: 'БОЙЛЕР', what: 'Стоячий бак, 2 удара. С 15.10 вместо красной ручки тусклый манометр: красное читалось как кнопка.', where: 'Шаблоны, вместо колонн' },
+    { id: 'cabinet', title: 'ШКАФ', what: 'Ящик с жёлтой дверцей, 2 удара, внутри мясо.', where: 'Шаблоны, вместо колонн' },
+    { id: 'anvil', title: 'НАКОВАЛЬНЯ', what: 'Не ломается.', where: 'THE WORKSHOP' },
+    { id: 'drums', title: 'БОЧКИ СТОПКОЙ', what: 'Три железных бочки, 1 удар, пролитое масло.', where: 'THE SCRAPYARD' },
+    { id: 'cylinders', title: 'ГАЗОВЫЕ БАЛЛОНЫ', what: 'Два баллона на цепи, один красный, 1 удар.', where: 'Шаблоны' },
+    { id: 'reel', title: 'КАБЕЛЬНАЯ КАТУШКА', what: '1 удар.', where: 'THE SCRAPYARD, THE GANTRY' },
+  ] },
+  { name: 'Мусор на полу и вещи на стене', items: [
+    { id: 'junk-gears', title: 'ШЕСТЕРНИ', what: 'Плоско на полу, не мешает.', where: 'Шаблоны' },
+    { id: 'junk-pipe', title: 'ТРУБА', what: 'Плоско на полу.', where: 'Шаблоны' },
+    { id: 'junk-oil', title: 'МАСЛЯНОЕ ПЯТНО', what: 'Плоско на полу.', where: 'Шаблоны' },
+    { id: 'junk-offal', title: 'ПОТРОХА', what: 'Плоско на полу.', where: 'Шаблоны' },
+    { id: 'fix-gauge', title: 'МАНОМЕТР НА СТЕНЕ', what: 'Четыре варианта стрелки.', where: 'Дальние стены' },
+    { id: 'fix-valve', title: 'КРАСНЫЙ ВЕНТИЛЬ НА СТЕНЕ', what: 'Колесо вентиля. Тоже красное: проверь, не читается ли как кнопка.', where: 'Дальние стены' },
+    { id: 'fix-lamp', title: 'ЛАМПА В РЕШЁТКЕ', what: 'Холодный белый свет, мерцает.', where: 'Дальние стены' },
+    { id: 'fix-vent', title: 'ВЕНТИЛЯЦИЯ', what: 'Решётка, из неё пар.', where: 'Дальние стены' },
+  ] },
+  { name: 'Обычные вещи, которые тоже стоят на заводе', items: [
+    { id: 'p-barrel', title: 'БОЧКА С ПОРОХОМ', what: '19 на уровне.', where: 'Везде' },
+    { id: 'p-toxic', title: 'ЯДОВИТАЯ БОЧКА', what: 'Зелёная.', where: 'THE ARMS, THE GRATES и др.' },
+    { id: 'p-crate', title: 'ЯЩИК', what: '32 на уровне.', where: 'Везде' },
+    { id: 'p-bomb', title: 'БОМБА', what: '9 на уровне.', where: 'Разные комнаты' },
+    { id: 'p-weapon', title: 'СТОЙКИ С МЕЧОМ И ЩИТОМ', what: '14 на уровне.', where: 'Разные комнаты' },
+    { id: 'p-brazier', title: 'ЖАРОВНЯ С УГЛЯМИ', what: 'Не заводская вещь, 4 штуки (поджигать роботов).', where: 'THE ARMS и др.' },
+    { id: 'p-lamp', title: 'НАПОЛЬНАЯ ЛАМПА', what: 'Не заводская вещь, 3 штуки.', where: 'Разные комнаты' },
+    { id: 'p-chandelier', title: 'ЛЮСТРА', what: 'Не заводская вещь, 1 штука.', where: 'THE BOILER ROOM' },
+    { id: 'p-grass', title: 'ТРАВА (ЛЕЧИТ)', what: '4 пучка.', where: 'Разные комнаты' },
+  ] },
+  { name: 'Полы', items: [
+    { id: 'f-plates', title: 'PLATES (клёпаные плиты)', what: 'Пол по умолчанию.', where: 'Основные комнаты, THE ARMS' },
+    { id: 'f-concrete', title: 'CONCRETE', what: 'Бетон.', where: 'THE SCRAPYARD' },
+    { id: 'f-grate', title: 'GRATE', what: 'Решётчатый пол.', where: 'THE GANTRY' },
+    { id: 'f-brick', title: 'BRICK', what: 'Кирпич.', where: 'THE WORKSHOP' },
+    { id: 'f-checker', title: 'CHECKER', what: 'Рифлёный лист.', where: 'THE CAROUSEL' },
+    { id: 'f-rust', title: 'RUST', what: 'Ржавчина.', where: 'Только ART → FACTORY FLOOR' },
+  ] },
+  { name: 'Стены', items: [
+    { id: 'w-iron', title: 'IRON', what: 'Стена по умолчанию.', where: 'Основные комнаты' },
+    { id: 'w-brick', title: 'BRICK', what: 'Кирпич.', where: 'THE SCRAPYARD' },
+    { id: 'w-furnace', title: 'FURNACE', what: 'Печь.', where: 'THE CAROUSEL' },
+    { id: 'w-corrugated', title: 'CORRUGATED', what: 'Профлист.', where: 'THE WORKSHOP' },
+    { id: 'w-pipes', title: 'PIPES', what: 'Трубы.', where: 'Только ART → FACTORY WALL' },
+    { id: 'w-girder', title: 'GIRDER', what: 'Балки.', where: 'THE ARMS, THE GANTRY' },
+  ] },
+  { name: 'Комнаты (по порядку на уровне)', items: [
+    { id: 'r-wayin', title: '1. THE WAY IN', what: 'Вход.', where: 'Начало' },
+    { id: 'r-sawhall', title: '2. THE SAW HALL', what: 'Пилоботы: огонь раскаляет, яд на горячем = взрыв.', where: '' },
+    { id: 'r-welders', title: '3. THE WELDERS LANE', what: 'Сварщики на своих линиях.', where: '' },
+    { id: 'r-grates', title: '4. THE GRATES', what: 'Огненные решётки, два пути вокруг.', where: '' },
+    { id: 'r-drop', title: '5. THE DROP', what: 'Провал, урок кувырка.', where: '' },
+    { id: 'r-boiler', title: '6. THE BOILER ROOM', what: 'Бочки и люстра.', where: '' },
+    { id: 'r-works', title: '7. THE WORKS', what: 'Всё сразу.', where: '' },
+    { id: 'r-lesson', title: '8. THE LESSON', what: 'По одной машине каждого вида, никого нет.', where: '' },
+    { id: 'r-crusher', title: '9. THE CRUSHER', what: 'Прессы.', where: '' },
+    { id: 'r-burners', title: '10. THE BURNERS', what: 'Горелки.', where: '' },
+    { id: 'r-pressgate', title: '11. THE PRESS GATE', what: 'Пресс в проходе.', where: '' },
+    { id: 'r-line', title: '12. THE LINE', what: 'Конвейер бочек в горелку и конвейер ящиков под прессом.', where: '' },
+    { id: 'r-belts', title: '13. THE BELTS', what: 'Пять конвейеров, все кроме одного везут в огонь.', where: '' },
+    { id: 'r-grill', title: '14. THE GRILL', what: '150 горелок волной.', where: '' },
+    { id: 'r-hammers', title: '15. THE HAMMERS', what: 'Тараны в обеих стенах, с 15.10 до противоположной стены.', where: '' },
+    { id: 'r-catwalk', title: '16. THE CATWALK', what: 'Узкий проход над провалом, широкие прессы.', where: '' },
+    { id: 'r-breather', title: '17. THE BREATHER', what: 'Передышка.', where: '' },
+    { id: 'r-ring', title: '18. THE RING', what: 'Автоматон и бомбомат.', where: '' },
+    { id: 't-arms', title: '19. THE ARMS', what: 'Шаблон: три руки, путь между кольцами.', where: '' },
+    { id: 't-scrapyard', title: '20. THE SCRAPYARD', what: 'Шаблон: кучи хлама, некоторые ломаются.', where: '' },
+    { id: 't-workshop', title: '21. THE WORKSHOP', what: 'Шаблон: рабочие у станков, подойти со спины.', where: '' },
+    { id: 't-carousel', title: '22. THE CAROUSEL', what: 'Шаблон: конвейер по кругу везёт их к тебе.', where: '' },
+    { id: 't-gantry', title: '23. THE GANTRY', what: 'Шаблон: конвейеры к краю пропасти.', where: '' },
+  ] },
+];
+
+const $ = (s) => document.querySelector(s);
+let marks = {}, filter = 'all', db = null, readOnly = false;
+const allItems = GROUPS.flatMap((g) => g.items);
+const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const stateOf = (it) => (marks[it.id] && marks[it.id].status) || null;
+function render() {
+  const out = [];
+  for (const g of GROUPS) {
+    const items = g.items.filter((it) => filter === 'all' || (filter === 'left' ? !stateOf(it) : stateOf(it) === filter));
+    if (!items.length) continue;
+    out.push(`<h2>${g.name}</h2><div class="list">`);
+    for (const it of items) {
+      const m = marks[it.id] || {};
+      out.push(`<section class="item" data-s="${m.status || ''}" data-id="${it.id}">
+        <h3>${it.title}</h3>
+        <p class="what">${it.what}</p>${it.where ? `<p class="where">Где: ${it.where}</p>` : '<p class="where"></p>'}
+        <div class="status" role="group" aria-label="Решение">
+          <button data-v="keep" aria-pressed="${m.status === 'keep'}">ОСТАВИТЬ</button>
+          <button data-v="change" aria-pressed="${m.status === 'change'}">ПОМЕНЯТЬ</button>
+          <button data-v="del" aria-pressed="${m.status === 'del'}">УДАЛИТЬ</button>
+        </div>
+        <textarea id="n-${it.id}" placeholder="Заметка: что поменять">${esc(m.note)}</textarea>
+      </section>`);
+    }
+    out.push('</div>');
+  }
+  $('#groups').innerHTML = out.join('') || '<p class="lede">По этому фильтру ничего.</p>';
+  const n = allItems.length, c = (v) => allItems.filter((it) => stateOf(it) === v).length, k = c('keep'), ch = c('change'), d = c('del');
+  $('#count').textContent = `${k + ch + d} / ${n} · ${ch} ПОМЕНЯТЬ · ${d} УДАЛИТЬ`;
+  $('#meter').innerHTML = `<i style="width:${k / n * 100}%;background:var(--ok)"></i><i style="width:${ch / n * 100}%;background:var(--amber)"></i><i style="width:${d / n * 100}%;background:var(--blood)"></i>`;
+}
+
+// One write at a time per item, and only on a change.
+const busy = {};
+async function save(id, patch) {
+  marks[id] = Object.assign({}, marks[id] || {}, patch, { at: new Date().toISOString() });
+  render();
+  if (!db || readOnly) return;
+  while (busy[id]) await busy[id];
+  busy[id] = (async () => {
+    try { await db.doc('marks/' + id).set(marks[id]); $('#sync').textContent = 'сохранено'; }
+    catch (e) { if (e && (e.code === 'invalid_argument' || e.code === 'permission_denied')) { readOnly = true; document.body.classList.add('ro'); $('#sync').textContent = 'только чтение'; } else $('#sync').textContent = 'не сохранилось: ' + ((e && e.code) || 'ошибка'); }
+  })();
+  await busy[id]; busy[id] = null;
+}
+
+document.addEventListener('click', (ev) => {
+  const f = ev.target.closest('[data-f]');
+  if (f) { filter = f.dataset.f; document.querySelectorAll('[data-f]').forEach((b) => b.setAttribute('aria-pressed', b === f)); render(); return; }
+  const b = ev.target.closest('.status button'); if (!b) return;
+  const id = b.closest('.item').dataset.id;
+  save(id, { status: stateOf({ id }) === b.dataset.v ? null : b.dataset.v });
+});
+document.addEventListener('focusout', (ev) => {
+  const t = ev.target.closest('textarea'); if (!t) return;
+  const id = t.closest('.item').dataset.id;
+  if ((t.value || '') !== ((marks[id] && marks[id].note) || '')) save(id, { note: t.value });
+});
+
+render();
+(async () => {
+  db = window.claude && window.claude.use ? await window.claude.use('db') : null;
+  if (!db) { $('#sync').textContent = 'отметки не сохраняются в этом окне'; return; }
+  db.collection('marks').onSnapshot((snap) => {
+    const next = {};
+    for (const d of snap.docs) next[d.id] = d.data();
+    // keep a note being typed from being wiped by a snapshot
+    const typing = document.activeElement && document.activeElement.tagName === 'TEXTAREA' ? document.activeElement : null;
+    const keep = typing && { id: typing.id, v: typing.value, s: typing.selectionStart };
+    marks = next; render();
+    if (keep) { const t = document.getElementById(keep.id); if (t) { t.value = keep.v; t.focus(); t.setSelectionRange(keep.s, keep.s); } }
+    $('#sync').textContent = 'отметки сохраняются';
+  }, (e) => { $('#sync').textContent = 'отметки недоступны: ' + e.code; });
+})();
+</script>

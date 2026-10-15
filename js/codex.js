@@ -926,7 +926,7 @@ const Unlocks = {
       // reports, so a player who has played does not find every floor and every clubman "new" on his first
       // session after the update. Templates and vault kinds were never written down; those start empty.
       if (d) try {
-        const FOES = new Set(['clubman', 'butcher', 'shieldman', 'thrower', 'shaman', 'ogre', 'hunter', 'dog', 'seer', 'wraith', 'ratogre']);
+        const FOES = new Set(['clubman', 'butcher', 'shieldman', 'thrower', 'shaman', 'ogre', 'hunter', 'dog', 'seer', 'wraith', 'ratogre', 'sawbot', 'welder', 'automaton']);
         const foe = (k) => { k = String(k || '').replace('*', ''); if (FOES.has(k)) this.data.foes[k] = 1; };
         for (const L of (typeof Stats !== 'undefined' ? Stats.load().log : [])) for (const F of L.floors || []) {
           if (F.name) this.data.floors[F.name] = 1;
