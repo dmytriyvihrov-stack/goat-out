@@ -3033,10 +3033,22 @@ Object.assign(Heaven, {
     ctx.save(); if (dim) ctx.globalAlpha *= 0.4; ctx.translate(Math.round(x), Math.round(y)); R.painted.soulWispBody(ctx, w); ctx.restore();
   },
   // The gold skull a sacrifice is counted in, `c` px a texel with its top-left at (x, y).
+  // Since 15 Oct 2026 (his: "an ordinary soul looks like a soul, only white") it is the corrupted soul's wisp washed white,
+  // in the skull's own box so nothing laid round it moves; the skull itself while the wisp's picture is not ready.
+  whiteWisp() {
+    if (this.wispCanvas) return this.wispCanvas;
+    const G = typeof window !== 'undefined' && window.game, R = G && G.renderer; if (!R || !R.painted.ready) return null;
+    const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d');
+    x.filter = 'grayscale(1) brightness(2.6)'; x.translate(32, 0.56 * 64);
+    if (!R.painted.soulWispBody(x, 64)) return null;
+    return (this.wispCanvas = c);
+  },
   skull(ctx, x, y, c, dim) {
     const g = HEAVEN_PIXELS.sprites.skull, sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
     if (dim) ctx.globalAlpha *= 0.4;
-    ctx.drawImage(HEAVEN_PIXELS.canvas('skull'), Math.round(x), Math.round(y), Math.round(g.w * c), Math.round(g.h * c));
+    const wisp = this.whiteWisp(), bw = g.w * c, bh = g.h * c;
+    if (wisp) { const h = Math.max(bw, bh) * 1.1; ctx.drawImage(wisp, Math.round(x + bw / 2 - h / 2), Math.round(y + bh / 2 - h * 0.58), Math.round(h), Math.round(h)); }
+    else ctx.drawImage(HEAVEN_PIXELS.canvas('skull'), Math.round(x), Math.round(y), Math.round(g.w * c), Math.round(g.h * c));
     if (dim) ctx.globalAlpha /= 0.4;
     ctx.imageSmoothingEnabled = sm;
   },

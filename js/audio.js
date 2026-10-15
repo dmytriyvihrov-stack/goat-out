@@ -282,7 +282,11 @@ class GameAudio {
     this.ambDuck = unity(); this.ambDuck.connect(this.master);
     // `ambCalm` is the room's sound sinking under a fight (`ambience.fight`), eased in `updateAmbience`.
     this.ambCalm = unity(); this.ambCalm.connect(this.ambDuck);
-    this.scoreTone.frequency.value = A.tone.open; this.scoreTone.Q.value = 0.5; this.scoreTone.connect(this.scoreDuck);
+    // A held scene (`game.endScene`, THE LAST SUPPER's offer) pulls the score nearly out (`sceneDuck`, `audio.scene`,
+    // 15 Oct 2026: "the main music plays over the scene"); the scene's own music is on `sceneBus`, round the duck.
+    this.sceneDuck = unity(); this.sceneDuck.connect(this.scoreDuck);
+    this.sceneBus = unity(); this.sceneBus.connect(this.scoreDuck);
+    this.scoreTone.frequency.value = A.tone.open; this.scoreTone.Q.value = 0.5; this.scoreTone.connect(this.sceneDuck);
     this.drumBus = this.ctx.createGain(); this.drumBus.connect(this.scoreTone);
     this.sfxBus = this.ctx.createGain(); this.sfxBus.connect(this.sfxDuck);
     // What must never be ducked (`TUNING.audio.spotlight`): a death, his last breath, a chain's bone bar.
@@ -331,6 +335,7 @@ class GameAudio {
     const A = TUNING.audio;
     this.drumBus.gain.value = A.drums * (this.volMusic / 0.5);
     this.musicBus.gain.value = A.music * (this.volMusic / 0.5);
+    if (this.sceneBus) this.sceneBus.gain.value = this.musicBus.gain.value;
     this.sfxBus.gain.value = A.sfx * (this.volSfx / 0.5);
     if (this.keyBus) this.keyBus.gain.value = this.sfxBus.gain.value * A.spotlight.key;
     if (this.ambBus) this.ambBus.gain.value = A.ambience.gain * (this.volSfx / 0.5);
@@ -553,6 +558,12 @@ class GameAudio {
     // THE LAST SUPPER hushes it too (js/endboss.js, `game.supper`), until the chair is reached.
     this.hush = !!(game.sneak && game.stealthLive && game.state === 'play') || !!(game.supper && (game.supper.phase === 'offer' || game.supper.phase === 'scene'));
     this.doom = !!(game.doom && game.state === 'play');   // THE WARDEN's fight (js/warden.js, `layers.doom`)
+    // A held scene (a floor's last man's, the Warden's turn, THE LAST SUPPER and its offer): the score sinks to `scene.duck`
+    if (this.sceneDuck) {
+      const S = TUNING.audio.scene, on = !!(game.endScene || (game.supper && (game.supper.phase === 'offer' || game.supper.phase === 'scene')) || (game.bless && game.bless.on));
+      this.sceneMix = (this.sceneMix === undefined ? 1 : this.sceneMix) + ((on ? S.duck : 1) - (this.sceneMix === undefined ? 1 : this.sceneMix)) * Math.min(1, dt / (on ? S.down : S.up));
+      this.sceneDuck.gain.value = this.sceneMix;
+    }
     this.updateAmbience(game, dt);
     this.heartbeat(game);
     if (preview) {
@@ -1317,8 +1328,8 @@ class GameAudio {
   sfxSupper() {
     const A = TUNING.audio.supper; if (!this.ctx || this.muted) return;
     const t0 = this.ctx.currentTime + 0.05;
-    this.tone(A.drone, t0, A.droneLen, { type: 'sine', gain: A.droneGain, bus: this.musicBus, attack: 0.8 });
-    for (const [at, f, k] of A.notes) this.pluck(t0 + at, f * (k || 1) * A.detune, A.len, A.gain);
+    this.tone(A.drone, t0, A.droneLen, { type: 'sine', gain: A.droneGain, bus: this.sceneBus, attack: 0.8 });
+    for (const [at, f, k] of A.notes) this.tone(f * (k || 1) * A.detune, t0 + at, Math.max(A.len, 0.18), { type: 'sawtooth', gain: A.gain, bus: this.sceneBus, attack: 0.004, lp: 2400, lpEnd: 280 });
   }
   sfxCock(vol = 1) { if (vol <= 0.02) return; this.foley('cock', { gain: 0.45 * vol }); }
   // The hound: a jaw snapping shut, dry and close.

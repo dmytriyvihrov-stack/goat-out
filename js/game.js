@@ -1484,10 +1484,24 @@ class Game {
   // ---------- dev mode ----------
   hitDev(p) {
     // The SPAWN menu (`spawn-pick=`) is on top of everything beside it; a click anywhere else shuts it and goes on.
+    const inside = (r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
     if (this.dev.spawnMenu) {
-      const t = this.dev.rects.find((r) => r.top && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h);
+      const t = this.dev.rects.find((r) => r.top && r.id.startsWith('spawn-pick=') && inside(r));
       if (t) { this.devAction(t.id); return true; }
       this.dev.spawnMenu = null;
+    }
+    // A list a drawer row opens (15 Oct 2026, his: "one SUMMON button, a click drops a list"; the levels and the
+    // companions the same): its items are on top; a man in it asks how first, as the old rows did.
+    if (this.dev.devList) {
+      const t = this.dev.rects.find((r) => r.top && !r.id.startsWith('spawn-pick=') && inside(r));
+      if (t) {
+        if (t.pop) { if (this.state !== 'play' || !this.world) this.devToast('START A FLOOR FIRST'); else this.dev.spawnMenu = { id: t.id }; return true; }
+        if (t.id.startsWith('lvl=')) this.dev.devList = null;
+        this.devAction(t.id); return true;
+      }
+      const was = this.dev.devList; this.dev.devList = null;
+      const row = this.dev.rects.find((r) => !r.top && inside(r));
+      if (row && row.id === 'dev-list=' + was) return true;   // its own row again shuts it
     }
     for (const r of this.dev.rects) {
       if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) {
@@ -1593,7 +1607,7 @@ class Game {
     // no dev drawer, a short one (`Renderer.testerCols`). Only its rows answer there, and what they hand him marks the life
     // `T` (js/stats.js), so the playtest's numbers never count it.
     if (this.dev.hidden) {
-      const pet = id === 'coop' || Beast.is(id), pick = id.startsWith('boon-have=');
+      const pet = id === 'coop' || Beast.is(id), pick = id.startsWith('boon-have=') || id.startsWith('lvl=');
       if (!(this.settings && this.settings.tester) || !(TESTER_IDS.has(id) || pet || pick)) return;
       const floor = this.level && !this.level.def.heaven && this.goat && this.world && (this.state === 'play' || this.state === 'paused');
       if (TESTER_GIFTS.has(id) || pet || pick) {
@@ -1602,6 +1616,15 @@ class Game {
       }
     }
     if (id === 'tester-pets') { this.dev.testerPets = !this.dev.testerPets; return; }
+    if (id.startsWith('dev-list=')) { const k = id.slice(9); this.dev.devList = this.dev.devList === k ? null : k; this.dev.spawnMenu = null; return; }
+    // PLAY LEVEL's list (15 Oct 2026, his: "a plain list of which level to play now, with the skills for it"): straight onto
+    // that floor as LEVELS on the title does (`startAtLevel`: the souls a run would have banked by then dealt out, no save touched).
+    if (id.startsWith('lvl=')) {
+      const k = id.slice(4), dark = k === 'dark', li = dark ? DARK_LEVEL.darkOf : Math.max(0, Math.min(LEVELS.length - 1, +k | 0));
+      this.dev.open = false; this.dev.rules = false; this.dev.devList = null; this.startAtLevel(li, false, dark);
+      this.devToast((dark ? 'THE DARK' : 'LEVEL ' + (li + 1) + ' · ' + LEVELS[li].name) + ' · ' + this.boons.length + ' SOULS DEALT');
+      return;
+    }
     if (id.startsWith('music-')) { this.audio.labAction(id.slice(6), this); return; }
     if (id === 'toggle') { this.dev.open = !this.dev.open; return; }
     if (id === 'god') { this.toggleSetting('god'); this.devToast(this.dev.god ? 'GOD MODE ON' : 'GOD MODE OFF'); return; }
@@ -5689,7 +5712,7 @@ class Game {
     if (big) { this.audio.sfxBell(true); this.floatText(e.x, e.y - 44, e.kind === 'ratogre' ? 'THE RAT OGRE IS DOWN' : 'THE OGRE IS DOWN', PALETTE.fireHi); this.slowTimer = J.killSlow; this.vibe(40); }
     else this.vibe(12);
     if (this.combo >= 2) {
-      this.floatText(e.x, e.y - 40, 'x' + this.combo, PALETTE.fireHi);
+      // no `xN` over the body any more (15 Oct 2026, his: "it knocks you out of the flow"): the chain is heard and felt
       this.audio.sfxKill(this.combo);
       if (this.combo >= 3) { this.slowTimer = Math.max(this.slowTimer, J.comboSlow); this.flash(PALETTE.fireHi, 0.15); }
     }

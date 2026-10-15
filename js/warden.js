@@ -47,7 +47,7 @@ const Warden = {
       // the gun, at a distance with the line clear of his own men
       const G = W.gun;
       if (sees && e.gunCd <= 0 && d > G.min * TILE && d < G.max * TILE && e.poison <= 0 && !e.friendInLine(game, Math.atan2(dy, dx))) {
-        e.state = 'aim'; e.timer = G.aimTime * slow; e.vx = 0; e.vy = 0; e.facing = Math.atan2(dy, dx);
+        e.state = 'aim'; e.timer = G.aimTime * slow; e.vx = 0; e.vy = 0; e.facing = Math.atan2(dy, dx); e.aimLocked = false; e.lockSaid = false;
         if (!game.hidden(e.x, e.y)) game.audio.sfxCock(clamp(1 - d / (TUNING.hunter.cockHear * TILE), 0, 1));
         return true;
       }
@@ -61,8 +61,13 @@ const Warden = {
       if (e.timer <= 0 || e.wallHit) { e.vx = 0; e.vy = 0; e.state = 'recover'; e.timer = W.roll.recover * slow; }
       return true;
     }
+    // Both blows follow him only for the first part of their windup, then hold the line they are on (15 Oct 2026, his: "a clear
+    // aim and blow, so you can read it and get ahead of it"): the last `lock` s of the aim and `sword.lock` of the windup are
+    // a fixed line, `e.aimLocked` for the picture, and a step off it is a dodge.
     if (e.state === 'aim') {
-      e.vx = 0; e.vy = 0; e.facing = Math.atan2(dy, dx); e.timer -= dt;
+      e.vx = 0; e.vy = 0; e.timer -= dt;
+      e.aimLocked = e.timer <= W.gun.lock * slow; if (!e.aimLocked) e.facing = Math.atan2(dy, dx);
+      else if (!e.lockSaid) { e.lockSaid = true; if (!game.hidden(e.x, e.y)) game.audio.sfxCock(0.8); }
       if (!sees || e.poison > 0) { e.state = 'chase'; return true; }
       if (e.friendInLine(game, e.facing)) { e.state = 'chase'; e.stepOff(); return true; }
       if (e.timer <= 0) {
@@ -72,7 +77,8 @@ const Warden = {
       return true;
     }
     if (e.state === 'windup') {
-      e.vx = 0; e.vy = 0; e.facing = Math.atan2(dy, dx); e.timer -= dt;
+      e.vx = 0; e.vy = 0; e.timer -= dt;
+      e.aimLocked = e.timer <= e.atk('windup') * W.sword.lock * slow; if (!e.aimLocked) e.facing = Math.atan2(dy, dx);
       if (e.timer <= 0) { e.state = 'swing'; e.timer = e.atk('swing') * slow; game.audio.sfxSwing(); game.world.emitNoise(e.x, e.y, TUNING.noise.swing, 'cult'); e.swingHit = false; }
       return true;
     }

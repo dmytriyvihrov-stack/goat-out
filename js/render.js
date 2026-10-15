@@ -4048,7 +4048,7 @@ class Renderer {
       const since = dur('recover') * slow - e.timer; if (since > A.fade) return; fade = 1 - since / A.fade;
     } else return;
     const ctx = this.ctx, px = TUNING.effects.pixel * 2, f = e.facing || 0, side = Math.cos(f) >= 0 ? 1 : -1;
-    const reach = dur('reach') + e.r + 10, arc = e.kind === 'ratogre' ? cfg.arc : Math.PI * 0.55, rIn = reach * A.inner;
+    const reach = dur('reach') + e.r + 10, arc = e.kind === 'ratogre' ? cfg.arc : e.warden ? e.atk('arc') : Math.PI * 0.55, rIn = reach * A.inner;
     const a0 = -arc / 2, aLead = a0 + arc * lead, n = Math.ceil(reach / px);
     // three shades a pass, so a smear is three fills, not one a cell
     const bands = [[], [], []];
@@ -4206,14 +4206,18 @@ class Renderer {
     if (wind > 0) {
       const W = TUNING.juice.windupTint;
       // the pop: the last share of the windup is one bright beat, not the end of a fade
-      ctx.save(); ctx.globalAlpha *= W.pop && wind > W.pop ? W.popMax : wind * W.max; ctx.filter = `brightness(0) invert(1) sepia(1) saturate(${W.warm})`;
-      body(); ctx.restore();
+      ctx.save(); ctx.globalAlpha *= W.pop && wind > W.pop ? W.popMax : wind * W.max;
+      if (e.arm) this.flatBody(body, '#ffe2a0', (TUNING.arm.reach + 1.5) * TILE); else { ctx.filter = `brightness(0) invert(1) sepia(1) saturate(${W.warm})`; body(); }
+      ctx.restore();
     }
     // The hit flash: the same body again, burnt to a white silhouette. It used to be a disc laid
     // over him, which read as a light going off near him rather than as him being struck.
+    // THE ARM is laid live in hundreds of cells, and a canvas filter is paid per fill: its flash through `filter` was
+    // 2.9 s a frame (15 Oct 2026, "hitting the arm drops the game to 0 FPS"). Its silhouette is a flat shadow instead.
     if (e.flash > 0) {
-      ctx.save(); ctx.globalAlpha = Math.min(0.9, e.flash * 10); ctx.filter = 'brightness(0) invert(1)';
-      body(); ctx.restore();
+      ctx.save(); ctx.globalAlpha = Math.min(0.9, e.flash * 10);
+      if (e.arm) this.flatBody(body, '#ffffff', (TUNING.arm.reach + 1.5) * TILE); else { ctx.filter = 'brightness(0) invert(1)'; body(); }
+      ctx.restore();
     }
     if (e.stuck && e.stuck.length) this.drawStuck(e, paintedKey, true);
     // How tall his sprite is drawn, so what goes over his head goes over his head and not across his chest
@@ -4407,6 +4411,31 @@ class Renderer {
     ctx.restore();
   }
 
+  // His body as one flat colour where he stands, the outline's trick with no offset: a shadow costs nothing per fill,
+  // where `ctx.filter` costs a whole layer per fill (a unit drawn live in cells, THE ARM).
+  // Drawn once onto a scratch canvas the screen's size, filled flat there, and laid on in one drawImage (a shadow a fill
+  // was still 20 ms for the arm; this is about 2).
+  flatBody(body, color, rad = 4 * TILE) {
+    const ctx = this.ctx, cv = ctx.canvas, T = xform(ctx), m = { a: T.a, b: T.b, c: T.c, d: T.d, e: T.e, f: T.f };
+    let sc = this.flatScratch;
+    if (!sc) sc = this.flatScratch = document.createElement('canvas');
+    if (sc.width !== cv.width || sc.height !== cv.height) { sc.width = cv.width; sc.height = cv.height; }
+    const s = sc.getContext('2d');
+    // only a box `rad` world px round his feet is cleared, filled and laid on
+    const k = Math.max(Math.hypot(m.a, m.b), Math.hypot(m.c, m.d)) * rad;
+    const bx = Math.max(0, Math.floor(m.e - k)), by = Math.max(0, Math.floor(m.f - k)), bw = Math.min(sc.width, Math.ceil(m.e + k)) - bx, bh = Math.min(sc.height, Math.ceil(m.f + k)) - by;
+    if (bw <= 0 || bh <= 0) return;
+    s.setTransform(1, 0, 0, 1, 0, 0); s.globalCompositeOperation = 'source-over'; s.globalAlpha = 1; s.clearRect(bx, by, bw, bh);
+    s.imageSmoothingEnabled = ctx.imageSmoothingEnabled; s.setTransform(m.a, m.b, m.c, m.d, m.e, m.f);
+    // a far shadow offset (no shadow colour, so nothing is cast) is how a cast silhouette says "leave out the floor shadow"
+    s.shadowColor = 'rgba(0,0,0,0)'; s.shadowOffsetX = 20000;
+    this.ctx = s;
+    try { body(); } finally { this.ctx = ctx; s.shadowOffsetX = 0; }
+    s.setTransform(1, 0, 0, 1, 0, 0); s.globalAlpha = 1; s.filter = 'none'; s.globalCompositeOperation = 'source-in'; s.fillStyle = color; s.fillRect(bx, by, bw, bh);
+    s.globalCompositeOperation = 'source-over';
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(sc, bx, by, bw, bh, bx, by, bw, bh); ctx.restore();
+  }
+
   // Enemies wind up slowly and show the ground they are about to cover.
   // How far through a windup he is, 0..1. `Enemy` sets the timer to the tuned length × `enemySlow`
   // (EASY, the ENEMY ATTACK slider), so measured against the bare length the fill sat empty for the
@@ -4480,7 +4509,7 @@ class Renderer {
     // space the lane pointed off its real line on every diagonal.
     ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.facing);
     const p = this.windP(e, e.atk ? e.atk('windup') : cfg.windup);
-    const reach = (e.atk ? e.atk('reach') : cfg.reach) + e.r + 10, arc = e.kind === 'ratogre' ? cfg.arc : Math.PI * 0.55;
+    const reach = (e.atk ? e.atk('reach') : cfg.reach) + e.r + 10, arc = e.kind === 'ratogre' ? cfg.arc : e.warden ? e.atk('arc') : Math.PI * 0.55;
     ctx.fillStyle = `rgba(192,57,43,${0.09 + 0.2 * p})`;
     ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, reach, -arc / 2, arc / 2); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = `rgba(239,230,208,${0.2 + 0.55 * p})`; ctx.lineWidth = 2.5;
@@ -4625,7 +4654,7 @@ class Renderer {
     ctx.save(); ctx.translate(e.x, e.y); ctx.scale(1, 1 / TILT);
     {
       const p = this.windP(e, e.atk ? e.atk('windup') : cfg.windup);
-      const reach = (e.atk ? e.atk('reach') : cfg.reach) + e.r + 10, arc = e.kind === 'ratogre' ? cfg.arc : Math.PI * 0.55, n = Math.ceil(reach / px);
+      const reach = (e.atk ? e.atk('reach') : cfg.reach) + e.r + 10, arc = e.kind === 'ratogre' ? cfg.arc : e.warden ? e.atk('arc') : Math.PI * 0.55, n = Math.ceil(reach / px);
       const inArc = (x, y) => Math.abs(angleDiff(Math.atan2(y, x), f)) <= arc / 2;
       // A row's stretch of the sector: the disc's chord cut by the wedge's two edges, one stretch since
       // every swing is under a half turn wide. The square round it was 2 401 cells tested twice for a
@@ -4843,9 +4872,21 @@ class Renderer {
       // The line in cells, the windups' amber where it was red on the cult's own red floors (the
       // Altar's plum ate it at the start of the aim), dashed and marching toward the goat, surer as he
       // aims: the cells brighten and the gaps close. A cross of bright cells where the round will land.
-      const p = e.state === 'aim' ? this.windP(e, TUNING.hunter.aimTime) : 0.5, g = this.game && this.game.goat;
+      const p = e.state === 'aim' ? this.windP(e, e.warden ? TUNING.warden.gun.aimTime : TUNING.hunter.aimTime) : 0.5, g = this.game && this.game.goat;
       const reach = g ? Math.min(hyp(g.x - e.x, g.y - e.y), TUNING.hunter.sight * TILE * 1.6) : 10 * TILE;
       const ux = Math.cos(e.facing), uy = Math.sin(e.facing), px = TUNING.effects.pixel * 2;
+      // THE WARDEN's shotgun (js/warden.js): every pellet's own line, a fan, solid and blinking white-red once it has
+      // stopped following the goat (`aimLocked`): that is the moment to step out of it
+      if (e.warden && e.shotgun) {
+        const H = e.shotgun, n = H.pellets, lock = !!e.aimLocked, hot = lock && Math.floor(this.t * 14) % 2;
+        ctx.fillStyle = lock ? (hot ? 'rgba(255,240,220,0.95)' : 'rgba(232,64,44,0.95)') : `rgba(242,170,48,${0.3 + p * 0.5})`; ctx.beginPath();
+        for (let k = 0; k < n; k++) {
+          const a = e.facing + (n > 1 ? (k / (n - 1) - 0.5) * H.spread * 2 : 0), vx = Math.cos(a), vy = Math.sin(a);
+          this.floorLine(e.x + vx * r * 0.7, e.y + vy * r * 0.7, e.x + vx * reach, e.y + vy * reach, px, lock ? 40 : 7 + p * 4, lock ? 0 : 6 - p * 4, lock ? 0 : this.t * 40);
+        }
+        ctx.fill();
+        return;
+      }
       ctx.fillStyle = `rgba(242,170,48,${0.3 + p * 0.6})`; ctx.beginPath();
       this.floorLine(e.x + ux * r * 0.7, e.y + uy * r * 0.7, e.x + ux * reach, e.y + uy * reach, px, 7 + p * 4, 6 - p * 4, this.t * 40);
       ctx.fill();
@@ -5232,7 +5273,10 @@ class Renderer {
           ['hornTool', d.hornTool ? 'HORN TOOL  ON' : 'HORN TOOL  OFF'],   // the sliders over the run, and the zone on the floor
           ['cam-zoom', 'CAMERA  ×' + (d.tune && d.tune.camera || 1)],   // the lens, a step a click (also a slider on ENEMIES)
           ['heal', 'HEAL'], ['clear', 'CLEAR NEAR'],
-          ['restart', 'NEW LEVEL'], ['next', 'SKIP LEVEL'], ['lvl-prev', 'PREV LEVEL'], ['lvl-next', 'NEXT LEVEL'], ['lvl-last', 'LAST LEVEL'],
+          // 15 Oct 2026 ("what is the difference between them"): one list of every floor, dealt the souls a run would have by
+          // then; this floor laid again; this floor won by its stairs, keeping what he has. PREV / NEXT / LAST went into the list.
+          ['dev-list=levels', d.devList === 'levels' ? 'PLAY LEVEL  ▾' : 'PLAY LEVEL  ▸'],
+          ['restart', 'THIS LEVEL AGAIN (NEW LAYOUT)'], ['next', 'WIN THIS LEVEL (STAIRS)'],
           ['lastroom', 'LAST ROOM · SCENE'],   // this floor's last room with its scene (js/endboss.js; THE LAST SUPPER on the last floor)
           ['showroom', 'SHOWROOM'],
           ['factory', 'FACTORY (TEST)'],   // THE FACTORY's test floor: its three machines and the traps in nine rooms (js/factory.js)
@@ -5250,19 +5294,12 @@ class Renderer {
           ['font-say', 'SPEECH  ' + FONT_PICK.nameOf('say')], ['font-text', 'TEXT  ' + FONT_PICK.nameOf('text')],
         ] },
         { head: 'SPAWN', rows: [
-          // a click on a man opens a small menu beside the row (`d.spawnMenu`, `Game.devAction` `spawn-pick=`): plain, champion,
-          // or corrupted at its 1st / 2nd / 3rd meeting (`Game.devSpawnAs`)
-          ['bearer', 'BEARER'], ['enemy-spawn=shield', 'SHIELDMAN'], ['enemy-spawn=thrower', 'THROWER (BANE)'], ['enemy-spawn=shaman', 'SHAMAN'], ['hunter', 'HUNTER'], ['dog', 'HOUND'], ['seer', 'SEER'],
-          ['enemy-spawn=warden', 'THE WARDEN'], ['enemy-spawn=flayed', 'THE FLAYED'],   // the villain's two phases (js/warden.js)
-          ['enemy-spawn=sawbot', 'SAWBOT'], ['enemy-spawn=welder', 'WELDER'], ['enemy-spawn=automaton', 'THE AUTOMATON'], ['enemy-spawn=arm', 'THE ARM'],   // THE FACTORY (js/factory.js)
-          ['enemy-spawn=coward', 'THE COWARD'], ['enemy-spawn=cowardgift', 'COWARD + GRASS'],   // js/coward.js
-          ['wraith', 'WRAITH'], ['wraithdoor', 'WRAITH DOOR'], ['butcher', 'OGRE'],
-          ['ratogre', 'RAT OGRE'],
+          // the men and the animals are lists a row opens (`devLists`, 15 Oct 2026); a man in it asks how, as before
+          ['dev-list=enemies', d.devList === 'enemies' ? 'SUMMON ENEMY  ▾' : 'SUMMON ENEMY  ▸'],
+          ['dev-list=pets', d.devList === 'pets' ? 'COMPANION  ▾' : 'COMPANION  ▸'],
           ['mouse', 'MOUSE'], ['artifact', 'TALISMAN · CAPE'], ['soul', 'SOUL'],
           // Every soul as its picture, a click puts it on him or takes it off (`drawSoulPick`, 9 Oct 2026 playtest).
           ['soulpick', d.soulPick ? 'PICK A SOUL  ON' : 'PICK A SOUL'],
-          ['coop', 'HEN'], ['tortoise', 'TORTOISE'], ['goose', 'GOOSE'], ['crow', 'CROW'], ['horse', 'HORSE'],
-          ['pig', 'PIG'], ['rabbit', 'RABBIT'], ['husky', 'HUSKY'], ['fish', 'FISH'],
         ] },
       ];
       // A column taller than the screen above the corner word runs on into another column beside it
@@ -5290,7 +5327,7 @@ class Renderer {
       ctx.fillStyle = 'rgba(13,10,12,0.93)'; ctx.fillRect(px0, py - 20 * s, boxW, boxH);
       ctx.strokeStyle = 'rgba(185,135,58,0.6)'; ctx.lineWidth = 1.5 * s;
       ctx.strokeRect(px0, py - 20 * s, boxW, boxH);
-      let popAt = null;
+      let popAt = null, listAt = null;
       cols.forEach((col, ci) => {
         const px = px0 + 3 * s + colX[ci], rw = colW[ci];
         ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
@@ -5305,13 +5342,31 @@ class Renderer {
           ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = on ? PALETTE.fireHi : PALETTE.bone;
           ctx.textBaseline = 'middle'; ctx.fillText(label, px + 13 * s, y + rh / 2); ctx.textBaseline = 'alphabetic';
           const rr = { x: px + 5 * s, y, w: rw - 10 * s, h: rh, id }; d.rects.push(rr);
-          if (DEV_SPAWN_POP.has(id)) { rr.pop = true; if (d.spawnMenu && d.spawnMenu.id === id) popAt = { rr, label }; }
+          if (id === 'dev-list=' + d.devList) listAt = rr;
         });
       });
+      // The open list beside its row, in columns of `fit` rows, its items on top of the drawer
+      const items = listAt && this.devLists(game)[d.devList];
+      if (items) {
+        ctx.font = `700 ${11 * s}px ${FONT_SC}`;
+        const lw = Math.max(150 * s, ...items.map(([, l]) => textW(ctx, l) + 26 * s)), per = Math.min(items.length, fit), nc = Math.ceil(items.length / per);
+        const lh = per * (rh + gap) + 10 * s, lx = Math.min(listAt.x + listAt.w + 6 * s, this.w / fitK - nc * lw - 8 * s);
+        const ly = Math.max(8 * s, Math.min(listAt.y, py + n * (rh + gap) - lh));
+        ctx.fillStyle = 'rgba(13,10,12,0.98)'; ctx.fillRect(lx, ly, nc * lw + 4 * s, lh);
+        ctx.strokeStyle = PALETTE.ochre; ctx.lineWidth = 1.5 * s; ctx.strokeRect(lx, ly, nc * lw + 4 * s, lh);
+        items.forEach(([id, label], i) => {
+          const x = lx + 2 * s + Math.floor(i / per) * lw, y = ly + 5 * s + (i % per) * (rh + gap);
+          ctx.fillStyle = 'rgba(59,34,51,0.9)'; ctx.fillRect(x + 3 * s, y, lw - 6 * s, rh);
+          ctx.strokeStyle = 'rgba(239,230,208,0.25)'; ctx.lineWidth = 1 * s; ctx.strokeRect(x + 3 * s, y, lw - 6 * s, rh);
+          ctx.fillStyle = PALETTE.bone; ctx.textBaseline = 'middle'; ctx.fillText(label, x + 11 * s, y + rh / 2); ctx.textBaseline = 'alphabetic';
+          const rr = { x: x + 3 * s, y, w: lw - 6 * s, h: rh, id, top: true }; d.rects.push(rr);
+          if (DEV_SPAWN_POP.has(id)) { rr.pop = true; if (d.spawnMenu && d.spawnMenu.id === id) popAt = { rr, label }; }
+        });
+      }
       // The spawn menu beside the row that opened it, kept inside the box, its foot above the rows' end
       if (popAt) {
         const note = DEV_SPAWN_NOTE[popAt.rr.id.replace('enemy-spawn=', '')], pw = 262 * s, noteH = note ? note.length * 12 * s + 8 * s : 0, ph = DEV_SPAWN_AS.length * (rh + gap) + 28 * s + noteH;
-        const qx = Math.max(px0 + 4 * s, Math.min(popAt.rr.x + popAt.rr.w * 0.3, px0 + boxW - pw - 4 * s)), qy = Math.max(py - 18 * s, Math.min(popAt.rr.y, py + n * (rh + gap) - ph));
+        const qx = Math.max(px0 + 4 * s, Math.min(popAt.rr.x + popAt.rr.w * 0.3, this.w / fitK - pw - 4 * s)), qy = Math.max(8 * s, Math.min(popAt.rr.y, py + n * (rh + gap) - ph));
         ctx.fillStyle = 'rgba(13,10,12,0.98)'; ctx.fillRect(qx, qy, pw, ph);
         ctx.strokeStyle = PALETTE.ochre; ctx.lineWidth = 1.5 * s; ctx.strokeRect(qx, qy, pw, ph);
         ctx.font = `700 ${10 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
@@ -5368,19 +5423,32 @@ class Renderer {
   // PLAYTESTER MODE's drawer (SETTINGS `tester`, 10 Oct 2026): the few rows a playtester needs, the same ids as the dev
   // drawer's (`TESTER_IDS` in tuning.js gates them in `Game.devAction`). A COMPANION opens its second choice, which animal,
   // as rows under it. Which floor to start on is LEVELS on the title, shown while this is on.
+  // What the drawer's list rows open (`d.devList`): every floor, every man the SPAWN rows used to hold, every animal.
+  devLists(game) {
+    return {
+      levels: LEVELS.map((L, i) => ['lvl=' + i, (i + 1) + ' · ' + L.name]).concat([['lvl=dark', 'THE DARK (IN THE CAVE\'S PLACE)']]),
+      enemies: [
+        ['bearer', 'BEARER'], ['enemy-spawn=shield', 'SHIELDMAN'], ['enemy-spawn=thrower', 'THROWER (BANE)'], ['enemy-spawn=shaman', 'SHAMAN'], ['hunter', 'HUNTER'], ['dog', 'HOUND'], ['seer', 'SEER'],
+        ['wraith', 'WRAITH'], ['wraithdoor', 'WRAITH DOOR'], ['butcher', 'OGRE'], ['ratogre', 'RAT OGRE'],
+        ['enemy-spawn=warden', 'THE WARDEN'], ['enemy-spawn=flayed', 'THE FLAYED'],   // the villain's two phases (js/warden.js)
+        ['enemy-spawn=sawbot', 'SAWBOT'], ['enemy-spawn=welder', 'WELDER'], ['enemy-spawn=automaton', 'THE AUTOMATON'], ['enemy-spawn=arm', 'THE ARM'],   // THE FACTORY (js/factory.js)
+        ['enemy-spawn=coward', 'THE COWARD'], ['enemy-spawn=cowardgift', 'COWARD + GRASS'],   // js/coward.js
+      ],
+      pets: [['coop', 'HEN'], ['tortoise', 'TORTOISE'], ['goose', 'GOOSE'], ['crow', 'CROW'], ['horse', 'HORSE'],
+        ['pig', 'PIG'], ['rabbit', 'RABBIT'], ['husky', 'HUSKY'], ['fish', 'FISH']],
+    };
+  }
   testerCols(game) {
     const d = game.dev;
     const give = [
       ['soul', 'A SOUL  (CARDS)'], ['soulpick', d.soulPick ? 'ANY SOUL  ON' : 'ANY SOUL  (PICK)'],
       ['mouse', 'THE MOUSE  (TALISMANS)'], ['sacrifices', 'HEAVEN  +100 SACR · +5 SOULS'], ['addkey', '+1 KEY'],
-      ['tester-pets', d.testerPets ? 'A COMPANION  ▾' : 'A COMPANION  ▸'],
+      ['dev-list=pets', d.devList === 'pets' ? 'A COMPANION  ▾' : 'A COMPANION  ▸'],
     ];
-    if (d.testerPets) give.push(['coop', '  HEN'], ['tortoise', '  TORTOISE'], ['goose', '  GOOSE'], ['crow', '  CROW'], ['horse', '  HORSE'],
-      ['pig', '  PIG'], ['rabbit', '  RABBIT'], ['husky', '  HUSKY'], ['fish', '  FISH']);
     return [
       { head: 'PLAYTEST', rows: [
         ['god', d.god ? 'GOD  ON' : 'GOD  OFF'], ['heal', 'HEAL'],
-        ['lvl-prev', 'PREV LEVEL'], ['lvl-next', 'NEXT LEVEL'], ['lvl-last', 'LAST LEVEL'], ['next', 'SKIP LEVEL'],
+        ['dev-list=levels', d.devList === 'levels' ? 'PLAY LEVEL  ▾' : 'PLAY LEVEL  ▸'], ['next', 'WIN THIS LEVEL (STAIRS)'],
         ['lastroom', 'LAST ROOM · BOSS'],
       ] },
       { head: 'GIVE', rows: give },

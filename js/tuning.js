@@ -3,7 +3,7 @@ const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else, bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on. Counted 0.001, 0.002,
 // ... since 9 Oct 2026 (his word: "big numbers confuse me"); the line before it ended at 2.07.
-const BUILD = '0.019';
+const BUILD = '0.020';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -2007,10 +2007,12 @@ const TUNING = {
   // `monster`: THE FLAYED he becomes on his last heart: an ogre at `speedMul` × the ogre's pace with `hp` hearts, the corrupted
   // ogre's witchfire as at its `meet`-th meeting (js/waves.js), `emerge` s standing up; `fists`: the fire off his hands.
   warden: { hp: 7, speedMul: 1.05,
-    sword: { windup: 0.3, swing: 0.12, recover: 0.42, reach: 1.5 * TILE, damage: 1, arc: Math.PI * 0.75 },
+    // `lock`: the last share of the windup the blade stops following the goat; the gun's `lock` s the same (15 Oct 2026,
+    // his: "a clear aim and blow"; the windup a beat longer, 0.3 → 0.42, so the locked wedge can be read)
+    sword: { windup: 0.42, swing: 0.12, recover: 0.42, reach: 1.5 * TILE, damage: 1, arc: Math.PI * 0.75, lock: 0.45 },
     guard: { up: 2.2, down: 1.4 },
     roll: { range: 5, min: 1.6, goatSpeed: 3, cone: 0.4, dist: 2.6, time: 0.32, recover: 0.2, cd: 2.4, first: 1 },
-    gun: { min: 4, max: 9, aimTime: 0.8, reload: 2.6, recover: 0.9, first: 1.5, pellets: 3, spread: 0.2 },
+    gun: { min: 4, max: 9, aimTime: 0.8, lock: 0.3, reload: 2.6, recover: 0.9, first: 1.5, pellets: 3, spread: 0.2 },
     barrier: { r: 1.7, laughEvery: 2.8 },
     monster: { hp: 5, speedMul: 1.15, meet: 3, emerge: 2.2, pulse: 0.45, fists: { rate: 40, speed: 50, low: 22, up: 62 } },
     // The turn (12 Oct 2026 playtest, js/warden.js `beginTurn`): a held scene, the camera on him at `zoom`; his `lines` in the box
@@ -2966,6 +2968,10 @@ const TUNING = {
     // at `notes` [seconds, Hz, extra detune] over a `drone` Hz sine `droneLen` s long; the score is hushed under it (`audio.hush`).
     supper: { drone: 55, droneLen: 5.5, droneGain: 0.06, detune: 0.985, gain: 0.05, len: 2.4,
       notes: [[0, 392], [0.6, 329.63], [1.45, 261.63], [2.05, 523.25, 0.97], [3.4, 392], [4.3, 329.63, 0.96]] },
+    // A held scene (`game.endScene`, the supper's offer, the first gate's mage; 15 Oct 2026, his: "in the final scene turn the
+    // main music right down, it plays over the scene"): the score sinks to `duck` of itself in `down` s and comes back in `up` s.
+    // The supper's harp and drone are on `sceneBus`, round it.
+    scene: { duck: 0.12, down: 0.6, up: 1.5 },
     // The score's clock: one tempo everywhere. A floor's tempo (96 on the meadow rising to 124, a fight
     // lifting it) was tried on 1 Oct 2026 and taken out the same day, "out of a fight it is just
     // stretched; it should be simpler by count, not by stretching". Calm is `layers.calm`'s job.
@@ -4149,7 +4155,7 @@ const DEV_SPAWN_AS = ['PLAIN', 'CHAMPION', 'CORRUPTED · 1ST', 'CORRUPTED · 2ND
 // 2nd, 3rd meeting"), and what a corrupted one of a kind brings with it, said at the foot of that menu.
 // PLAYTESTER MODE's short drawer (SETTINGS `tester`, `Renderer.testerCols`): the only rows that answer in a build with no dev
 // drawer, and of them the ones that hand him something (a life given any of those is flagged `T`, js/stats.js).
-const TESTER_IDS = new Set(['toggle', 'god', 'heal', 'lvl-prev', 'lvl-next', 'lvl-last', 'next', 'lastroom', 'soul', 'soulpick', 'soulpick-miss', 'mouse', 'sacrifices', 'addkey', 'tester-pets']);
+const TESTER_IDS = new Set(['toggle', 'god', 'heal', 'lvl-prev', 'lvl-next', 'lvl-last', 'next', 'lastroom', 'soul', 'soulpick', 'soulpick-miss', 'mouse', 'sacrifices', 'addkey', 'tester-pets', 'dev-list=levels', 'dev-list=pets']);
 const TESTER_GIFTS = new Set(['heal', 'lvl-prev', 'lvl-next', 'lvl-last', 'next', 'lastroom', 'soul', 'soulpick', 'mouse', 'sacrifices', 'addkey']);
 const DEV_SPAWN_POP = new Set(['bearer', 'enemy-spawn=shield', 'enemy-spawn=thrower', 'enemy-spawn=shaman', 'hunter', 'dog', 'seer', 'wraith', 'butcher', 'enemy-spawn=sawbot', 'enemy-spawn=welder', 'enemy-spawn=automaton', 'enemy-spawn=arm']);
 // What each kind of man does beside another (the dev drawer's LINKS tab): `what` is read live off the numbers, `where` is the code.

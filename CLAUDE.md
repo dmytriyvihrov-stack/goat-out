@@ -375,6 +375,7 @@ limit") is in the old backlog (`git show 19f4efd:BACKLOG.md`).
   **The resize waits for the next draw** (`game.resizeNext`, 7 Oct 2026: "after five seconds of moving the mouse the screen
   starts to blink"): a canvas resized after the frame was drawn showed the screen its cleared self for a frame. And once it
   has dropped on a floor it does not climb back until the next floor (`perfAdapt.noUp`).
+- **`ctx.filter` is paid per fill** (15 Oct 2026: THE ARM's hit flash, hundreds of cells under a filter, was 795 ms a draw). A unit laid live in cells gets its silhouette through `Renderer.flatBody` (drawn once on a scratch canvas, filled flat there, one drawImage), never a filter round its body.
 - **A thrown exception inside `draw` costs the rest of the frame, and then the whole picture.** `safeFrame` (game.js) resets the canvas after a
   throw, so one every headbutt (a `FE` that was local to `stance`, read in `drawGoat`'s windup branch, 9 Oct 2026) was "the screen blinks black on
   every headbutt". Look for a thrown frame first (`game.frameErrs`, the console) whenever a flash has no source in the effects.
@@ -642,7 +643,7 @@ barrels, the chandelier and the bomb are only added to a room under `max`, barre
 ambush, first two ordinary rooms, the last room), `isTrap`; never introduces a kind; no spike scatter. `needs: 'spikes'`
 templates only on `levelDef.spikes` levels. `'S'` plate, `'B'` coals.
 
-**The level tool.** `LEVEL TOOL` in the dev drawer (its PREV LEVEL / NEXT LEVEL rows jump a floor and LAST LEVEL to THE OSSUARY, `lvl-prev` / `lvl-next` / `lvl-last` in `devAction`; LAST ROOM · SCENE (10 Oct 2026, `lastroom`) lays this floor again and stands him a step inside its last room's door with the men before it gone, `Game.standAtRoom`, shared with the COMBOS tab's PLAY, so the floor's last man's scene or THE LAST SUPPER starts as he walks in); `dev.rules` pauses the sim, `hitDev` swallows input.
+**The level tool.** `LEVEL TOOL` in the dev drawer (its PLAY LEVEL row opens a list of every floor and THE DARK, `lvl=` in `devAction`, dealt the souls a run would have by then; SUMMON ENEMY and COMPANION are lists the same way, `d.devList`, `Renderer.devLists`; LAST ROOM · SCENE (10 Oct 2026, `lastroom`) lays this floor again and stands him a step inside its last room's door with the men before it gone, `Game.standAtRoom`, shared with the COMBOS tab's PLAY, so the floor's last man's scene or THE LAST SUPPER starts as he walks in); `dev.rules` pauses the sim, `hitDev` swallows input.
 RULES (`drawRuleTab`, `game.ruleMatrix`), LEVEL (`drawLevelTab`, `roomPlan` off the generated level),
 BALANCE (`drawBalance`, `game.balanceReport` over `dev.balanceSeeds`; the averaged rules live here and in
 the report only). A room tile or bar opens `drawRoomSheet` (`dev.room`). `#rules` / `#balance` open it

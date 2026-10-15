@@ -5,6 +5,25 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 0.020, 15 Oct 2026: nine notes (the arm's frame drop, the dev drawer, the supper, the Warden)
+
+- **Hitting THE ARM no longer drops the game to 2 FPS.** Its hit flash and windup tint went through `ctx.filter`, which the
+  canvas pays per fill, and the arm is laid live in hundreds of cells: 795 ms a draw. It is now drawn once onto a scratch
+  canvas and filled flat there (`Renderer.flatBody`), a few ms. (0.019 could not reproduce it: it needs the flash.)
+- **Dev drawer.** PLAY LEVEL opens a list of every floor (and THE DARK): straight onto it with the souls a run would have
+  dealt by then (`lvl=`, `startAtLevel`). NEW / SKIP / PREV / NEXT / LAST LEVEL are now two rows that say what they do:
+  THIS LEVEL AGAIN (NEW LAYOUT) and WIN THIS LEVEL (STAIRS). SUMMON ENEMY and COMPANION are one row each that open a list
+  (`d.devList`, `Renderer.devLists`); a man in it still asks plain / champion / corrupted. The playtester drawer the same.
+- **A held scene pulls the score down** (`audio.scene`, `sceneDuck`): a floor's last man's scene, the Warden's turn, THE
+  LAST SUPPER and its offer, the first gate's mage. The supper's harp and drone are on their own bus round it.
+- **THE LAST SUPPER: the goat's chair is on the far side, at the table's middle** (`supper.place`), so he walks the table to
+  reach it; it slides out away from the table and the grass lies between it and the table.
+- **No `xN` over a body on a chained kill**: the chain is still heard and slowed.
+- **THE WARDEN reads.** His sword's windup 0.3 → 0.42 s and its last `sword.lock` share no longer follows the goat; the gun's
+  last `gun.lock` s the same, the aim shown as each pellet's line, solid and blinking white-red once it holds. The windup's
+  wedge is drawn at his sword's real arc (it showed 0.55 of a turn for a 0.75 blow).
+- **A white soul is a soul, white** (`Heaven.skull`): the corrupted soul's wisp washed white, wherever the gold skull counted them.
+
 ## 0.019, 15 Oct 2026: THE FACTORY playtest, eleven notes
 
 - **No ordinary men on the factory floor.** Any kind `factoryLevel` lays that is not the factory's own (`FACTORY_MEN`: sawbot,

@@ -634,6 +634,11 @@ const EndBoss = {
     for (const side of [-1, 1]) for (let x = x0 + TILE * T.inset; x <= x1 - TILE * T.inset + 1; x += TILE * T.gap) {
       const y = rowY + side * TILE * T.seat; if (ok(x, y)) seats.push({ x, y, facing: side < 0 ? Math.PI / 2 : -Math.PI / 2 });
     }
+    // His place (15 Oct 2026, his: "put the goat's place here, so there is more to walk"): a seat on the far long side at
+    // the table's middle, kept out of the men's, the chair sliding out away from the table; the foot of the table if none.
+    const mid = (x0 + x1) / 2, far = seats.filter((s) => s.facing > 0).sort((a, b) => Math.abs(a.x - mid) - Math.abs(b.x - mid))[0];
+    if (far) seats.splice(seats.indexOf(far), 1);
+    const place = far ? { x: far.x, y: far.y, ux: 0, uy: -1 } : { x: x0 - TILE * T.chair, y: rowY, ux: -1, uy: 0 };
     seats.sort((a, b) => (x1 - a.x) - (x1 - b.x));
     const boss = game.enemies.find((o) => o.boss && o.soul && !o.dead && o.room === last);
     const men = game.enemies.filter((o) => !o.dead && !o.scripted && o.room === last && o.state !== 'hidden');
@@ -660,8 +665,8 @@ const EndBoss = {
     game.enemies.push(wd);
     // the chair at the foot: a wraith as a stool
     let chair = null;
-    if (seated && ok(x0 - TILE * T.chair, rowY)) {
-      chair = new Enemy(x0 - TILE * T.chair, rowY, 'wraith'); chair.room = last; chair.aware = false; chair.woke = true; chair.hideWant = false;
+    if (seated && ok(place.x, place.y)) {
+      chair = new Enemy(place.x, place.y, 'wraith'); chair.room = last; chair.aware = false; chair.woke = true; chair.hideWant = false;
       game.enemies.push(chair);
       if (!chair.hide(game, 'stool')) { game.enemies.pop(); chair = null; }
     }
@@ -671,7 +676,7 @@ const EndBoss = {
     if (seated) game.props.push(platter);
     // the dome of the brawl: a disc over him and his table, `dome.pad` tiles past both
     const dome = { x: (wx + headT.x) / 2, y: rowY, r: Math.abs(wx - headT.x) / 2 + T.dome.pad * TILE };
-    game.supper = { li, room: last, rowY, x0, x1, men: order, boss, warden: wd, chair, platter, tables, dome, t: 0, phase: 'wait', slide: 0, lineAt: 0, lineN: 0, laughAt: 0, laughN: 0 };
+    game.supper = { li, room: last, rowY, x0, x1, place, men: order, boss, warden: wd, chair, platter, tables, dome, t: 0, phase: 'wait', slide: 0, lineAt: 0, lineN: 0, laughAt: 0, laughN: 0 };
     game.endBoss = { e: wd, li, kind: 'supper', meet: this.meetFor(game, li), room: last, seen: !seated, bones: null };
     if (!seated) this.resumeSupper(game, was);
   },
@@ -728,8 +733,15 @@ const EndBoss = {
     const S = game.supper, T = TUNING.endBoss.supper;
     if (!S.chair || S.slide >= 1) return;
     S.slide = Math.min(1, S.slide + dt / T.slide); const q = S.slide * S.slide * (3 - 2 * S.slide);
-    const x = S.x0 - TILE * T.chair - q * TILE * T.slideBy; S.chair.x = x; if (S.chair.disguise) S.chair.disguise.x = x;
-    if (Math.random() < dt * 40) game.particles(x + (Math.random() - 0.5) * 20, S.rowY - 6 + (Math.random() - 0.5) * 10, 1, Math.random() < 0.5 ? PALETTE.witch : PALETTE.witchHi, 30);
+    const { x, y } = this.chairAt(S, q);
+    if (Math.random() < dt * 40) game.particles(x + (Math.random() - 0.5) * 20, y - 6 + (Math.random() - 0.5) * 10, 1, Math.random() < 0.5 ? PALETTE.witch : PALETTE.witchHi, 30);
+  },
+  // The chair `q` of the way out from its place (0 at the table, 1 slid out), moved there with its stool.
+  chairAt(S, q) {
+    const T = TUNING.endBoss.supper, P = S.place || { x: S.x0 - TILE * T.chair, y: S.rowY, ux: -1, uy: 0 };
+    const x = P.x + P.ux * q * TILE * T.slideBy, y = P.y + P.uy * q * TILE * T.slideBy;
+    if (S.chair) { S.chair.x = x; S.chair.y = y; if (S.chair.disguise) { S.chair.disguise.x = x; S.chair.disguise.y = y; } }
+    return { x, y };
   },
   // He stands from his seat, his hand up.
   wardenUp(game) {
@@ -756,12 +768,13 @@ const EndBoss = {
     const S = game.supper, T = TUNING.endBoss.supper, w = S.warden, g = game.goat;
     if (!S || S.phase !== 'scene') return;
     this.sealBehind(game, true); this.wardenUp(game); w.pose = 'idle';
-    if (S.chair && S.slide < 1) { S.slide = 1; const x = S.x0 - TILE * T.chair - TILE * T.slideBy; S.chair.x = x; if (S.chair.disguise) S.chair.disguise.x = x; }
+    if (S.chair && S.slide < 1) { S.slide = 1; this.chairAt(S, 1); }
     if (game.beastTalk && game.beastTalk.kind === 'warden') game.beastTalk = null;
     for (const o of [w, ...S.men]) o.endActor = false;
-    // the tuft at the chair, between it and the table's foot: what "EAT WITH US" means, and what the wraith waits on
-    const gx = (S.chair ? S.chair.x : S.x0 - TILE * T.chair) + TILE * T.grass;
-    if (game.world.walkableAt(Math.floor(gx / TILE), Math.floor(S.rowY / TILE))) { S.grass = new Prop(gx, S.rowY, 'heal'); S.grass.supper = true; game.props.push(S.grass); }
+    // the tuft at the chair, between it and the table: what "EAT WITH US" means, and what the wraith waits on
+    const P = S.place || { ux: -1, uy: 0 }, at = this.chairAt(S, S.chair ? S.slide : 1);
+    const gx = at.x - P.ux * TILE * T.grass, gy = at.y - P.uy * TILE * T.grass;
+    if (game.world.walkableAt(Math.floor(gx / TILE), Math.floor(gy / TILE))) { S.grass = new Prop(gx, gy, 'heal'); S.grass.supper = true; game.props.push(S.grass); }
     S.phase = 'offer'; S.t = 0; S.lineAt = 1.6; S.lineN = 0;
     g.facing = Math.atan2(w.y - g.y, w.x - g.x);
   },
