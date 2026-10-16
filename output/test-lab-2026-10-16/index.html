@@ -1,0 +1,259 @@
+<title>Doomed Goat Test Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,600;1,400&family=Alegreya+SC:wght@500;700&family=Jacquard+24&display=swap">
+<style>
+/* Layout: one column of cards, each with three room buttons; a sticky bar with the count and filters; the game opens in a frame over the page. The game's own dark stone and bone, one look on purpose. */
+:root {
+  --bg: #17130f; --panel: #211b16; --line: #3a3027; --fg: #efe6d0; --dim: #a8977c;
+  --blood: #c0392b; --amber: #f2aa30; --ok: #7fae5a; --violet: #9a7ce0; --ink: #0d0a0c;
+  --display: 'Jacquard 24', 'Alegreya SC', Georgia, serif;
+  --head: 'Alegreya SC', Georgia, serif;
+  --body: 'Alegreya', Georgia, 'Times New Roman', serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 17px/1.45 var(--body); margin: 0; }
+.wrap { max-width: 900px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 60px; }
+h1 { font: 400 52px/1 var(--display); margin: 8px 0 4px; letter-spacing: 0.5px; }
+.lede { color: var(--dim); margin: 0 0 14px; max-width: 68ch; }
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line);
+  display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding-block: 10px; }
+.count { font: 700 15px var(--head); letter-spacing: 0.06em; font-variant-numeric: tabular-nums; }
+.meter { flex: 1 1 160px; height: 8px; background: var(--line); display: flex; min-width: 120px; }
+.meter i { display: block; height: 100%; }
+.filters { display: flex; gap: 6px; flex-wrap: wrap; }
+button, .btn { font: 600 14px var(--head); letter-spacing: 0.05em; color: var(--fg); background: var(--panel); border: 1px solid var(--line);
+  padding: 5px 10px; cursor: pointer; border-radius: 3px; text-decoration: none; display: inline-block; }
+button:hover, .btn:hover { border-color: var(--dim); }
+button:focus-visible, textarea:focus-visible, input:focus-visible, .btn:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.sync { font-size: 13px; color: var(--dim); margin-left: auto; }
+h2 { font: 700 20px var(--head); letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); margin: 28px 0 10px; text-wrap: balance; }
+.list { display: grid; gap: 12px; }
+.item { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--line); padding: 14px 16px; min-width: 0; display: grid; gap: 8px; }
+.item[data-s="ok"] { border-left-color: var(--ok); }
+.item[data-s="bad"] { border-left-color: var(--blood); }
+.item[data-s="wip"] { border-left-color: var(--amber); }
+.top { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.top h3 { font: 700 19px var(--head); margin: 0; letter-spacing: 0.03em; flex: 1 1 220px; min-width: 0; }
+.play { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.play .lbl { font: 700 12px var(--head); letter-spacing: 0.1em; color: var(--amber); }
+.play button { border-color: var(--amber); color: var(--amber); min-width: 38px; }
+.play button:hover { background: var(--amber); color: var(--ink); }
+.what { margin: 0; color: var(--dim); font-size: 15px; }
+.was { margin: 0; font-size: 15px; border-left: 2px solid var(--violet); padding-left: 10px; display: grid; gap: 2px; }
+.was .you { color: var(--fg); font-style: italic; }
+.was .done { color: var(--dim); }
+.was b { font: 700 12px var(--head); letter-spacing: 0.08em; color: var(--violet); }
+ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+li label { display: flex; gap: 9px; align-items: flex-start; cursor: pointer; }
+li input { margin-top: 5px; accent-color: var(--ok); width: 16px; height: 16px; flex: none; }
+li.done span { color: var(--dim); text-decoration: line-through; text-decoration-color: var(--line); }
+.status { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.status button[data-v="ok"][aria-pressed="true"] { background: var(--ok); border-color: var(--ok); color: #10140c; }
+.status button[data-v="bad"][aria-pressed="true"] { background: var(--blood); border-color: var(--blood); color: var(--fg); }
+.status button[data-v="wip"][aria-pressed="true"] { background: var(--amber); border-color: var(--amber); color: #1a1208; }
+.status .cm { margin-left: auto; }
+textarea { width: 100%; min-height: 2.6em; resize: vertical; background: var(--bg); color: var(--fg);
+  border: 1px solid var(--line); font: 15px/1.4 var(--body); padding: 6px 8px; }
+.gone { color: var(--dim); font-size: 15px; margin: 0; }
+.note { font-size: 13px; color: var(--dim); margin-top: 22px; }
+.ro .status button, .ro input, .ro textarea { pointer-events: none; opacity: 0.6; }
+
+/* the game over the page */
+.stage { position: fixed; inset: 0; z-index: 20; background: var(--ink); display: grid; grid-template-rows: auto 1fr;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.stagebar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding-block: 8px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); border-bottom: 1px solid var(--line); background: var(--bg); }
+.stagebar h3 { font: 700 18px var(--head); margin: 0; letter-spacing: 0.04em; }
+.stagebar .play button[aria-pressed="true"] { background: var(--amber); color: var(--ink); }
+.stagebar .hint { color: var(--dim); font-size: 13px; }
+.stagebar .x { margin-left: auto; }
+.stage iframe { width: 100%; height: 100%; border: 0; display: block; background: var(--ink); }
+@media (max-width: 480px) { h1 { font-size: 40px; } .sync { margin-left: 0; width: 100%; } .status .cm { margin-left: 0; } }
+</style>
+
+<div class="wrap">
+  <h1>Doomed Goat: Test Lab</h1>
+  <p class="lede">Каждая вещь с кнопками <b>1 · 2 · 3</b>: открывается тестовый этаж прямо здесь, комната с одной штукой, потом с двумя, потом с тремя (кнопка ставит козла в эту комнату). Комнаты живут только в этом доке, в игре их нет. В каждом тесте у козла четыре души, чтобы пробовать огонь, яд и оглушение на всём: SPLASH (яд на рогах), SUPERHOT (бросок поджигает), THE FULL THROAT (крик оглушает), DEAD WEIGHT (кувырок оглушает). Отметка, галочки и заметка сохраняются, Claude их читает. Лиловым: что ты написал и что сделано.</p>
+  <div class="bar">
+    <span class="count" id="count">0 / 0 ПРОВЕРЕНО</span>
+    <div class="meter" id="meter" aria-hidden="true"></div>
+    <div class="filters" role="group" aria-label="Фильтр">
+      <button id="f-all" data-f="all" aria-pressed="true">ВСЕ</button>
+      <button id="f-left" data-f="left" aria-pressed="false">ОСТАЛОСЬ</button>
+      <button id="f-bad" data-f="bad" aria-pressed="false">СЛОМАНО</button>
+    </div>
+    <span class="sync" id="sync">загружаю отметки…</span>
+  </div>
+  <div id="groups"></div>
+  <p class="note">В комнате: смерть кладёт этаж заново, лестница в конце ведёт к началу. GOD выключен (бой проверяется руками), включить: SETTINGS → GOD MODE. Esc в игре ставит паузу; «Закрыть» возвращает к списку. Если окно игры не открылось, «в новой вкладке» открывает ту же комнату отдельно.</p>
+</div>
+
+<div class="stage" id="stage" hidden>
+  <div class="stagebar">
+    <h3 id="st-name">…</h3>
+    <div class="play" role="group" aria-label="Комната"><span class="lbl">КОМНАТА</span>
+      <button data-room="1" id="st-1">1</button><button data-room="2" id="st-2">2</button><button data-room="3" id="st-3">3</button></div>
+    <span class="hint">кнопка ставит козла в эту комнату и кладёт этаж заново</span>
+    <a class="btn" id="st-tab" href="game.html" target="_blank" rel="noopener">в новой вкладке</a>
+    <button class="x" id="st-close">Закрыть</button>
+  </div>
+  <iframe id="st-frame" title="Doomed Goat test room" allow="autoplay; fullscreen"></iframe>
+</div>
+
+<script>
+// What to test, and what each room holds. `lab` is the test's id in testlab.js; `was` is his note on the factory doc and
+// what 0.027 did about it. Marks live in the db (marks/<id>), never here.
+const GROUPS = [
+  { name: 'Ждёт твоего слова', items: [
+    { id: 'gears', title: 'ШЕСТЕРНИ (мусор на полу)', what: 'Маленькие кучки шестерёнок на полу, нарочно бледные: 1, 2, 3 кучки.',
+      was: ['в тесте ничего не понял, не увидел', 'они там: маленькие и бледные, как ты просил в доке фабрики («менее видимые, понятно, что декорация»). Если их так не видно совсем, отметь: сделаю ярче'],
+      checks: ['Видно, но не спорит с врагами', 'Или: слишком бледно, сделать ярче'] },
+  ] },
+  { name: 'Новое', items: [
+    { id: 'cartridge', title: 'КАРТРИДЖ (THE CARTRIDGE)', what: 'Гильза на ножках (0.030): держит дистанцию, заряжается и плюёт веером электрических болтов, они оглушают всех, своих тоже. Мёртвый взрывается кольцом шока. В каждой комнате ещё пилобот, чтобы попасть в него болтами.',
+      checks: ['Веер на полу перед выстрелом читается', 'Болты оглушают пилобота', 'Убить об стену; смерть: кольцо шока', 'Огонь его взрывает'] },
+  ] },
+  { name: 'Ловушки и машины', items: [
+    { id: 'dispenser', title: 'БОМБОВЫЙ СТАНОК', what: 'Удар рогами = бомба. Два пилобота для броска.',
+      was: ['переделать, как будто реальное производство', 'маленькая линия: бункер с порохом, лента, пресс штампует, бомба выпадает из жёлоба (0.027)'],
+      checks: ['Похож на производство', 'Удар = бомба выезжает'] },
+  ] },
+  { name: 'Вещи в комнатах', items: [
+    { id: 'gas', title: 'ГАЗОВЫЙ БАЛЛОН', what: 'Бросаемый. Разбился = все рядом отлетают и оглушены. Три пилобота.',
+      was: ['кидательный, после броска расталкивает врагов', 'бросается, расталкивает в 2.6 клетки (0.027)'], checks: ['Бросается как ящик', 'Об стену враги умирают'] },
+    { id: 'oil', title: 'МАСЛО', what: 'Пятно растёт, тянется следом, огонь бежит по нему. Жаровня, бочка, два пилобота.',
+      was: ['масло течёт, вступил = тянется пару клеток за тобой', 'сделано, плюс огонь бежит по маслу как по фитилю (0.027)'], checks: ['Пятно растёт', 'След тянется', 'Огонь бежит'] },
+    { id: 'valve', title: 'ВЕНТИЛЬ (на стене)', what: 'На дальней стене.', checks: ['Смотрится'] },
+    { id: 'lamp', title: 'ЛАМПА (на стене)', what: 'На дальней стене.', was: ['переделать', 'круглая лампа с решёткой, свет пятном клеток (0.027)'], checks: ['Нравится'] },
+    { id: 'vent', title: 'ВЕНТИЛЯЦИЯ', what: 'В боковой стене: 2 удара, ход в соседнюю комнату, перед ней ящики.',
+      was: ['секретный проход как в Deus Ex, ящики перед ней, менее заметно', 'сделано (0.027)'], checks: ['Находится, но не бросается в глаза', 'Ход ведёт в соседнюю комнату'] },
+  ] },
+  { name: 'Полы и стены фабрики', items: [
+    { id: 'floor-plates', title: 'ПОЛ: PLATES', what: 'Пилоботы и ящик на этом полу.', was: ['странные пересечения', 'по сетке, швы в углах (0.027)'], checks: ['Швы сходятся'] },
+    { id: 'floor-concrete', title: 'ПОЛ: CONCRETE', what: 'Из арт-пака.', checks: ['Читается под врагами'] },
+    { id: 'floor-grate', title: 'ПОЛ: GRATE', what: 'Сетка-мостки.', was: ['похоже на огненную решётку', 'мелкая ромбовая сетка (0.027)'], checks: ['Не путается с горелкой и решёткой'] },
+    { id: 'floor-brick', title: 'ПОЛ: BRICK', what: 'Из арт-пака.', was: ['норм', 'не трогал'], checks: ['Оставить'] },
+    { id: 'floor-rust', title: 'ПОЛ: RUST', what: 'Нарисован.', was: ['возможно', 'ждёт решения'], checks: ['Оставить или удалить'] },
+    { id: 'wall-iron', title: 'СТЕНА: IRON', what: 'Из арт-пака.', checks: ['Не путается с полом'] },
+    { id: 'wall-furnace', title: 'СТЕНА: FURNACE', what: 'Нарисована.', was: ['сбоку и сверху разное', 'лицо из тех же клёпаных плит (0.027)'], checks: ['Верх и бок одна стена'] },
+    { id: 'wall-corrugated', title: 'СТЕНА: CORRUGATED', what: 'Нарисована.', checks: ['Не путается с полом'] },
+  ] },
+];
+// Accepted (РАБОТАЕТ with nothing asked): off the list, their marks kept in the db's `marks-done`.
+const DONE = 'Широкий и малый пресс, конвейер, таран, мостик; дубинщик, мясник, гончая, стрелок, маг, шаман, призрак, огр.';
+// What his marks took out (DELETE on the factory doc, gone in 0.027): no room to test, listed so nothing is lost.
+const GONE = 'Котёл, шкаф, наковальня, бочки-барабаны, катушка кабеля, труба и потроха на полу, манометр, пол CHECKER, стены BRICK, PIPES, GIRDER. Где стояла мебель, теперь стальная стойка (укрытие осталось).';
+
+const $ = (s) => document.querySelector(s);
+let marks = {}, filter = 'all', db = null, readOnly = false, comments = null;
+const allItems = GROUPS.flatMap((g) => g.items);
+const byId = Object.fromEntries(allItems.map((it) => [it.id, it]));
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+function stateOf(it) { return (marks[it.id] && marks[it.id].status) || null; }
+
+function render() {
+  const out = [];
+  for (const g of GROUPS) {
+    const items = g.items.filter((it) => filter === 'all' || (filter === 'new' ? !!it.was : filter === 'left' ? stateOf(it) !== 'ok' : stateOf(it) === 'bad'));
+    if (!items.length) continue;
+    out.push(`<h2>${g.name}</h2><div class="list">`);
+    for (const it of items) {
+      const m = marks[it.id] || {}, ch = m.checks || {};
+      out.push(`<section class="item" data-s="${m.status || ''}" data-id="${it.id}">
+        <div class="top"><h3>${it.title}</h3>
+          <div class="play" role="group" aria-label="Играть"><span class="lbl">ИГРАТЬ</span>
+            <button data-play="1" title="одна штука">1</button><button data-play="2" title="две">2</button><button data-play="3" title="три">3</button></div></div>
+        <p class="what">${esc(it.what)}</p>
+        ${it.was ? `<p class="was"><span class="you"><b>ТЫ ПИСАЛ</b> ${esc(it.was[0])}</span><span class="done"><b>СДЕЛАНО</b> ${esc(it.was[1])}</span></p>` : ''}
+        <ul>${it.checks.map((c, i) => `<li class="${ch[i] ? 'done' : ''}"><label><input type="checkbox" id="c-${it.id}-${i}" data-i="${i}" ${ch[i] ? 'checked' : ''}><span>${esc(c)}</span></label></li>`).join('')}</ul>
+        <div class="status" role="group" aria-label="Итог">
+          <button data-v="ok" aria-pressed="${m.status === 'ok'}">РАБОТАЕТ</button>
+          <button data-v="wip" aria-pressed="${m.status === 'wip'}">ЕСТЬ ВОПРОСЫ</button>
+          <button data-v="bad" aria-pressed="${m.status === 'bad'}">СЛОМАНО</button>
+          ${comments ? '<button class="cm" data-cm="1">КОММЕНТАРИЙ</button>' : ''}
+        </div>
+        <textarea id="n-${it.id}" placeholder="Заметка: что не так, что поменять">${esc(m.note || '')}</textarea>
+      </section>`);
+    }
+    out.push('</div>');
+  }
+    $('#groups').innerHTML = out.join('') || '<p class="lede">По этому фильтру ничего нет.</p>';
+  const n = allItems.length, ok = allItems.filter((it) => stateOf(it) === 'ok').length, bad = allItems.filter((it) => stateOf(it) === 'bad').length, wip = allItems.filter((it) => stateOf(it) === 'wip').length;
+  $('#count').textContent = `${ok + bad + wip} / ${n} ПРОВЕРЕНО · ${bad} СЛОМАНО`;
+  $('#meter').innerHTML = `<i style="width:${ok / n * 100}%;background:var(--ok)"></i><i style="width:${wip / n * 100}%;background:var(--amber)"></i><i style="width:${bad / n * 100}%;background:var(--blood)"></i>`;
+}
+
+// One write at a time per item, and only on a change.
+const busy = {};
+async function save(id, patch) {
+  marks[id] = Object.assign({}, marks[id] || {}, patch, { at: new Date().toISOString() });
+  render();
+  if (!db || readOnly) return;
+  while (busy[id]) await busy[id];
+  busy[id] = (async () => {
+    try { await db.doc('marks/' + id).set(marks[id]); $('#sync').textContent = 'сохранено'; }
+    catch (e) { if (e && (e.code === 'invalid_argument' || e.code === 'permission_denied')) { readOnly = true; document.body.classList.add('ro'); $('#sync').textContent = 'только чтение'; } else $('#sync').textContent = 'не сохранилось: ' + ((e && e.code) || 'ошибка'); }
+  })();
+  await busy[id]; busy[id] = null;
+}
+
+// The game: one frame, loaded once; every test after the first is a message to it (no reload of the build).
+const stage = $('#stage'), frame = $('#st-frame');
+let cur = null, frameReady = false;
+function openTest(id, at) {
+  cur = { id, at };
+  $('#st-name').textContent = byId[id].title;
+  for (const k of [1, 2, 3]) $('#st-' + k).setAttribute('aria-pressed', String(k === at));
+  $('#st-tab').href = 'game.html#lab=' + id + '&at=' + at;
+  stage.hidden = false; document.body.style.overflow = 'hidden';
+  if (!frame.getAttribute('src')) { frame.src = 'game.html#lab=' + id + '&at=' + at; frame.onload = () => { frameReady = true; frame.focus(); }; }
+  else { frame.contentWindow.postMessage({ lab: id, at }, '*'); frame.focus(); }
+}
+function closeTest() { stage.hidden = true; document.body.style.overflow = ''; if (frameReady) frame.contentWindow.postMessage({ pause: true }, '*'); }
+
+document.addEventListener('click', (ev) => {
+  const f = ev.target.closest('[data-f]');
+  if (f) { filter = f.dataset.f; document.querySelectorAll('[data-f]').forEach((b) => b.setAttribute('aria-pressed', b === f)); render(); return; }
+  const p = ev.target.closest('[data-play]');
+  if (p) { openTest(p.closest('.item').dataset.id, +p.dataset.play); return; }
+  const r = ev.target.closest('[data-room]');
+  if (r && cur) { openTest(cur.id, +r.dataset.room); return; }
+  if (ev.target.closest('#st-close')) { closeTest(); return; }
+  const c = ev.target.closest('[data-cm]');
+  if (c && comments) { comments.openComposer({ element: c.closest('.item') }).catch(() => { comments = null; render(); }); return; }
+  const b = ev.target.closest('.status button[data-v]'); if (!b) return;
+  const id = b.closest('.item').dataset.id, now = stateOf({ id });
+  save(id, { status: now === b.dataset.v ? null : b.dataset.v });
+});
+document.addEventListener('change', (ev) => {
+  const box = ev.target.closest('input[type=checkbox]'); if (!box) return;
+  const id = box.closest('.item').dataset.id, ch = Object.assign({}, (marks[id] && marks[id].checks) || {});
+  ch[box.dataset.i] = box.checked; save(id, { checks: ch });
+});
+document.addEventListener('focusout', (ev) => {
+  const t = ev.target.closest('textarea'); if (!t) return;
+  const id = t.closest('.item').dataset.id;
+  if ((t.value || '') !== ((marks[id] && marks[id].note) || '')) save(id, { note: t.value });
+});
+document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !stage.hidden && document.activeElement !== frame) closeTest(); });
+
+render();
+(async () => {
+  if (!window.claude || !window.claude.use) { $('#sync').textContent = 'отметки не сохраняются в этом окне'; return; }
+  claude.use('comments').then((c) => { if (c) { comments = c; render(); } });
+  db = await claude.use('db');
+  if (!db) { $('#sync').textContent = 'отметки не сохраняются в этом окне'; return; }
+  db.collection('marks').onSnapshot((snap) => {
+    const next = {};
+    for (const d of snap.docs) next[d.id] = d.data();
+    const typing = document.activeElement && document.activeElement.tagName === 'TEXTAREA' ? document.activeElement : null;
+    const keep = typing && { id: typing.id, v: typing.value, s: typing.selectionStart };
+    marks = next; render();
+    if (keep) { const t = document.getElementById(keep.id); if (t) { t.value = keep.v; t.focus(); t.setSelectionRange(keep.s, keep.s); } }
+    $('#sync').textContent = 'отметки сохраняются';
+  }, (e) => { $('#sync').textContent = 'отметки недоступны: ' + e.code; });
+})();
+</script>

@@ -5,6 +5,10 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 0.034, 16 Oct 2026: the goat's speed is one base number
+
+- **`TUNING.goat.speed` is 172 px/s, written plain** ("not a multiplier, change the base figure; multipliers are for buffs only"): the chain of x0.8 and x1.1 over `PACE` is gone, the speed is the same as 0.033's. Also in: THE TEST LAB's build files (`output/test-lab-2026-10-16/`) and its project skill (`.claude/skills/test-lab/`).
+
 ## 0.033, 16 Oct 2026: the goat 10% faster
 
 - **The goat runs 10% faster** ("add 10% extra speed for the goat"; `TUNING.goat.speed` one more x1.1). The run-up, the roll and the cult are as they were.

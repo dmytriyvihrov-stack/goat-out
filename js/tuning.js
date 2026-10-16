@@ -3,7 +3,7 @@ const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else, bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on. Counted 0.001, 0.002,
 // ... since 9 Oct 2026 (his word: "big numbers confuse me"); the line before it ended at 2.07.
-const BUILD = '0.033';
+const BUILD = '0.034';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -448,11 +448,9 @@ const TUNING = {
   },
   goat: {
     radius: 12,
-    // A fifth off the stride he walks about with, and then another fifth off that. The run-up is
-    // what gives it back: four seconds of running flat out and he is closer to the old top speed
-    // again, so the speed he used to have for free is now the speed he has for not stopping.
-    // And a tenth back on 26 Sep 2026 ("the goat 10% faster"), and another tenth on 9 Oct 2026 (the same words), and a third on 15 Oct 2026 ("10% more base speed"), and a fourth on 16 Oct 2026 (the same ask).
-    speed: 0.8 * 0.8 * 1.1 * 1.1 * 1.1 * 1.1 * PACE,
+    // His base stride in px/s, one plain number (16 Oct 2026, his word: "not a multiplier, change the base figure;
+    // multipliers are for buffs only"). The run-up (`momentum`) is still what lifts him past it.
+    speed: 172,
     accel: 0.15,            // s to top speed
     decel: 0.25,            // s to stop
     // In a room with machines or a drop in it (`game.trapRooms`, 14 Oct 2026 playtest: "in the trap room the stop is

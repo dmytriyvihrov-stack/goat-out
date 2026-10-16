@@ -1,0 +1,21 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Doomed Goat</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:wght@400;700&family=Alegreya+SC:wght@700&family=Pirata+One&family=Pixelify+Sans:wght@400;700&family=Jacquard+12&family=Jacquard+24&family=IM+Fell+English&family=IM+Fell+English+SC&display=swap">
+<style>
+  :root { color-scheme: dark; --ink: #0d0a0c; --bone: #efe6d0; --dim: #8c8078; --blood: #c0392b; }
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: var(--ink); color: var(--bone);
+    font-family: 'Alegreya', Georgia, 'Times New Roman', serif; overflow: hidden; overscroll-behavior: none;
+    -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; background: var(--ink);
+    touch-action: none; cursor: none; }
+</style>
+<canvas id="game" aria-label="Doomed Goat, a top-down escape game"></canvas>
+<script>
+(function () {
+  const B = location.pathname.indexOf('/output/') >= 0 ? '../../' : '';
+  const L = ["js/tuning.js","js/text-edit.js","js/rng.js","js/rooms.js","js/gen.js","js/showroom.js","js/rules.js","js/juice.js","js/foley.js","js/audio.js","js/world.js","js/input.js","js/entities.js","js/enemies.js","js/waves.js","js/endboss.js","js/warden.js","js/sacrifice.js","js/gapcross.js","js/thrower.js","js/shaman.js","js/coward.js","js/factory.js","js/machines.js","js/snow.js","js/status.js","js/shop.js","js/capes.js","js/shell.js","js/talismans.js","js/beasts.js","js/altar-art.js","js/painted-art.js","js/pixel-assets.js","js/pixel-env-assets.js","js/decal-pixels.js","js/pixel-art.js","js/skill-icons.js","js/render.js","js/prologue-art.js","js/prop-pixels.js","js/cape-pixels.js","js/ogre-pixels.js","js/spartan-pixels.js","js/thrower-pixels.js","js/shaman-pixels.js","js/warden-pixels.js","js/flayed-pixels.js","js/factory-assets.js","js/factory-pixels.js","js/horse-pixels.js","js/pig-pixels.js","js/beasts-more.js","js/small-art-study.js","js/beast-chat.js","js/heaven-pixels.js","js/combat-fx.js","js/scatter.js","js/factory-props.js","js/heaven.js","js/heaven-home.js","js/motes.js","js/codex.js","js/dark.js","js/goat-grid.js","js/juice-preview.js","js/painting.js","js/release.js","js/photo.js","js/stats.js","js/chase.js","js/game.js"];
+  for (const s of L) document.write('<script src="' + B + s + '"><\/script>');
+  document.write('<script src="testlab.js"><\/script>');
+})();
+</script>
