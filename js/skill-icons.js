@@ -107,6 +107,15 @@ const SKILL_ART = {
     's.w.....',
     '.ws.....',
     '..s.....'] },
+  // MULE KICK: a hind hoof in the corner, kicking back.
+  hoof: { bare: true, rows: [
+    '................', '................', '................', '................', '................', '................',
+    '................', '................', '................', '................', '................',
+    '................',
+    '..........w.SS..',
+    '.........w.SSSS.',
+    '..........w.oSoo',
+    '............o.o.'] },
   // IRON SKULL: a plate riveted over the brow.
   skull: { half: true, rows: [
     '........', '........', '........', '........', '........', '........', '........', '........',
@@ -352,6 +361,27 @@ const SKILL_ART = {
     '.............xfF',
     '..............xf',
     '...............x'] },
+  // TELEKINESIS: two small crates in the air over the crate in his jaw, sparks between.
+  kinesis: { bare: true, rows: [
+    '.........X......',
+    '..........CM..X.',
+    '..........MN....',
+    '.....X..........',
+    '.............CM.',
+    '.............MN.',
+    '..........X.....'] },
+  // WEB SPIT: a white ball of silk on its way, strands trailing.
+  webGlob: { rows: [
+    '', '', '',
+    '..............W.',
+    '............WWwW',
+    '...........WwWWs',
+    '...........WWwWs',
+    '............Wsss',
+    '............w.s.',
+    '...........w....',
+    '................',
+    '..........w.....'] },
   // VENOM SPIT: froth at his lips and a glob on its way.
   spit: { rows: [
     '', '', '',
@@ -381,6 +411,7 @@ const SKILL_ICONS = {
       else L.push('horns');
       if (m.headbuttRecovery < 1) L.push('skull');
       if (m.runButt > 0) L.push('steam');
+      if (m.hoofKick) L.push('hoof');
       return L;
     }
     if (id === 'grab') {
@@ -392,6 +423,7 @@ const SKILL_ICONS = {
       // FIREBRAND's mod is `brandHold` (the soul's id stayed `charge`): asking `chargeHold`, its flame
       // never once reached the chip.
       if (m.brandHold > 0) L.push('charged');
+      if (m.kinesis) L.push('kinesis');   // TELEKINESIS
       if (m.coldEye) L.push('hourglass');
       if (m.ricochet) L.push('glance');
       return L;
@@ -410,6 +442,7 @@ const SKILL_ICONS = {
     if (id === 'scream') {
       L.push('mouth');
       if (m.spit) L.push('spit');
+      else if (m.web) L.push('webGlob');   // WEB SPIT
       else if (fire || m.breath) L.push('breath');
       else if (m.screamStun) { L.push('bell', 'rings'); if (m.screamRadius > (typeof BOON_BASE !== 'undefined' ? BOON_BASE.screamRadius : 1e9)) L.push('ringsWide'); }
       else L.push('call');

@@ -128,6 +128,8 @@ function findConst(text, name) {
 
 function formatValue(value) {
   if (value === null) return 'null';
+  // a list of plain values (a level's `mods`, 16 Oct 2026), one line, the way the file writes its own
+  if (Array.isArray(value)) return '[' + value.map((v) => (typeof v === 'string' ? "'" + v.replace(/'/g, "\'") + "'" : formatValue(v))).join(', ') + ']';
   if (typeof value === 'string') return JSON.stringify(value);
   if (typeof value === 'boolean') return String(value);
   const n = Number(value);

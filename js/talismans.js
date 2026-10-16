@@ -33,6 +33,7 @@ const Talisman = {
       const prev = S.room; S.room = here;
       if (!S.visited.has(here)) { S.visited.add(here); Talisman.newRoom(game, here, prev); }
     }
+    Talisman.hourglass(game);
     g.parryT = Math.max(0, (g.parryT || 0) - dt);
     g.sandalT = Math.max(0, (g.sandalT || 0) - dt);
     g.stillT = hyp(g.vx, g.vy) < 20 ? (g.stillT || 0) + dt : 0;
@@ -829,6 +830,16 @@ const Talisman = {
     }
     return false;
   },
+  // THE HOURGLASS's free verb (15 Oct 2026): a wait that rose since the last step is a verb just used; while `freeVerbs`
+  // is left it is wiped at once. Read off the four waits, so every way a verb is spent (a key, the pad, a cape) counts.
+  hourglass(game) {
+    const g = game.goat, prev = g.cdPrev || (g.cdPrev = {});
+    for (const k of ['grabCd', 'rollCd', 'screamCd', 'itemCd']) {
+      const v = g[k] || 0;
+      if (g.freeVerbs > 0 && game.mods.hourglass && v > (prev[k] || 0) + 1e-3) { g[k] = 0; g.freeVerbs--; game.floatText(g.x, g.y - 44, 'FREE', '#ffd27a'); }
+      prev[k] = g[k] || 0;
+    }
+  },
   // One small drawing per talisman, at `h` half-size, for the chip, the stool and the neck.
   icon(ctx, id, h) {
     const edge = 'rgba(26,16,22,0.75)';
@@ -840,6 +851,10 @@ const Talisman = {
     else if (id === 'spade') { line('#6b4a2c', 0.18); ctx.beginPath(); ctx.moveTo(0, -h); ctx.lineTo(0, h * 0.2); ctx.stroke(); ctx.fillStyle = '#8d8a85'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.1; ctx.beginPath(); ctx.moveTo(-h * 0.45, h * 0.15); ctx.lineTo(h * 0.45, h * 0.15); ctx.lineTo(h * 0.35, h * 0.75); ctx.lineTo(0, h); ctx.lineTo(-h * 0.35, h * 0.75); ctx.closePath(); ctx.fill(); ctx.stroke(); }
     else if (id === 'mask') { ctx.fillStyle = PALETTE.bone; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.12; ctx.beginPath(); ctx.ellipse(0, h * 0.1, h * 0.6, h * 0.75, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); line(PALETTE.bone, 0.18); ctx.beginPath(); ctx.moveTo(-h * 0.4, -h * 0.45); ctx.quadraticCurveTo(-h * 0.95, -h * 0.8, -h * 0.7, -h * 1.05); ctx.moveTo(h * 0.4, -h * 0.45); ctx.quadraticCurveTo(h * 0.95, -h * 0.8, h * 0.7, -h * 1.05); ctx.stroke(); ctx.fillStyle = PALETTE.ink; ctx.beginPath(); ctx.ellipse(-h * 0.22, 0, h * 0.13, h * 0.18, 0, 0, Math.PI * 2); ctx.ellipse(h * 0.22, 0, h * 0.13, h * 0.18, 0, 0, Math.PI * 2); ctx.fill(); }
     else if (id === 'effigy') { ctx.fillStyle = '#c9a24e'; ctx.strokeStyle = '#7a5a26'; ctx.lineWidth = h * 0.1; ctx.beginPath(); ctx.ellipse(-h * 0.1, 0, h * 0.65, h * 0.4, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.arc(h * 0.6, -h * 0.4, h * 0.28, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); line('#6b4a2c', 0.12); for (const lx of [-0.5, -0.1, 0.3]) { ctx.beginPath(); ctx.moveTo(lx * h, h * 0.35); ctx.lineTo(lx * h, h * 0.85); ctx.stroke(); } }
+    // THE HOURGLASS (15 Oct 2026): two gold caps, the glass between, the sand run half down
+    else if (id === 'hourglass') { ctx.fillStyle = '#d8b46a'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.1; ctx.fillRect(-h * 0.7, -h * 0.95, h * 1.4, h * 0.25); ctx.strokeRect(-h * 0.7, -h * 0.95, h * 1.4, h * 0.25); ctx.fillRect(-h * 0.7, h * 0.7, h * 1.4, h * 0.25); ctx.strokeRect(-h * 0.7, h * 0.7, h * 1.4, h * 0.25);
+      ctx.fillStyle = 'rgba(191,230,255,0.75)'; ctx.beginPath(); ctx.moveTo(-h * 0.55, -h * 0.7); ctx.lineTo(h * 0.55, -h * 0.7); ctx.lineTo(h * 0.08, 0); ctx.lineTo(h * 0.55, h * 0.7); ctx.lineTo(-h * 0.55, h * 0.7); ctx.lineTo(-h * 0.08, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#e8c27a'; ctx.beginPath(); ctx.moveTo(-h * 0.3, -h * 0.35); ctx.lineTo(h * 0.3, -h * 0.35); ctx.lineTo(0, -h * 0.02); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.moveTo(-h * 0.45, h * 0.68); ctx.lineTo(h * 0.45, h * 0.68); ctx.lineTo(0, h * 0.3); ctx.closePath(); ctx.fill(); }
     else if (id === 'spur') { ctx.fillStyle = '#c29a44'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.08; ctx.beginPath(); for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, rr = k % 2 ? h * 0.4 : h * 0.9; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = PALETTE.ink; ctx.beginPath(); ctx.arc(0, 0, h * 0.15, 0, Math.PI * 2); ctx.fill(); }
     else if (id === 'moth') { ctx.fillStyle = '#b8ad97'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.08; for (const sx of [-1, 1]) { ctx.beginPath(); ctx.ellipse(sx * h * 0.45, -h * 0.2, h * 0.45, h * 0.35, sx * 0.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.ellipse(sx * h * 0.35, h * 0.35, h * 0.3, h * 0.25, -sx * 0.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); } ctx.fillStyle = '#5a5250'; ctx.fillRect(-h * 0.08, -h * 0.5, h * 0.16, h * 1.1); }
     else if (id === 'sandal') { ctx.fillStyle = '#8a6238'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.1; ctx.beginPath(); ctx.ellipse(0, 0, h * 0.45, h * 0.95, 0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); line('#3b2a1a', 0.12); ctx.beginPath(); ctx.moveTo(-h * 0.45, -h * 0.3); ctx.lineTo(h * 0.45, -h * 0.1); ctx.moveTo(-h * 0.4, h * 0.25); ctx.lineTo(h * 0.45, h * 0.4); ctx.stroke(); }

@@ -79,12 +79,16 @@ const FACTORY_PIXELS = (() => {
     const d = facingOf(angle), back = d === 3 || d === 4 || d === 5;
     const step = moving ? [0, 1, 0, -1][Math.floor(t * 7 + (x || 0) * 0.05) % 4] : 0, dy = step ? -TX : 0;
     const name = back ? 'saw-back' : 'saw-front', it = FACTORY_ASSETS.items[name];
-    const st = e && e.state, pose = st === 'windup' ? 'wind' : st === 'swing' ? 'swing' : 'rest';
+    // the leap is a chop (16 Oct 2026, his mark: "in the jump the saw blow more obvious"): raised over the head through the
+    // crouch and the first half of the air, brought down for the landing and held down a beat after (`e.chopT`), bigger
+    const st = e && e.state, air = st === 'hop' && e.leapAim ? e.leapAim.t / TUNING.sawbot.leap.air : -1, chop = e && e.chopT > 0;
+    const pose = st === 'windup' || (air >= 0 && air < 0.55) ? 'wind' : st === 'swing' || air >= 0.55 || chop ? 'swing' : 'rest';
+    const big = air >= 0 || chop ? TUNING.sawbot.leap.sawBig : 1;
     const frame = Math.floor(t * (pose === 'rest' ? TUNING.sawbot.saw.run * 0.3 : TUNING.sawbot.saw.run)) % 3;
     const bar = sawBar(pose, frame), R = TUNING.sawbot.saw.len + 6, hand = back ? SAW_HAND_BACK : SAW_HAND;
     const saw = () => {
       const smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
-      ctx.save(); ctx.translate((hand[0] - it[2] / 2) * TX, (hand[1] - it[3]) * TX + dy); if (back) ctx.scale(-1, 1);
+      ctx.save(); ctx.translate((hand[0] - it[2] / 2) * TX, (hand[1] - it[3]) * TX + dy); if (back) ctx.scale(-1, 1); if (big !== 1) ctx.scale(big, big);
       ctx.drawImage(bar, -R * TX, -R * TX, R * 2 * TX, R * 2 * TX);
       ctx.restore(); ctx.imageSmoothingEnabled = smooth;
     };
@@ -126,7 +130,7 @@ const FACTORY_PIXELS = (() => {
   // pose rounded to texels, so the boss outline's many redraws are a drawImage each; it is only repainted while something
   // of him moves. The frame it is drawn in is the unit's (feet at the origin, screen px): a world offset (dx, dy) lies at
   // (dx, dy × TILT) in it, which is what `Automaton.pose` hands over.
-  const CW = 260, CH = 220, OX = CW / 2, OY = 170;   // texels; the feet's origin at (OX, OY)
+  const CW = 300, CH = 260, OX = CW / 2, OY = 170;   // texels; the feet's origin at (OX, OY); room for the legs splayed when down
   // The shadows under the feet and the fallen body are a canvas of their own: the boss outline (`Renderer.bossOutline`)
   // paints whatever the body draws as a flat silhouette, and a shadow baked into the body came out as a yellow pool.
   let comp = null, shade = null, compKey = '';
@@ -179,7 +183,8 @@ const FACTORY_PIXELS = (() => {
     const g = comp.getContext('2d');
     g.setTransform(UP, 0, 0, UP, 0, 0); g.imageSmoothingEnabled = false; g.clearRect(0, 0, CW, CH);
     g.translate(OX, OY);
-    for (const L of pose.legs) if (L.back) leg(g, L, L.out, L.hurt);
+    // down the four legs fold out behind the frame, so its sides lie open (`pose.low`); the wreck has none (`pose.bare`)
+    if (!pose.bare) for (const L of pose.legs) if (L.back || pose.low) leg(g, L, L.out, L.hurt);
     const body = F.canvas('automaton-body');
     // Open to the horns (14 Oct 2026 playtest: "when he falls, his exposed edges should read"): the frame wears a rim of
     // pale gold two texels out, brightening on the beat (`pose.open`), laid behind the body so only its edge shows.
@@ -191,9 +196,11 @@ const FACTORY_PIXELS = (() => {
     if (body) { g.imageSmoothingEnabled = false; g.drawImage(body, -F.W / 2, pose.bodyY - F.H, F.W, F.H); }
     // the meat breathes: a darker and a lighter row across each side opening, on the clock
     // down, the meat swells and throbs bright in both openings: the body is open (its playtest: down read like standing)
-    if (pose.breath > 0) { g.fillStyle = `rgba(255,110,96,${0.3 + 0.35 * pose.breath})`; g.fillRect(-F.W / 2 + 12, pose.bodyY - 30, 26, 17); g.fillRect(F.W / 2 - 38, pose.bodyY - 32, 26, 17);
-      g.fillStyle = `rgba(255,214,190,${0.45 * pose.breath})`; g.fillRect(-F.W / 2 + 18, pose.bodyY - 27, 10, 3); g.fillRect(F.W / 2 - 30, pose.bodyY - 29, 10, 3); }
-    for (const L of pose.legs) if (!L.back) leg(g, L, L.out, L.hurt);
+    // (15 Oct 2026 playtest: "not so red": the flat red panels over each opening went; only the meat's own glint breathes)
+    if (pose.breath > 0 && !pose.bare) {
+      g.fillStyle = `rgba(255,214,190,${0.35 * pose.breath})`; g.fillRect(-F.W / 2 + 18, pose.bodyY - 27, 10, 2); g.fillRect(F.W / 2 - 30, pose.bodyY - 29, 10, 2);
+      g.fillStyle = `rgba(255,150,130,${0.25 * pose.breath})`; g.fillRect(-F.W / 2 + 16, pose.bodyY - 22, 6, 2); g.fillRect(F.W / 2 - 26, pose.bodyY - 24, 6, 2); }
+    if (!pose.bare && !pose.low) for (const L of pose.legs) if (!L.back) leg(g, L, L.out, L.hurt);
     // and four chevrons of cells pointing in at the frame from its sides, closing in on the beat: strike here
     if (pose.open > 0) {
       const O = TUNING.automaton.look.open, gap = O.gap * 2 + (1 - pose.open) * O.bob * 4, cy = pose.bodyY - F.H / 2, c = 2;
@@ -224,6 +231,10 @@ const FACTORY_PIXELS = (() => {
     const img = document.createElement('canvas'), sh = document.createElement('canvas'); img.width = sh.width = CW * UP; img.height = sh.height = CH * UP;
     const g = img.getContext('2d'); g.drawImage(comp, 0, 0); g.globalCompositeOperation = 'source-atop';
     g.fillStyle = `rgba(22,12,14,${TUNING.automaton.wreck.dark})`; g.fillRect(0, 0, img.width, img.height);
+    // split down the middle: a jagged dark seam across the frame where it broke open
+    g.globalCompositeOperation = 'source-atop'; g.setTransform(UP, 0, 0, UP, 0, 0); g.translate(OX, OY);
+    { const bY = Automaton.pose(e, 0).bodyY; let x = -4; g.fillStyle = '#0d0809';
+      for (let y = bY - F.H; y < bY; y += 2) { x += ((y * 7) % 5) - 2; x = clamp(x, -9, 5); g.fillRect(x, y, 3, 2); } }
     sh.getContext('2d').drawImage(shade, 0, 0);
     return { x: e.x, y: e.y, img, shade: sh };
   };
@@ -235,23 +246,24 @@ const FACTORY_PIXELS = (() => {
     ctx.restore(); ctx.imageSmoothingEnabled = smooth;
   };
   // ---- THE FACTORY's walls and floors, several to choose from (14 Oct 2026, his ask: "four more kinds of wall and
-  // floor, so there is something to choose from") ----------------------------------------------------------------
-  // A floor is one of `FLOORS`: the pack's four pictures (144 texels, a 6 x 6 patch of tiles) or one painted here in
-  // texels (`paint`, the same 144 square, seamless). A wall is one of `WALLS`: the pack's two elevations (72 x 32, cut
-  // into a cap band and a face, `band` / `face` rows) or one painted here (`cap` 64 x 64 texels at 3 px, `face` 480 x 18
-  // texels at 2 px, both wrapping). Which is worn: a level's own `flook` / `wlook` (THE FACTORY's test rooms wear one
-  // combination each), else the ART tab's `ART_PASS.ffloor` / `fwall`. Every bake keys on the look.
+  // floor, so there is something to choose from"; 16 Oct 2026, his marks on the factory doc: CHECKER, and the BRICK,
+  // PIPES and GIRDER walls, deleted; PLATES "strange crossings", GRATE "looks like the fire grate", FURNACE "the side and
+  // the top differ, strange": all three painted again) -------------------------------------------------------------------
+  // A floor is one of `FLOORS`: the pack's pictures (144 texels, a 6 x 6 patch of tiles) or one painted here in texels
+  // (`paint`, the same 144 square, seamless). A wall is one of `WALLS`: the pack's IRON elevation (72 x 32, cut into a cap
+  // band and a face, `band` / `face` rows) or one painted here (`cap` 64 x 64 texels at 3 px, `face` 480 x 18 texels at
+  // 2 px, both wrapping). Which is worn: a level's own `flook` / `wlook` (THE FACTORY's test rooms wear one combination
+  // each), else the ART tab's `ART_PASS.ffloor` / `fwall`. Every bake keys on the look.
   F.FLOORS = [
-    { name: 'PLATES', item: 'floor-plates' }, { name: 'CONCRETE', item: 'floor-concrete' }, { name: 'GRATE', item: 'floor-grate' },
-    { name: 'BRICK', item: 'floor-brick' }, { name: 'CHECKER', paint: 'checker' }, { name: 'RUST', paint: 'rust' },
+    { name: 'PLATES', paint: 'plates' }, { name: 'CONCRETE', item: 'floor-concrete' }, { name: 'GRATE', paint: 'grate' },
+    { name: 'BRICK', item: 'floor-brick' }, { name: 'RUST', paint: 'rust' },
   ];
   F.WALLS = [
     { name: 'IRON', item: 'wall-iron', x0: 1, w: 70, band: [1, 10], face: [11, 31] },
-    { name: 'BRICK', item: 'wall-brick', x0: 1, w: 70, band: [1, 10], face: [11, 29] },
-    { name: 'FURNACE', paint: 'furnace' }, { name: 'CORRUGATED', paint: 'corrugated' }, { name: 'PIPES', paint: 'pipes' }, { name: 'GIRDER', paint: 'girder' },
+    { name: 'FURNACE', paint: 'furnace' }, { name: 'CORRUGATED', paint: 'corrugated' },
   ];
-  F.floorLook = (def) => (def && def.flook && F.FLOORS.find((f) => f.name === def.flook)) || F.FLOORS[(typeof ART_PASS !== 'undefined' && ART_PASS.ffloor) || 0];
-  F.wallLook = (def) => (def && def.wlook && F.WALLS.find((w) => w.name === def.wlook)) || F.WALLS[(typeof ART_PASS !== 'undefined' && ART_PASS.fwall) || 0];
+  F.floorLook = (def) => (def && def.flook && F.FLOORS.find((f) => f.name === def.flook)) || F.FLOORS[((typeof ART_PASS !== 'undefined' && ART_PASS.ffloor) || 0) % F.FLOORS.length];
+  F.wallLook = (def) => (def && def.wlook && F.WALLS.find((w) => w.name === def.wlook)) || F.WALLS[((typeof ART_PASS !== 'undefined' && ART_PASS.fwall) || 0) % F.WALLS.length];
   // A small painter in texels: a canvas `w` x `h` cells of `cell` px, every call wrapping round both edges, so a sheet is
   // seamless by construction. Colours are hex strings; `mixc` blends two.
   const hex = (c) => [1, 3, 5].map((i) => parseInt(c.substr(i, 2), 16));
@@ -272,21 +284,36 @@ const FACTORY_PIXELS = (() => {
   const rivet = (p, x, y, body, lit, dark) => { p.set(x, y, body); p.set(x + 1, y, body); p.set(x, y + 1, body); p.set(x + 1, y + 1, dark); p.set(x, y, lit); };
   // Rust eating in from a point: a blot of two browns with a few flakes, dithered at its edge.
   const rust = (p, x, y, r, rnd) => { p.blot(x, y, r, '#5a3a2c', rnd); p.blot(x, y, Math.max(1, r - 1), '#78462f', rnd); for (let k = 0; k < r * 2; k++) p.set(x + Math.round((rnd() - 0.5) * r * 2.4), y + Math.round((rnd() - 0.5) * r * 2.4), rnd() < 0.5 ? '#8c5a38' : '#4a3025'); };
-  // THE FLOORS painted in texels (144 square). CHECKER: diamond plate, the bumps a staggered grid of lit diamonds on dark
-  // steel, plate seams two tiles apart with a rivet at each corner, rust and oil here and there. RUST: sheet iron gone
-  // over, panels of different browns butted together with their rivets, scale and a dark oil pool or two.
+  // THE FLOORS painted in texels (144 square, a tile 24 texels).
+  // PLATES: steel deck plates two tiles square, laid on the tile grid so every seam meets the next at a corner (the pack's
+  //   picture was cut off its plates and crossed itself at the sheet's edge, his "strange crossings"), a rivet at each
+  //   corner and halfway along, the plates a step apart in tone, a scuff or two.
+  // GRATE: a walkway of fine expanded mesh, small diamonds of dark through grey strands, on a frame a tile and a half
+  //   apart: nothing like a burner's bars (his: "it looks like the fire grate").
+  // RUST: sheet iron gone over, panels of different browns butted together with their rivets, scale and a dark oil pool.
   F.paintFloor = (look) => {
-    const p = painter(144, 144, 1), r = seeded(look === 'checker' ? 11 : 23);
-    if (look === 'checker') {
-      p.rect(0, 0, 144, 144, '#3f3f47');
-      for (let j = 0; j < 144; j++) for (let i = 0; i < 144; i++) if (((i * 7 + j * 13) % 11) === 0) p.set(i, j, '#3a3a42');
-      for (let y = 0; y < 144; y += 6) for (let x = (y / 6) % 2 ? 3 : 0; x < 144; x += 6) {
-        p.set(x, y + 1, '#5e5e68'); p.set(x + 1, y + 1, '#666670'); p.set(x + 1, y, '#787884'); p.set(x + 2, y + 1, '#50505a'); p.set(x + 1, y + 2, '#2c2c33'); p.set(x + 2, y + 2, '#26262c');
+    const p = painter(144, 144, 1), r = seeded(look === 'plates' ? 5 : look === 'grate' ? 7 : 23);
+    if (look === 'plates') {
+      const tones = ['#4a4c50', '#46484c', '#4e5054', '#484a4f'];
+      for (let y = 0; y < 144; y += 48) for (let x = 0; x < 144; x += 48) {
+        const t = tones[Math.floor(r() * tones.length)]; p.rect(x, y, 48, 48, t);
+        for (let k = 0; k < 40; k++) p.set(x + 2 + Math.floor(r() * 44), y + 2 + Math.floor(r() * 44), mixc(t, r() < 0.5 ? '#2c2e32' : '#6a6c70', 0.25));
+        p.hl(x, y, 48, '#26282c'); p.vl(x, y, 48, '#26282c');                                                    // the seam
+        p.hl(x + 1, y + 1, 47, mixc(t, '#7a7c82', 0.35)); p.vl(x + 1, y + 1, 47, mixc(t, '#7a7c82', 0.25));      // the lit edge
+        for (const [a, b] of [[3, 3], [43, 3], [3, 43], [43, 43], [23, 3], [3, 23], [43, 23], [23, 43]]) rivet(p, x + a, y + b, '#5c5e64', '#7e8088', '#24262a');
       }
-      for (let s = 0; s < 144; s += 48) { p.hl(0, s, 144, '#1f1f25'); p.hl(0, s + 1, 144, '#50505a'); p.vl(s, 0, 144, '#1f1f25'); p.vl(s + 1, 0, 144, '#50505a'); }
-      for (let y = 0; y < 144; y += 48) for (let x = 0; x < 144; x += 48) { rivet(p, x + 3, y + 3, '#6c6c76', '#90909a', '#222228'); rivet(p, x + 44, y + 44, '#6c6c76', '#90909a', '#222228'); }
-      for (let k = 0; k < 7; k++) rust(p, Math.floor(r() * 144), Math.floor(r() * 144), 2 + Math.floor(r() * 3), r);
-      for (let k = 0; k < 3; k++) { const x = Math.floor(r() * 144), y = Math.floor(r() * 144); p.blot(x, y, 4 + Math.floor(r() * 3), '#2b2a31', r); p.blot(x - 1, y - 1, 2, '#33323a', r); }
+      for (let k = 0; k < 3; k++) { const x = Math.floor(r() * 144), y = Math.floor(r() * 144); p.blot(x, y, 3 + Math.floor(r() * 2), '#3c3e42', r); }
+    } else if (look === 'grate') {
+      p.rect(0, 0, 144, 144, '#24262a');
+      // the mesh: a diamond every 4 texels across and 6 down, staggered, its strands a grey with a lit upper edge
+      for (let y = 0; y < 144; y += 6) for (let x = (y / 6) % 2 ? 2 : 0; x < 144; x += 4) {
+        p.set(x, y, '#4a4e54'); p.set(x + 1, y + 1, '#4a4e54'); p.set(x + 1, y + 2, '#3e4248'); p.set(x, y + 3, '#3e4248');
+        p.set(x - 1, y + 1, '#565a60'); p.set(x - 1, y + 2, '#3e4248');
+        p.set(x, y + 1, '#141518'); p.set(x, y + 2, '#18191c');                                                   // the hole
+      }
+      // the frame bars the mesh is welded to, a tile and a half apart (36 texels), flat and plain
+      for (let s = 0; s < 144; s += 36) { p.rect(s, 0, 2, 144, '#3a3d42'); p.vl(s, 0, 144, '#55595f'); p.rect(0, s, 144, 2, '#3a3d42'); p.hl(0, s, 144, '#55595f'); }
+      for (let y = 0; y < 144; y += 36) for (let x = 0; x < 144; x += 36) rivet(p, x + 3, y + 3, '#5a5e64', '#7a7e86', '#1e2024');
     } else {
       const tones = ['#6b4a36', '#5e4232', '#73513a', '#664838', '#584030', '#7a573d'];
       for (let y = 0; y < 144; y += 36) for (let x = 0; x < 144; x += 36) {
@@ -303,77 +330,47 @@ const FACTORY_PIXELS = (() => {
   // THE WALLS painted in texels. The cap (64 square, 3 px a texel) and the face (480 x 18, 2 px) of each. A wall must
   // never read as the floor (14 Oct 2026, his: "it must differ"; the first PLATE wall was riveted sheets over riveted
   // floors): every painted cap is a step darker than any floor, and every face is another material than any floor.
-  // FURNACE: a dark iron coping over sooted fire brick with embers glowing behind a grate at its foot. CORRUGATED: a bolted
-  // rail over dark ribbed sheet rusting at its foot. PIPES: two brass pipes with flanges, valves and a gauge along a dark
-  // panel. GIRDER: an I-beam's flange for a cap, black lattice behind bolted cross-braces for the face.
+  // FURNACE: dark sooted iron plates, riveted, top and face alike (16 Oct 2026: the face was fire brick under an iron top,
+  // his "the side and the top differ, strange"), the face's foot a slit of grate with embers glowing behind it.
+  // CORRUGATED: a bolted rail over dark ribbed sheet rusting at its foot.
+  const FURN = { base: '#2a2630', dark: '#15131a', lo: '#1a181e', hi: '#38343f', edge: '#5a5462', rv: ['#4e4a56', '#6c6874'] };
   F.paintCap = (look) => {
     const p = painter(64, 64, 3), r = seeded(look.length * 31);
     if (look === 'corrugated') {
       p.rect(0, 0, 64, 64, '#2b2a32');
       for (let y = 0; y < 64; y += 16) { p.hl(0, y, 64, '#17161c'); p.hl(0, y + 1, 64, '#4e4c58'); p.hl(0, y + 2, 64, '#3a3842'); for (let x = 2; x < 64; x += 8) rivet(p, x, y + 1, '#6a6874', '#8e8c98', '#17161c'); }
       for (let k = 0; k < 5; k++) rust(p, Math.floor(r() * 64), Math.floor(r() * 64), 1 + Math.floor(r() * 2), r);
-    } else if (look === 'girder') {
-      p.rect(0, 0, 64, 64, '#1f1e26');
-      for (let y = 0; y < 64; y += 32) { p.rect(0, y, 64, 10, '#45434d'); p.hl(0, y, 64, '#5e5c68'); p.hl(0, y + 9, 64, '#141318'); p.rect(0, y + 14, 64, 4, '#36343d'); p.hl(0, y + 14, 64, '#48464f'); for (let x = 3; x < 64; x += 8) { rivet(p, x, y + 2, '#6c6a76', '#8e8c98', '#141318'); rivet(p, x, y + 6, '#6c6a76', '#8e8c98', '#141318'); } }
-      for (let x = 0; x < 64; x += 32) { p.rect(x, 0, 10, 64, '#45434d'); p.vl(x, 0, 64, '#5e5c68'); p.vl(x + 9, 0, 64, '#141318'); for (let y = 12; y < 64; y += 8) { rivet(p, x + 2, y, '#6c6a76', '#8e8c98', '#141318'); rivet(p, x + 6, y, '#6c6a76', '#8e8c98', '#141318'); } }
-    } else if (look === 'furnace') {
-      // a coping of dark iron plates, sooted, a fleck of ember here and there
-      p.rect(0, 0, 64, 64, '#2a2630');
+    } else {
+      // FURNACE: a coping of dark iron plates, sooted, a fleck of ember here and there
+      p.rect(0, 0, 64, 64, FURN.base);
       for (let y = 0; y < 64; y += 16) for (let x = 0; x < 64; x += 32) {
-        const t = mixc('#2a2630', r() < 0.5 ? '#1a181e' : '#38343f', r() * 0.3); p.rect(x + 1, y + 1, 31, 15, t);
-        p.hl(x, y, 32, '#15131a'); p.vl(x, y, 16, '#15131a'); p.hl(x + 1, y + 1, 31, mixc(t, '#5a5462', 0.3));
-        rivet(p, x + 3, y + 3, '#4e4a56', '#6c6874', '#15131a'); rivet(p, x + 27, y + 3, '#4e4a56', '#6c6874', '#15131a');
+        const t = mixc(FURN.base, r() < 0.5 ? FURN.lo : FURN.hi, r() * 0.3); p.rect(x + 1, y + 1, 31, 15, t);
+        p.hl(x, y, 32, FURN.dark); p.vl(x, y, 16, FURN.dark); p.hl(x + 1, y + 1, 31, mixc(t, FURN.edge, 0.3));
+        rivet(p, x + 3, y + 3, FURN.rv[0], FURN.rv[1], FURN.dark); rivet(p, x + 27, y + 3, FURN.rv[0], FURN.rv[1], FURN.dark);
         for (let k = 0; k < 10; k++) p.set(x + 2 + Math.floor(r() * 29), y + 2 + Math.floor(r() * 13), '#1a1719');
         if (r() < 0.5) p.set(x + 4 + Math.floor(r() * 24), y + 4 + Math.floor(r() * 10), '#6a2a18');
       }
-    } else {
-      p.rect(0, 0, 64, 64, '#262530');
-      for (let y = 0; y < 64; y += 16) for (let x = 0; x < 64; x += 16) {
-        const t = mixc('#262530', r() < 0.5 ? '#18171f' : '#363440', r() * 0.3); p.rect(x + 1, y + 1, 15, 15, t);
-        p.hl(x, y, 16, '#15141a'); p.vl(x, y, 16, '#15141a'); p.hl(x + 1, y + 1, 15, mixc(t, '#5a5866', 0.3)); p.vl(x + 1, y + 1, 15, mixc(t, '#5a5866', 0.2));
-        rivet(p, x + 3, y + 3, '#5c5a66', '#7c7a88', '#15141a'); rivet(p, x + 11, y + 11, '#5c5a66', '#7c7a88', '#15141a');
-        for (let k = 0; k < 5; k++) p.set(x + 2 + Math.floor(r() * 13), y + 2 + Math.floor(r() * 13), mixc(t, '#121117', 0.3));
-      }
-      for (let k = 0; k < 3; k++) rust(p, Math.floor(r() * 64), Math.floor(r() * 64), 1, r);
     }
     return p.canvas;
   };
   F.paintFace = (look) => {
     const W = 480, H = 18, p = painter(W, H, 2), r = seeded(look.length * 17 + 5);
     if (look === 'furnace') {
-      // sooted fire brick under a dark coping, embers behind a grate at the foot
-      p.rect(0, 0, W, H, '#1f1516'); p.hl(0, 0, W, '#3a363f'); p.hl(0, 1, W, '#1e1c22');
-      for (let y = 2; y < 14; y += 4) { const off = (y / 4) % 2 ? 5 : 0; for (let x = -10 + off; x < W; x += 10) {
-        const t = mixc('#4a2a22', r() < 0.5 ? '#2e1a16' : '#5e3a2c', r() * 0.35); p.rect(x + 1, y + 1, 9, 3, t); p.hl(x + 1, y + 1, 9, mixc(t, '#7a5040', 0.3));
-        if (y < 6) for (let k = 0; k < 6; k++) p.set(x + 1 + Math.floor(r() * 9), y + 1 + Math.floor(r() * 3), '#241614');
-      } }
-      p.rect(0, 14, W, 4, '#2a1612');
-      for (let x = 0; x < W; x++) { const g = (x * 7) % 5; p.set(x, 15, g === 0 ? '#b8321c' : g === 2 ? '#8a2414' : '#5a1a10'); p.set(x, 16, g === 1 ? '#8a2414' : '#401410'); if (x % 3 === 0) { p.set(x, 14, '#15131a'); p.set(x, 15, '#15131a'); p.set(x, 16, '#15131a'); } }
-      p.hl(0, 17, W, '#15131a');
-    } else if (look === 'corrugated') {
+      // the same plates as its top, a row of them down the face, darker toward the foot with soot, and the ember slit
+      p.rect(0, 0, W, H, FURN.base); p.hl(0, 0, W, mixc(FURN.base, FURN.edge, 0.5)); p.hl(0, 1, W, FURN.dark);
+      for (let x = 0; x < W; x += 32) {
+        const t = mixc(FURN.base, r() < 0.5 ? FURN.lo : FURN.hi, r() * 0.3); p.rect(x + 1, 2, 31, 11, t);
+        p.vl(x, 2, 11, FURN.dark); p.hl(x + 1, 2, 31, mixc(t, FURN.edge, 0.3));
+        rivet(p, x + 3, 4, FURN.rv[0], FURN.rv[1], FURN.dark); rivet(p, x + 27, 4, FURN.rv[0], FURN.rv[1], FURN.dark);
+        for (let k = 0; k < 12; k++) p.set(x + 2 + Math.floor(r() * 29), 6 + Math.floor(r() * 7), '#1a1719');   // soot low on the plate
+      }
+      p.hl(0, 13, W, FURN.dark);
+      for (let x = 0; x < W; x++) { const g = (x * 7) % 5; p.set(x, 14, g === 0 ? '#b8321c' : g === 2 ? '#8a2414' : '#5a1a10'); p.set(x, 15, g === 1 ? '#8a2414' : '#401410'); if (x % 3 === 0) { p.set(x, 14, FURN.dark); p.set(x, 15, FURN.dark); } }
+      p.rect(0, 16, W, 2, FURN.dark);
+    } else {
       for (let x = 0; x < W; x++) p.vl(x, 0, H, ['#4a3f33', '#3a3128', '#221c17', '#3a3128'][x % 4]);
       p.hl(0, 2, W, '#17161c'); p.hl(0, 3, W, '#6a6874'); p.hl(0, 4, W, '#4a4854'); for (let x = 4; x < W; x += 16) rivet(p, x, 3, '#8a8894', '#b4b2be', '#17161c');
       for (let x = 0; x < W; x++) { const d = 12 + Math.floor(r() * 5); for (let y = d; y < H; y++) if (r() < 0.7) p.set(x, y, y > 15 ? '#2a1c14' : (x % 4 === 0 ? '#8a5a38' : x % 4 === 2 ? '#4a3025' : '#6a4530')); }
-    } else if (look === 'pipes') {
-      p.rect(0, 0, W, H, '#2a2830'); p.hl(0, 0, W, '#44424e'); p.rect(0, 16, W, 2, '#17161c');
-      for (let x = 0; x < W; x += 48) { p.vl(x, 0, 16, '#17161c'); rivet(p, x + 3, 2, '#5c5a66', '#7c7a88', '#17161c'); rivet(p, x + 43, 2, '#5c5a66', '#7c7a88', '#17161c'); }
-      const pipe = (y, h, body, hi, lo) => { p.rect(0, y, W, h, body); p.hl(0, y, W, hi); p.hl(0, y + h - 1, W, lo); };
-      // steel, never brass (14 Oct 2026, his: "no yellow walls, yellow is our threat")
-      pipe(5, 5, '#4e5560', '#7a838f', '#22262c'); pipe(12, 3, '#3e444d', '#646c77', '#1c1f24');
-      for (let x = 0; x < W; x += 48) { p.rect(x + 20, 4, 3, 7, '#5a616c'); p.hl(x + 20, 4, 3, '#8a929e'); p.hl(x + 20, 10, 3, '#22262c'); }
-      for (let x = 8; x < W; x += 96) { p.rect(x, 11, 5, 5, '#8a2022'); p.rect(x + 1, 12, 3, 3, '#2a2830'); p.set(x + 2, 13, '#8a2022'); p.set(x, 11, '#c83a34'); }
-      for (let x = 60; x < W; x += 160) { p.rect(x, 2, 5, 4, '#e6dfc8'); p.hl(x, 2, 5, '#8a8894'); p.set(x + 2, 4, '#b02a2c'); p.set(x + 3, 3, '#b02a2c'); p.vl(x + 2, 6, 2, '#6c6a76'); }
-      for (let k = 0; k < 12; k++) { const x = Math.floor(r() * W); p.set(x, 9, '#2a2e34'); p.set(x, 10, '#2a2e34'); }
-    } else {
-      p.rect(0, 0, W, H, '#17161c');
-      for (let y = 0; y < H; y += 3) for (let x = y % 6 ? 3 : 0; x < W; x += 6) p.rect(x, y, 2, 2, '#201f26');
-      p.rect(0, 0, W, 3, '#45434d'); p.hl(0, 0, W, '#6c6a76'); p.hl(0, 2, W, '#141318'); p.rect(0, 15, W, 3, '#45434d'); p.hl(0, 15, W, '#5e5c68'); p.hl(0, 17, W, '#141318');
-      for (let x = 0; x < W; x += 32) {
-        p.rect(x, 3, 3, 12, '#3a3842'); p.vl(x, 3, 12, '#5e5c68');
-        for (let k = 0; k < 12; k++) { p.set(x + 4 + k * 2, 3 + k, '#4a4854'); p.set(x + 5 + k * 2, 3 + k, '#36343f'); p.set(x + 28 - k * 2, 3 + k, '#4a4854'); p.set(x + 27 - k * 2, 3 + k, '#36343f'); }
-        rivet(p, x + 4, 1, '#8a8894', '#b4b2be', '#141318'); rivet(p, x + 26, 1, '#8a8894', '#b4b2be', '#141318');
-      }
-      for (let k = 0; k < 6; k++) rust(p, Math.floor(r() * W), 4 + Math.floor(r() * 11), 1, r);
     }
     return p.canvas;
   };
@@ -405,29 +402,55 @@ const FACTORY_PIXELS = (() => {
     F.unyellow(c);
     F.baked.set(key, c); return c;
   };
-  // A machine where a stone pillar would stand: a boiler or a cabinet off the tile's hash, the hand-drawn ones
-  // (js/factory-props.js, 14 Oct 2026: "more in our pixel style"), its feet at (x, y).
+  // A steel post where a stone pillar would stand (13 Oct 2026 playtest: "not columns"; it was a boiler or a cabinet until
+  // his marks of 16 Oct 2026 took both), js/factory-props.js `fac-post`, its feet at (x, y), mirrored off the tile's hash.
   F.pillar = (ctx, x, y, h) => {
     if (typeof FACTORY_PROPS === 'undefined') return false;
-    const name = h % 3 === 0 ? 'fac-cabinet' : 'fac-boiler', g = PROP_PIXELS.sprites[name]; if (!g) return false;
+    const name = 'fac-post', g = PROP_PIXELS.sprites[name]; if (!g) return false;
     const k = FACTORY_PROPS.TX;
     ctx.save(); ctx.translate(x, y); ctx.scale(1, 1 / TILT); if (h & 4) ctx.scale(-1, 1);
     PROP_PIXELS.draw(ctx, name, -g.w * k / 2, -g.h * k, k);
     ctx.restore(); return true;
   };
-  // THE BOMB MACHINE (js/machines.js): the cabinet, a size up, shaking while it works, its button a cell square on its
-  // front: red and breathing when it will take a press, amber blinking while it makes one, dark while its bomb is out.
+  // THE BOMB MACHINE (js/machines.js), a small production line (16 Oct 2026, his mark: "redo it, as if it were a real
+  // factory"; it was the pack's cabinet with a button): a hopper of black powder on its legs at the left, a short belt
+  // under it carrying the casing into a stamping press, the press's ram coming down on it while it works, and a chute at the
+  // front the finished bomb drops out of. The button on the press's post: red and breathing when it will take a press,
+  // amber blinking while it makes one, dark while its bomb is out; a lamp on the beam goes amber with it. In cells.
   F.drawDispenser = (ctx, p, t) => {
-    if (!F.canvas('cabinet')) return;
-    const k = 1.35, busy = p.makeT > 0, sh = busy ? Math.round(Math.sin(t * 60)) : 0;
-    ctx.save(); ctx.translate(p.x + sh, p.y + 4); ctx.scale(1, 1 / TILT);
-    stand(ctx, 'cabinet', false, 0, k);
+    const c = 3, busy = p.makeT > 0, D = typeof TUNING !== 'undefined' ? TUNING.dispenser : { wind: 3 };
+    const prog = busy ? 1 - p.makeT / D.wind : 0, sh = busy ? Math.round(Math.sin(t * 60)) : 0;
+    const cell = (i, j, w, h, col) => { ctx.fillStyle = col; ctx.fillRect(i * c, j * c, w * c, h * c); };
     const last = p.lastBomb, out = last && !last.broken && !(last.fuseT >= 0);
-    const col = busy ? (Math.floor(t * 8) % 2 ? '#ffd36b' : '#f2aa30') : p.buzz > 0 ? '#6c696d' : out ? '#492723' : `rgb(${200 + Math.round(55 * Math.sin(t * 5))},50,40)`;
-    const by = -16 * k, r = Math.round(3.2 * k), o = Math.round(k);
-    ctx.fillStyle = '#0e0c10'; ctx.fillRect(-r - o, Math.round(by) - r - o, (r + o) * 2, (r + o) * 2);
-    ctx.fillStyle = col; ctx.fillRect(-r, Math.round(by) - r, r * 2, r * 2);
-    ctx.fillStyle = 'rgba(255,240,220,0.5)'; ctx.fillRect(-r, Math.round(by) - r, r, o);
+    const btn = busy ? (Math.floor(t * 8) % 2 ? '#ffd36b' : '#f2aa30') : p.buzz > 0 ? '#6c696d' : out ? '#492723' : `rgb(${200 + Math.round(55 * Math.sin(t * 5))},50,40)`;
+    const O = '#17151b', I1 = '#34333b', I2 = '#51505a', I3 = '#76757f', I4 = '#9a99a2';
+    ctx.save(); ctx.translate(p.x + sh, p.y + 4); ctx.scale(1, 1 / TILT);
+    if (!(Math.abs(ctx.shadowOffsetX || 0) > 1000)) { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(-13 * c, -c, 26 * c, 3 * c); }
+    // the base plate it is bolted to
+    cell(-13, -2, 26, 2, O); cell(-12, -2, 24, 1, I2); cell(-12, -1, 24, 1, I1);
+    // the hopper on its legs, black powder heaped in its mouth
+    cell(-12, -9, 1, 7, O); cell(-7, -9, 1, 7, O);
+    cell(-13, -16, 8, 7, O); cell(-12, -15, 6, 5, I2); cell(-12, -15, 1, 5, I3); cell(-11, -10, 4, 1, O); cell(-10, -9, 2, 2, O);
+    cell(-12, -16, 6, 1, '#2a2628'); cell(-11, -17, 4, 1, '#3a3436'); if (busy) cell(-10 + (Math.floor(t * 10) % 2), -17, 1, 1, '#5a5052');
+    // what it makes, painted on the hopper's side: a black bomb with its fuse lit, on a red band
+    cell(-12, -14, 6, 3, '#7a1e18'); cell(-11, -14, 2, 2, '#0e0c10'); cell(-11, -14, 1, 1, '#4a4652'); cell(-9, -15, 1, 1, '#d9a52c');
+    // the belt from under the hopper to the press, its chevrons running while it works
+    cell(-9, -6, 14, 3, O); cell(-8, -5, 12, 1, I1);
+    for (let i = 0; i < 12; i += 3) cell(-8 + ((i + (busy ? Math.floor(t * 12) : 0)) % 12), -5, 1, 1, I3);
+    // the casing riding to the press, a dark ball growing as it is made
+    if (busy) { const r = Math.max(1, Math.round(prog * 3)), bx = Math.round(-6 + prog * 8); cell(bx - r / 2, -6 - r, r, r, '#232026'); cell(bx - r / 2, -6 - r, 1, 1, '#4a4652'); }
+    // the press: two posts and a beam, the ram over the belt coming down on a beat while it works
+    cell(0, -20, 2, 18, O); cell(7, -20, 2, 18, O); cell(0, -21, 9, 3, O);
+    cell(0.5, -20, 1, 17, I3); cell(7.5, -20, 1, 17, I2); cell(1, -20, 7, 1, I4); cell(1, -19, 7, 1, I2);
+    const ramY = busy ? Math.round(-17 + Math.max(0, Math.sin(t * 9)) * 6) : -17;
+    cell(3, -18, 3, ramY + 18, I1); cell(2, ramY, 5, 3, O); cell(2.5, ramY + 0.5, 4, 2, I2); cell(2.5, ramY + 0.5, 4, 1, I3);
+    // its lamp on the beam and the button on its near post
+    cell(3.5, -22, 2, 1, busy ? (Math.floor(t * 6) % 2 ? '#f2aa30' : '#7a5418') : '#34333b');
+    cell(-0.5, -13, 3, 3, O); cell(0, -12.5, 2, 2, btn); cell(0, -12.5, 1, 0.5, 'rgba(255,240,220,0.5)');
+    // the chute at the front, down to the floor where the bomb comes out
+    cell(9, -8, 4, 2, O); cell(10, -6, 3, 4, O); cell(9.5, -7.5, 3, 1, I2); cell(10.5, -5.5, 2, 3, I1);
+    // a bomb just made sits in the chute's mouth until it rolls out
+    if (busy && prog > 0.8) { cell(10.5, -4.5, 2, 2, '#0e0c10'); cell(10.5, -4.5, 1, 1, '#4a4652'); }
     ctx.restore();
   };
   // ---- THE ARM (14 Oct 2026, js/factory.js `Arm`; his reference an industrial robot arm, "the mechanised arm looks
@@ -482,6 +505,217 @@ const FACTORY_PIXELS = (() => {
     ctx.fillStyle = '#17151b'; ctx.fillRect(Math.round(gx - 6 * k), Math.round(gy - 2 * k), 12 * k, 4 * k);
     ctx.restore();
   };
+  // THE SWEEPER (15 Oct 2026, js/factory.js `Sweeper`): a robot vacuum cleaner seen from above, in cells off its heading
+  // (`e.sang`): a low disc, its side band dark, its lid with a rim of light up on the left, a dome in the middle and a red
+  // lamp on its nose, and two chainsaw bars out of its front, the chain's teeth running round them. Bars that point away
+  // from the camera are laid under the lid, the rest over it.
+  F.drawSweeper = (ctx, angle, moving, t, x, e) => {
+    if (typeof TUNING === 'undefined' || !TUNING.sweeper) return;
+    const K = TUNING.sweeper.look, c = 2, a = e && e.sang !== undefined ? e.sang : angle, ca = Math.cos(a), sa = Math.sin(a);
+    const rx = K.rx * c, ry = K.ry * c, h = K.h * c, run = Math.floor(t * 30) % 3;
+    const snap = (v) => Math.round(v / c) * c;
+    const ell = (cx, cy, ex, ey, col) => {
+      ctx.fillStyle = col;
+      for (let j = -ey; j <= ey; j += c) { const w = Math.round(ex * Math.sqrt(Math.max(0, 1 - (j / ey) * (j / ey))) / c) * c; if (w > 0) ctx.fillRect(snap(cx) - w, snap(cy + j), w * 2, c); }
+    };
+    // A chainsaw (16 Oct 2026, his mark: "the saws harder", bigger and meaner): a red motor housing at the rim, a bar three
+    // cells broad out along the heading to a rounded nose, and the chain's teeth hooked on both edges running round it.
+    const bar = (side) => {
+      // from the rim, `gap` cells to the side of the nose, out along the heading
+      const px = -sa * side, py = ca * side, ox = ca * rx * 0.7 + px * K.gap * c, oy = (sa * rx * 0.7 + py * K.gap * c) * TILT - h;
+      const L = K.len * c;
+      for (let s = 0; s <= L; s += c) {
+        const bx = ox + ca * s, by = oy + sa * s * TILT, nose = s > L - c * 2;
+        ctx.fillStyle = '#17151b'; ctx.fillRect(snap(bx) - c * (nose ? 2 : 2.5), snap(by) - c * (nose ? 2 : 2.5), c * (nose ? 4 : 5), c * (nose ? 4 : 5));
+      }
+      for (let s = 0; s <= L; s += c) {
+        const bx = ox + ca * s, by = oy + sa * s * TILT, tooth = ((s / c) + run) % 2 === 0;
+        ctx.fillStyle = s > L - c * 3 ? '#b8bec4' : '#7c8288'; ctx.fillRect(snap(bx) - c * 1.5, snap(by) - c * 1.5, c * 3, c * 3);
+        ctx.fillStyle = '#5a6066'; ctx.fillRect(snap(bx) - c / 2, snap(by) - c / 2, c, c);   // the groove down its middle
+        if (tooth) for (const e2 of [1, -1]) { ctx.fillStyle = '#e4e8ec'; ctx.fillRect(snap(bx + e2 * px * c * 2.2), snap(by + e2 * py * c * 2.2 * TILT), c, c); ctx.fillStyle = '#7a1e18'; ctx.fillRect(snap(bx + e2 * px * c * 2.2 + ca * c), snap(by + e2 * py * c * 2.2 * TILT + sa * c * TILT), c, c); }
+      }
+      // the motor housing at the root, rust red with a dark vent
+      const hx = ox - ca * c, hy = oy - sa * c * TILT;
+      ctx.fillStyle = '#17151b'; ctx.fillRect(snap(hx) - c * 2, snap(hy) - c * 2, c * 4, c * 4);
+      ctx.fillStyle = '#8a2a1c'; ctx.fillRect(snap(hx) - c, snap(hy) - c, c * 2, c * 2);
+      ctx.fillStyle = '#b8402a'; ctx.fillRect(snap(hx) - c, snap(hy) - c, c * 2, c);
+    };
+    if (!(Math.abs(ctx.shadowOffsetX || 0) > 1000)) ell(0, 0, rx + c, ry * 0.7, 'rgba(0,0,0,0.3)');
+    const behind = sa < -0.2;
+    if (behind) { bar(-1); bar(1); }
+    ell(0, -h / 2, rx + c, ry + c, '#17151b');                 // the outline
+    ell(0, -h / 2 + c, rx, ry, '#2a272d');                     // the side band
+    ell(0, -h, rx, ry, '#4a4752');                             // the lid
+    ell(-c, -h - c, rx - c * 2, ry - c * 2, '#5c5966');        // its light, up on the left
+    ell(0, -h, rx - c * 3, ry - c * 3, '#4a4752');
+    ell(0, -h - c, rx * 0.35, ry * 0.35, '#34323a');           // the dome
+    ctx.fillStyle = '#76757f'; ctx.fillRect(snap(-rx * 0.2), snap(-h - c * 2), c, c);
+    // the lamp on its nose, red, blinking faster while it is after him
+    const lit = Math.sin(t * (e && e.aware ? 14 : 4)) > 0;
+    ctx.fillStyle = lit ? '#e8402c' : '#7a1e18'; ctx.fillRect(snap(ca * rx * 0.62) - c / 2, snap(sa * ry * 0.62 - h) - c / 2, c * 2, c);
+    if (!behind) { bar(-1); bar(1); }
+  };
+  // THE CARTRIDGE (16 Oct 2026, js/factory.js `Cartridge`; redrawn the same day, his: "more like Gungeon's bullets, but
+  // so it is seen to be a robot, with some robotic gun"): Enter the Gungeon's Shotgun Kin as a machine, in cells. A red
+  // ribbed hull with the folded crimp on top, a brass head under it with its rim standing proud, a steel collar of rivets
+  // where the two meet, a visor across the hull with two slanted LED eyes (an angry look, cyan, blinking hot while it
+  // charges), a stub antenna, two steel legs on little feet that step in turn, and a jointed arm holding a blaster: a
+  // receiver with a coil lit in it and a barrel to a muzzle, laid a cell at a time along its aim, so it turns to the goat
+  // the way a Gungeon gun does. Facing away the gun goes behind it and the visor is a vent; from the side the visor and
+  // its one eye slide to the front. Charging it trembles and sparks at the muzzle; kicking back it squashes and the gun recoils.
+  F.drawCartridge = (ctx, angle, moving, t, x, e) => {
+    if (typeof TUNING === 'undefined' || !TUNING.cartridge) return;
+    const K = TUNING.cartridge.look, c = K.cell, d = facingOf(angle), back = d === 3 || d === 4 || d === 5, side = d === 2 || d === 6;
+    const W = K.w, HULL = K.hull, BASE = K.base, LEG = K.leg, aim = e && e.state === 'caim', kick = e && e.state === 'ckick';
+    const hop = moving ? Math.sin(t * 16 + (x || 0) * 0.05) : 0, lift = moving && hop > 0 ? -K.hop * c : 0;
+    const snap = (v) => Math.round(v / c) * c, INK = '#17151b';
+    const cell = (cx, cy, w, h, col) => { ctx.fillStyle = col; ctx.fillRect(snap(cx), snap(cy), w * c, h * c); };
+    const volt = PALETTE.volt, voltHi = PALETTE.voltHi, hot = Math.floor(t * 20) % 2 ? voltHi : volt;
+    if (!(Math.abs(ctx.shadowOffsetX || 0) > 1000)) { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(0, 0, W * c * 0.65, c * 2.2, 0, 0, Math.PI * 2); ctx.fill(); }
+    ctx.save();
+    ctx.translate(0, lift);
+    if (kick) { ctx.scale(1.1, 0.88); }
+    if (aim) ctx.translate(Math.round((Math.random() - 0.5) * 2) * (c / 2), 0);
+    const x0 = -Math.floor(W / 2) * c, footY = -c, rimY = footY - LEG * c, baseY = rimY - (BASE - 1) * c, hullY = baseY - HULL * c;
+    // the gun's line on the screen: the facing, its depth foreshortened as the floor is
+    let ux = Math.cos(angle), uy = Math.sin(angle) * (typeof TILT === 'number' ? TILT : 0.86);
+    const ul = hyp(ux, uy) || 1; ux /= ul; uy /= ul;
+    const gs = ux >= -0.2 ? 1 : -1, gunBehind = uy < -0.4;
+    const shY = hullY + Math.floor(HULL * 0.55) * c, edge = gs > 0 ? x0 + W * c : x0 - c;
+    const hx = edge + gs * 2 * c - (kick ? ux * c * 1.5 : 0), hy = shY + c - (kick ? uy * c * 1.5 : 0);
+    // the arm and the blaster in its claw
+    const gun = () => {
+      // the arm: two steel segments out of the hull's side to the claw
+      cell(gs > 0 ? edge : edge - c, shY - c, 2, 3, INK); cell(gs > 0 ? edge : edge - c, shY, 2, 1, '#76757f');
+      cell(gs > 0 ? edge + c : edge - c, shY, 1, 1, '#5c5966');
+      let nx = -uy, ny = ux; if (ny < 0 || (Math.abs(ny) < 0.2 && nx > 0)) { nx = -nx; ny = -ny; }   // the grip hangs down
+      const L = K.gun, at = (i, j) => [hx + (ux * i + nx * j) * c, hy + (uy * i + ny * j) * c];
+      const lay = (pass) => {
+        for (let i = -1; i <= L; i += 0.5) for (let j = -2; j <= 2.5; j += 0.5) {
+          const fi = Math.floor(i + 0.25), rj = Math.round(j);
+          const recv = fi >= 0 && fi < 3, barrel = fi >= 3 && fi < L, grip = fi >= 0 && fi < 2 && rj >= 1 && rj <= 2;
+          const inside = (recv && rj >= -1 && rj <= 1) || (barrel && rj >= -1 && rj <= 0) || grip;
+          if (pass === 0) {
+            // the outline: every cell within one of the gun
+            let near = false;
+            for (let a = -1; a <= 1 && !near; a++) for (let b = -1; b <= 1 && !near; b++) {
+              const gi = Math.floor(i + a + 0.25), gj = Math.round(j + b);
+              near = (gi >= 0 && gi < 3 && gj >= -1 && gj <= 1) || (gi >= 3 && gi < L && gj >= -1 && gj <= 0) || (gi >= 0 && gi < 2 && gj >= 1 && gj <= 2);
+            }
+            if (!near) continue;
+            const [px, py] = at(i, j); ctx.fillStyle = INK; ctx.fillRect(snap(px - c / 2), snap(py - c / 2), c, c);
+            continue;
+          }
+          if (!inside) continue;
+          let col;
+          if (grip && !recv) col = '#3c3a44';
+          else if (grip) col = rj === 1 ? '#3c3a44' : '#2a272d';
+          else if (recv) col = rj === -1 ? '#8a8894' : rj === 0 ? ((fi === 1 || fi === 2) ? (aim ? hot : (Math.floor(t * 3 + fi) % 2 ? volt : '#3aa6c0')) : '#5c5966') : '#3c3a44';
+          else if (fi === L - 1) col = aim ? hot : (rj === -1 ? '#4fb8d0' : '#2a6f80');
+          else col = rj === -1 ? '#76757f' : (fi === 4 ? '#2a272d' : '#4a4752');
+          const [px, py] = at(i, j); ctx.fillStyle = col; ctx.fillRect(snap(px - c / 2), snap(py - c / 2), c, c);
+        }
+      };
+      lay(0); lay(1);
+      // the claw round the grip
+      cell(hx - c, hy - c, 2, 2, INK); cell(hx - c / 2, hy - c / 2, 1, 1, '#8a8894');
+      // charging: sparks at the muzzle; the kick: a flash off it
+      const [mx, my] = at(L + 0.5, -0.5);
+      if (aim) for (let k = 0; k < 4; k++) { const q = Math.floor(t * 30 + k * 5.3); cell(mx + ((q * 7) % 5 - 2) * c, my + ((q * 11) % 5 - 2) * c, 1, 1, k % 2 ? voltHi : volt); }
+      if (kick) { cell(mx - c, my - c, 3, 3, volt); cell(mx - c / 2, my - c / 2, 2, 2, voltHi); }
+    };
+    if (gunBehind) gun();
+    // the legs: two steel shins on feet, lifted in turn on the run
+    const l1 = moving && hop > 0 ? -c : 0, l2 = moving && hop <= 0 ? -c : 0;
+    const leg = (lx, dy, out) => {
+      cell(lx - 2 * c, rimY + c + dy, 6, LEG + 1, INK);
+      cell(lx, rimY + c + dy, 2, LEG - 1, '#5c5966'); cell(lx, rimY + c + dy, 1, LEG - 1, '#8a8894');
+      cell(lx + (out < 0 ? -c : 0), footY + dy, 3, 1, '#3c3a44');
+    };
+    leg(x0 + 2 * c, l1, -1); leg(x0 + (W - 4) * c, l2, 1);
+    // the outline round the shell, the rim standing a cell proud of the head
+    cell(x0 - c, hullY, W + 2, HULL + BASE, INK); cell(x0, hullY - c, W, 1, INK); cell(x0 - 2 * c, rimY - c, W + 4, 3, INK);
+    // the brass head: light up the left, dark down the right, the rim proud at its foot with a groove over it
+    cell(x0, baseY, W, BASE - 1, '#dcb33a');
+    cell(x0, baseY, 2, BASE - 1, '#f3d96f'); cell(x0 + (W - 2) * c, baseY, 2, BASE - 1, '#9c7a20');
+    cell(x0, rimY - c, W, 1, '#7a5e16');
+    cell(x0 - c, rimY, W + 2, 1, '#c99a26'); cell(x0 - c, rimY, 2, 1, '#f3d96f'); cell(x0 + (W - 1) * c, rimY, 2, 1, '#8a6a18');
+    // the hull: red, ribbed, a pale streak up the left, a dark band down the right, the folded crimp on top
+    cell(x0, hullY + c, W, HULL - 1, '#c62a22');
+    for (let k = 3; k < W - 2; k += 2) cell(x0 + k * c, hullY + 2 * c, 1, HULL - 3, '#a82420');
+    cell(x0 + c, hullY + c, 1, HULL - 2, '#ea5a4e'); cell(x0 + c, hullY + 2 * c, 1, 3, '#f6b8a8');
+    cell(x0 + (W - 2) * c, hullY + c, 2, HULL - 1, '#8e1a16');
+    cell(x0, hullY + c, 1, HULL - 1, '#7e1814');
+    cell(x0 + c, hullY, W - 2, 1, '#a82420');
+    for (let k = 1; k < W - 1; k += 2) cell(x0 + k * c, hullY, 1, 1, '#6e1410');   // the crimp's folds
+    // the steel collar where hull meets brass, its rivets lit
+    cell(x0, baseY - c, W, 1, '#4a4752');
+    for (let k = 1; k < W; k += 2) cell(x0 + k * c, baseY - c, 1, 1, '#9a98a4');
+    // the stub antenna, its lamp blinking: slow red at rest, fast cyan charging
+    const ax = side ? x0 + (d === 6 ? 2 : W - 3) * c : x0 + (W - 3) * c;
+    cell(ax - c, hullY - 5 * c, 3, 5, INK); cell(ax, hullY - 3 * c, 1, 2, '#8a8894');
+    cell(ax, hullY - 4 * c, 1, 1, aim ? hot : (Math.sin(t * 4) > 0 ? '#ff5a3a' : '#7a1e18'));
+    // the face: a visor across the hull and two LED eyes slanted down to the middle (an angry look); slid to the front
+    // on the side views, a vent of three slots on the back views
+    const vY = hullY + 3 * c, eye = aim ? hot : volt;
+    if (back) for (let k = 0; k < 3; k++) cell(x0 + 3 * c, vY + k * 2 * c, W - 6, 1, '#6e1410');
+    else if (side) {
+      const f = d === 6 ? 1 : -1, vx = f > 0 ? x0 + Math.floor(W / 2) * c : x0;
+      cell(vx, vY - c, Math.ceil(W / 2) , 3, INK);
+      const ex = f > 0 ? x0 + (W - 3) * c : x0 + c;
+      cell(ex + (f > 0 ? c : 0), vY, 1, 1, eye); cell(ex + (f > 0 ? 0 : c), vY + c, 1, 1, eye);
+    } else {
+      cell(x0 + c, vY - c, W - 2, 3, INK);
+      cell(x0 + 2 * c, vY, 1, 1, eye); cell(x0 + 3 * c, vY + c, 1, 1, eye);
+      cell(x0 + (W - 3) * c, vY, 1, 1, eye); cell(x0 + (W - 4) * c, vY + c, 1, 1, eye);
+    }
+    if (!gunBehind) gun();
+    ctx.restore();
+  };
+  // THE SHIELD GENERATOR (15 Oct 2026, js/factory.js `ShieldGen`): a squat steel box on two tracks, a cyan shield badge
+  // on its front with the core breathing in it, and out of its lid a tall lattice mast (16 Oct 2026, his mark: "a bigger
+  // antenna, and something for the object to read better") with a dish on top sending rings of signal up, a cell at a time.
+  // Dark while it holds no dome (in the goat's teeth, flung). Symmetric, so one drawing serves every facing.
+  F.drawShieldGen = (ctx, angle, moving, t, x, e) => {
+    if (typeof TUNING === 'undefined' || !TUNING.shieldgen) return;
+    const K = TUNING.shieldgen.look, c = 2, hw = Math.ceil(K.w / 2), H = K.h, M = K.mast;
+    const on = !e || e.statue || (typeof ShieldGen !== 'undefined' && ShieldGen.working(e) && !e.dead);
+    const ph = t * 1.6 + (x || 0) * 0.01, pulse = Math.sin(ph * Math.PI * 2) > 0, run = moving ? Math.floor(t * 18) % 3 : 0;
+    const cell = (i, j, w, h, col) => { ctx.fillStyle = col; ctx.fillRect(i * c, j * c, w * c, h * c); };
+    const cyan = on ? PALETTE.dome : PALETTE.domeDark, hi = on ? PALETTE.domeHi : PALETTE.domeDark;
+    if (!(Math.abs(ctx.shadowOffsetX || 0) > 1000)) { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(-(hw + 1) * c, -c, (hw + 1) * 2 * c, c * 2); }
+    // the tracks, their treads running while it drives
+    cell(-hw - 1, -3, hw * 2 + 2, 3, '#17151b');
+    for (let i = -hw; i < hw; i++) if (((i + run) % 3 + 3) % 3 === 0) cell(i, -2, 1, 1, '#4a4752');
+    // the box: outline, its sides, a lid lit up on the left, a cyan stripe round its foot
+    const top = -3 - H;
+    cell(-hw, top - 1, hw * 2, H + 1, '#17151b');
+    cell(-hw + 1, top, hw * 2 - 2, H - 1, '#3c3a44');
+    cell(-hw + 1, top, hw * 2 - 2, 1, '#5c5966'); cell(-hw + 1, top, 1, H - 1, '#4f4c58');
+    cell(-hw + 1, -4, hw * 2 - 2, 1, on ? PALETTE.domeDark : '#2a272d');
+    // the badge: a shield of cyan cells on its front, the core lit in it
+    const by = top + 1;
+    cell(-2, by, 4, 3, '#17151b'); cell(-1, by + 3, 2, 1, '#17151b');
+    cell(-2 + 0.5, by + 0.5, 3, 2, cyan); cell(-0.5, by + 2.5, 1, 1, cyan);
+    if (on) cell(-0.5, by + 1, 1, 1, pulse ? '#ffffff' : hi);
+    // the mast: two rails and a brace zigzag, tall, its feet bolted to the lid
+    const mt = top - 1 - M;
+    cell(-2, mt, 1, M, '#17151b'); cell(1, mt, 1, M, '#17151b');
+    cell(-1.5, mt, 0.5, M, '#76757f'); cell(1.5, mt, 0.5, M, '#5c5966');
+    for (let j = 0; j < M; j += 2) cell(((j / 2) % 2) ? -1 : 0, mt + j, 1, 1, '#5c5966');
+    cell(-3, top - 2, 6, 1, '#17151b');
+    // the dish on top: a ring of cells round a lit eye
+    const ey = mt - 3;
+    cell(-3, ey - 1, 6, 4, '#17151b'); cell(-2, ey, 4, 2, '#4a4752'); cell(-1, ey, 2, 2, cyan);
+    if (on) cell(-1, ey, 1, 1, hi);
+    // its signal: three arcs of cells going up and out, one after another, while it holds the dome
+    if (on) for (let k = 0; k < 3; k++) {
+      const u = ((ph + k / 3) % 1), r = 3 + u * 7, a = 1 - u; if (a <= 0.05) continue;
+      ctx.globalAlpha = a; ctx.fillStyle = k === 0 ? PALETTE.domeHi : PALETTE.dome;
+      for (let q = -0.9; q <= 0.9; q += 0.9 / Math.max(2, r)) ctx.fillRect(Math.round(Math.sin(q) * r) * c, Math.round(ey - Math.cos(q) * r * 0.8) * c, c, c);
+      ctx.globalAlpha = 1;
+    }
+  };
   // The statue and the corpse's snapshot hand a stub with no `auto`: he stands at rest.
   F.draw = (ctx, key, angle, moving, t, x, e) => {
     if (!F.ready) return;
@@ -489,6 +723,9 @@ const FACTORY_PIXELS = (() => {
     else if (key === 'welder') F.drawWelder(ctx, angle, moving, t, x, e);
     else if (key === 'automaton') F.drawAutomaton(ctx, angle, moving, t, x, e);
     else if (key === 'arm') F.drawArm(ctx, angle, moving, t, x, e);
+    else if (key === 'sweeper') F.drawSweeper(ctx, angle, moving, t, x, e);
+    else if (key === 'shieldgen') F.drawShieldGen(ctx, angle, moving, t, x, e);
+    else if (key === 'cartridge') F.drawCartridge(ctx, angle, moving, t, x, e);
   };
   // The factory's floor handed to `FLOOR_SHEET` under the key `PaintedArt.floorSwatch` will ask for: the look's picture
   // (144 texels, a 6 x 6 patch of tiles) off the atlas, or painted here (`paintFloor`), cut into its 36 tile canvases

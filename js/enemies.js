@@ -81,7 +81,7 @@ class Enemy {
   }
   // How far a headbutt throws him: light kinds further, the butcher and a man with a soul in him less.
   knockMul() {
-    return (this.cfg.flingMul || 1) * (this.champion ? TUNING.champion.flingMul : 1) * (this.thrower ? TUNING.thrower.flingMul : 1) * (this.welder ? TUNING.welder.flingMul : 1) * (this.sawbot ? TUNING.sawbot.flingMul : 1) * (this.soul ? TUNING.soulBearer.flingMul : 1);
+    return (this.cfg.flingMul || 1) * (this.champion ? TUNING.champion.flingMul : 1) * (this.thrower ? TUNING.thrower.flingMul : 1) * (this.welder ? TUNING.welder.flingMul : 1) * (this.sawbot ? TUNING.sawbot.flingMul : 1) * (this.sweeper ? TUNING.sweeper.flingMul : 1) * (this.shieldgen ? TUNING.shieldgen.flingMul : 1) * (this.cartridge ? TUNING.cartridge.flingMul : 1) * (this.soul ? TUNING.soulBearer.flingMul : 1);
   }
   // How fast a wall has to be met to kill him. A heavy man is thrown `knockMul` as far, and the
   // wall asks the same share less of him, or a butcher carrying a soul (0.55 × 0.6 of a throw) left a
@@ -111,6 +111,7 @@ class Enemy {
     // from the butcher, who does. Every heart he has is taken standing, while he is on his knees.
     // Nor THE AUTOMATON (js/factory.js): four feet on the floor and a body nothing reaches.
     if (this.kind === 'ratogre' || this.kind === 'butcher' || this.barrier || this.automaton || this.arm) { this.aware = true; return; }   // nor THE ARM, bolted down
+    if (typeof ShieldGen !== 'undefined' && ShieldGen.holds(this)) { this.aware = true; this.domeHit = 0.3; return; }   // nor a machine under a generator's dome (js/factory.js)
     this.vx = vx; this.vy = vy; this.state = 'flung'; this.flung = true; this.thrown = thrown; this.held = false; this.aware = true; this.flungBy = null; this.tossBy = null; this.chain = 0; this.liftedBy = null;
     if (this.coward) Coward.wrong(this);   // butted or thrown, he was not spared (js/coward.js)
     this.fromMouth = false;   // `Goat.throwHeld` sets it after this; anything else that throws him clears it
@@ -197,10 +198,13 @@ class Enemy {
   // men rather than every man in it.
   ignite(game, witch, fromMan) {
     if (this.dead || this.burning > 0 || this.ghosted) return;
+    if (typeof ShieldGen !== 'undefined' && ShieldGen.holds(this)) { ShieldGen.refuse(game, this, false); return; }   // under a generator's dome: no fire, no heat (js/factory.js); fire is no blow, the dome stays
     // A dead thing does not catch from a hearth. Witchfire is a Seer's doing and still finds it.
     const im = this.immunity;
     // THE SAWBOT does not burn, it heats (js/factory.js, `Sawbot.heat`: red-hot, its touch hurts, soaked it goes off)
     if ((this.sawbot || this.arm) && im && (im.fire || im.witch)) { Sawbot.heat(game, this); return; }
+    // THE CARTRIDGE does not burn either, it cooks off (js/factory.js `Cartridge.cook`): dead at once, and it goes off
+    if (this.cartridge && im && (im.fire || im.witch)) { Cartridge.cook(game, this); return; }
     if (!witch && im && im.fire) { if (this.automaton) Sawbot.shrug(game, this, 'fire'); return; }
     // The rat ogre does not burn at all, a Seer's fire included: `immune.witch` is his alone (and the factory's iron's).
     if (witch && im && im.witch) return;
@@ -252,6 +256,8 @@ class Enemy {
     if (this.dead || this.ghosted) return;
     if (this.coward) Coward.wrong(this, game);   // dead is not spared (js/coward.js)
     // THE WARDEN behind his barrier (THE LAST SUPPER, js/endboss.js): nothing lands.
+    // A machine under THE SHIELD GENERATOR's dome (js/factory.js): nothing lands while it works. A fall still takes it.
+    if (cause !== 'fall' && typeof ShieldGen !== 'undefined' && ShieldGen.holds(this)) { ShieldGen.refuse(game, this); return; }
     if (this.barrier) { game.audio.sfxCageHit(); game.particles(this.x, this.y - 20, 6, PALETTE.witchHi, 120); game.ring(this.x, this.y, TUNING.warden.barrier.r * TILE, PALETTE.witch, 0.3, 2); return; }
     // His last heart: not a death, a change (js/warden.js).
     if (this.warden && !this.wardenGone && cause !== 'fall' && this.hp <= 1 && typeof Warden !== 'undefined') { Warden.beginTurn(game, this); return; }
@@ -422,7 +428,9 @@ class Enemy {
     // stops needing eyes.
     // A hound on the hunt runs one way with his head turned the other, onto you: his body (`facing`)
     // is where his legs are taking him round the ring, and his eyes do not leave the goat.
-    const eyesOn = this.kind === 'dog' && this.aware;
+    // THE WELDER has no cone (15 Oct 2026 playtest, the goat off to his side unseen: "strange that he did not see me"):
+    // his facing is only the line he drives, so he looks all round, out to his range
+    const eyesOn = (this.kind === 'dog' && this.aware) || this.welder;
     if (!this.watchful && !eyesOn && Math.abs(angleDiff(this.facing, ang)) > this.cfg.cone / 2
         && d > this.r + g.r + TUNING.ai.feel) return false;
     // Stone, and the two or three things in a room that are as good as stone. A shut door used to be
@@ -501,8 +509,18 @@ class Enemy {
       else if (len(p.x - x, p.y - y) < p.r + this.r + 4) return { kind: 'fire', p };
     }
     for (const rn of game.runes) if (len(rn.x - x, rn.y - y) < TUNING.seer.runeRadius * TILE + this.r) return { kind: 'trap' };
-    // THE FACTORY's press about to shut and a burner about to catch (js/machines.js)
-    if (game.machines && game.machines.length && Machines.threat(game, x, y, this.r)) return { kind: 'trap' };
+    // THE FACTORY's press about to shut and a burner about to catch (js/machines.js). A man after the goat misses one now
+    // and then (15 Oct 2026 playtest: "the bots avoid the press, but give them some chance not to notice"): the first time
+    // one is in his way after `machine.miss.gap` s clear of them he rolls `chance`, and failing it walks on blind to the
+    // machines for `blind` s.
+    if (game.machines && game.machines.length && !(this.machineBlind > game.timer) && Machines.threat(game, x, y, this.r)) {
+      const M = TUNING.machine.miss;
+      if (this.aware && !(this.machineRoll > game.timer)) {
+        this.machineRoll = game.timer + M.gap;
+        if (Math.random() < M.chance) { this.machineBlind = game.timer + M.blind; return null; }
+      }
+      return { kind: 'trap' };
+    }
     return null;
   }
 
@@ -1484,6 +1502,9 @@ class Enemy {
     // automaton keeps his legs under him.
     if (this.welder && Welder.step(this, dt, game, sees)) return;
     if (this.automaton && Automaton.step(this, dt, game, sees)) return;
+    if (this.sweeper && Sweeper.step(this, dt, game)) return;   // THE SWEEPER drives at him, saws first (js/factory.js)
+    if (this.shieldgen && ShieldGen.step(this, dt, game)) return;   // THE SHIELD GENERATOR keeps behind its machines, never swings (js/factory.js)
+    if (this.cartridge && Cartridge.step(this, dt, game, sees)) return;   // THE CARTRIDGE keeps off and spits bolts (js/factory.js)
     if (this.state === 'idle') { this.idleWander(dt, game); return; }
     if (this.state === 'investigate') { this.investigate(dt, game); return; }
     // THE WARDEN: the board, the sword, the tumble and the gun (js/warden.js).
@@ -1496,6 +1517,8 @@ class Enemy {
     if (this.thrower && !this.sentry && Thrower.step(this, dt, game, sees)) return;
     // The shaman keeps back behind his men, puts his spirit into them, and calls the goat to him (js/shaman.js).
     if (this.shaman && !this.sentry && Shaman.step(this, dt, game, sees)) return;
+    // The sawbot's blow from a short leap a few tiles off (js/factory.js `Sawbot.leap`); up close its saw swings as the club.
+    if (this.sawbot && !this.sentry && Sawbot.leap(this, dt, game)) return;
     if (this.state === 'chase') {
       const d = this.chaseGoat(game, this.speed, dt);
       if (d < reach + g.r && !g.dead) { this.state = 'windup'; this.timer = this.atk('windup') * game.mods.enemySlow; this.vx = 0; this.vy = 0; game.bark(this, 'attack', 0.25); }

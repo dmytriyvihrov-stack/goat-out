@@ -116,7 +116,8 @@ class PaintedArt extends AltarArt {
     x.globalCompositeOperation = 'multiply'; x.fillStyle = PIXEL_ENV.lift(tint, PIXEL_ROOMS.lift); x.fillRect(0, 0, f[2], f[3]);
     this.swatches.set(key, c); return c;
   }
-  rooms(def) { return PIXEL_ROOMS[def.canon && def.canon.id] || PIXEL_ROOMS.stone; }
+  // A floor under THE SNOW's modifier (js/snow.js `Snow.look`) lays the snow sheet whatever its canon.
+  rooms(def) { if (typeof Snow !== 'undefined' && Snow.look(def) && PIXEL_ROOMS.snow) return PIXEL_ROOMS.snow; return PIXEL_ROOMS[def.canon && def.canon.id] || PIXEL_ROOMS.stone; }
   // One swatch a canon, in the level's one floor colour, on every tile. A floor is ground to run
   // over: a tile in a second swatch, or in `floorAlt` one tile in five, read as a thing lying on it
   // (24 Sep 2026: "so much noise it reads almost as an obstacle"), and two swatches never shared an
@@ -256,6 +257,19 @@ class PaintedArt extends AltarArt {
   // `tx`, `ty` pick the cap's part of the sheet; left out, they are read off the position.
   drawWall(ctx, def, x, y, mask, tx = Math.round(x / TILE), ty = Math.round(y / TILE)) {
     const P = PIXEL_ROOMS.wall.sheet;
+    // THE SNOW (16 Oct 2026, js/snow.js): the stone cap under a blanket of snow (the `snowcap` sheet, laid in world space like
+    // the cap, so a drift runs on from tile to tile), the brick face below it as on any floor, and icicles off the lip.
+    if (typeof Snow !== 'undefined' && Snow.look(def)) {
+      const W = PIXEL_ROOMS.wall, F = W.faceH, R = this.rooms(def);
+      ctx.drawImage(this.wallCap(def), ((tx % P) + P) % P * 64, ((ty % P) + P) % P * 64, 64, 64, x, y, TILE, TILE);
+      const N = FLOOR_SHEET.N, a0 = ctx.globalAlpha; ctx.globalAlpha = a0 * TUNING.snow.wall.alpha;
+      ctx.drawImage(FLOOR_SHEET.tile(this.swatch(R.floor, def.floor), 'snowcap', 'snowcap' + def.floor, tx, ty), x, y, TILE, TILE);
+      ctx.globalAlpha = a0;
+      if (ART_PASS.floors && (mask & 4)) ctx.drawImage(FLOOR_SHEET.faceStrip(this.swatch(W.face, def.wall), 'face' + def.wall, F, tx), x, y + (64 - F) / 64 * TILE, TILE, F / 64 * TILE);
+      ctx.drawImage(this.wallTile(def, mask), x, y, TILE, TILE);
+      if (mask & 4) Snow.icicles(ctx, x, y + (64 - F) / 64 * TILE, tx + ty * N);
+      return;
+    }
     // THE FACTORY's wall is iron (13 Oct 2026 playtest: "the walls in the factory's own look"): the riveted band as its cap,
     // the brick-and-pipe rows as its face (js/factory-pixels.js), the same lips and outline over them.
     if (def.factory && typeof FACTORY_PIXELS !== 'undefined') {
@@ -307,7 +321,9 @@ class PaintedArt extends AltarArt {
           ctx.drawImage(this.floorSwatch(def,h,false,x,y),px,py,TILE+PIXEL_ROOMS.bleed,TILE+PIXEL_ROOMS.bleed);
           renderer.shadow(px+16,py+27,13,5);
           // THE FACTORY stands a boiler or a cabinet where a pillar would be (13 Oct 2026 playtest: "not columns")
+          PIXEL_ENV.snowOn=typeof Snow!=='undefined'&&Snow.look(def);   // THE SNOW: a cap of snow on the pillar (js/snow.js)
           if (!(def.factory && typeof FACTORY_PIXELS !== 'undefined' && FACTORY_PIXELS.pillar(ctx,px+16,py+31,h))) PIXEL_ENV.draw(ctx,'pillar',px+16,py+31,27);
+          PIXEL_ENV.snowOn=false;
           continue;
         }
         // an open diagonal counts only where both its sides are stone: an inside corner of the outline
@@ -331,11 +347,11 @@ class PaintedArt extends AltarArt {
       if(stone(x,y-1)&&!post(x,y-1))ctx.fillRect(px,py,32,5);
       if(stone(x-1,y)&&!post(x-1,y))ctx.fillRect(px,py,3,32);
       if(t===T.HAY)PIXEL_ENV.draw(ctx,'hay',px+16,py+29,33);
-      else if(t===T.FLOOR&&!wood&&!wd.isSolid(x,y-1)&&!under.has(y*wd.W+x))PIXEL_ENV.litter(ctx,'room',x,y);
+      else if(t===T.FLOOR&&!wood&&!(typeof Snow!=='undefined'&&Snow.look(def))&&!wd.isSolid(x,y-1)&&!under.has(y*wd.W+x))PIXEL_ENV.litter(ctx,'room',x,y);   // no litter under snow (js/snow.js)
       else if(t===T.ASH)this.ashTile(ctx,px,py,h);
       else if(t===T.EXIT)renderer.drawStairs(px,py,x-game.level.exitTile.x0,true,game.level.def,Renderer.forkRow(game.level,y));
       else if(t===T.ENTRY)renderer.drawStairs(px,py,x-game.level.entry.x0,false,game.level.def);
-      else if(wd.isSolid(x,y-1)&&h%5===0)this.straw(ctx,px+16,py+6,h,false);
+      else if(!(typeof Snow!=='undefined'&&Snow.look(def))&&wd.isSolid(x,y-1)&&h%5===0)this.straw(ctx,px+16,py+6,h,false);
     }
     // The carpets (`layCarpets`, gen.js) over the floor they lie on, whole, after every tile: each has a
     // tile of plain floor round it, so nothing standing up out of the next row is painted over.
@@ -616,6 +632,15 @@ class PaintedArt extends AltarArt {
       }
       ctx.restore();return true;
     }
+    if(p.kind==='secret'&&p.vent&&typeof FACTORY_PROPS!=='undefined'){
+      // THE FACTORY's vent (js/factory-props.js `drawVentWall`): the wall in its own room's look, the grille in it
+      const L=renderer.game.level,W=renderer.game.world.W,z=L.zones?L.zones[Math.floor(p.y/TILE)*W+Math.floor(p.x/TILE)]:0,def=(L.zoneDefs&&L.zoneDefs[z])||L.def;
+      ctx.save();ctx.translate(p.x,p.y);ctx.scale(1,TILT);ctx.translate(-p.x,-p.y);ctx.imageSmoothingEnabled=true;
+      this.drawWall(ctx,def,p.x-TILE/2,p.y-TILE/2,p.wallSide==='left'?2:p.wallSide==='right'?8:p.wallSide==='up'?4:1);
+      ctx.restore();
+      FACTORY_PROPS.drawVentWall(renderer,p);
+      return true;
+    }
     if(p.kind==='secret'){
       // The sealed niche must share the same facing as the surrounding room wall.
       // It is a tile of the wall, so it is drawn flat like the tiles either side of it: a prop stands
@@ -641,7 +666,7 @@ class PaintedArt extends AltarArt {
   // the ogre, drawn by js/ogre-pixels.js (`butcher.scale` a size up). The red-robed `brute` sheet is
   // unused for now.
   // THE FACTORY's machines (js/factory.js, js/factory-pixels.js): `automaton`, `welder`, `sawbot`.
-  characterKey(e) { if(e.kind==='butcher')return e.flayed?'flayed':'ogre'; if(e.kind==='ratogre')return 'ratogre'; return e.kind==='bearer'?(e.warden?'warden':e.automaton?'automaton':e.welder?'welder':e.sawbot?'sawbot':e.arm?'arm':e.champion?'butcher':e.shieldman?'spartan':e.thrower?'thrower':e.shaman?'shaman':e.coward?'coward':'clubman'):e.kind==='seer'?'mage':e.kind==='dog'?'hound':['hunter','wraith'].includes(e.kind)?e.kind:null; }
+  characterKey(e) { if(e.kind==='butcher')return e.flayed?'flayed':'ogre'; if(e.kind==='ratogre')return 'ratogre'; return e.kind==='bearer'?(e.warden?'warden':e.automaton?'automaton':e.welder?'welder':e.sawbot?'sawbot':e.arm?'arm':e.sweeper?'sweeper':e.shieldgen?'shieldgen':e.cartridge?'cartridge':e.champion?'butcher':e.shieldman?'spartan':e.thrower?'thrower':e.shaman?'shaman':e.coward?'coward':'clubman'):e.kind==='seer'?'mage':e.kind==='dog'?'hound':['hunter','wraith'].includes(e.kind)?e.kind:null; }
 
   // The art is a top-down slab at the collision footprint, with no frame or square padding.
   doorSlab(ctx,p,wdt,hgt) {
@@ -781,7 +806,7 @@ class PaintedArt extends AltarArt {
     // The shaman in his pelt and headdress, the rattle up through either cast (js/shaman-pixels.js).
     else if(key==='shaman'&&typeof SHAMAN_PIXELS!=='undefined'&&SHAMAN_PIXELS.draw)SHAMAN_PIXELS.draw(ctx,angle,moving,renderer.t,e.x,e);
     // THE FACTORY's machines off their own atlas (js/factory-pixels.js): the sawbot, the welder, the automaton with his legs posed live.
-    else if((key==='sawbot'||key==='welder'||key==='automaton'||key==='arm')&&typeof FACTORY_PIXELS!=='undefined')FACTORY_PIXELS.draw(ctx,key,angle,moving,renderer.t,e.x,e);
+    else if((key==='sawbot'||key==='welder'||key==='automaton'||key==='arm'||key==='sweeper'||key==='shieldgen'||key==='cartridge')&&typeof FACTORY_PIXELS!=='undefined')FACTORY_PIXELS.draw(ctx,key,angle,moving,renderer.t,e.x,e);
     else{
       // The goat's cape (js/cape-pixels.js): behind his frame on the front view, over it on the rest, in
       // step with his stride. `capeId` is lent by `drawGoat` for the one draw.
@@ -791,8 +816,9 @@ class PaintedArt extends AltarArt {
       if(cs!==null)CAPE_PIXELS.draw(ctx,this.capeId,'behind',angle,cs,cw);
       // BIG and LONG are drawn whole by `PIXEL_ART.horns`: the frame under them goes without its packed horns (`bare`).
       PIXEL_ART.penitent=!!e.coward||key==='coward';   // THE COWARD's own robe and open face (`COWARD_STUDY`), for this one draw
+      PIXEL_ART.snowK=key!=='sheep'&&!renderer.silPass?e.snowK||0:0;   // THE SNOW settled on a man who stood still (js/snow.js)
       PIXEL_ART.draw(ctx,pixel,angle,moving,renderer.t,e.x,key==='sheep'&&this.hornMods&&this.hornMods.horn&&this.hornMods.horn.look,runP);
-      PIXEL_ART.penitent=false;
+      PIXEL_ART.penitent=false;PIXEL_ART.snowK=0;
       if(cs!==null)CAPE_PIXELS.draw(ctx,this.capeId,'over',angle,cs,cw);
     }
     if(e.shield)this.board(renderer,e,true);
@@ -819,7 +845,10 @@ class PaintedArt extends AltarArt {
     // His blow up close (`shieldman.strike`): the board drawn in toward him through the windup and rammed
     // out `thrust` px along his facing in the swing, whole pixels, so the clubman's wedge has a weapon in it.
     const th=e.state==='windup'?-S.strike.thrust/2:e.state==='swing'?S.strike.thrust:0,tx=Math.round(Math.cos(e.facing||0)*th),ty=Math.round(Math.sin(e.facing||0)*th*0.6);
-    const ctx=renderer.ctx;ctx.save();ctx.translate(B.x+shake+tx+Math.round(S.side*low)*(B.flip?-1:1),B.y+ty+Math.round(S.low*low));if(B.flip)ctx.scale(-1,1);
+    // Up it is held square in front of him (`S.front` px along his facing, over his middle); down it eases out to his arm's side (`B.x`)
+    const fx=Math.cos(e.facing||0)*S.front,fy=Math.sin(e.facing||0)*S.front*0.5,side=B.x+S.side*low*(B.flip?-1:1);
+    const bx=Math.round(fx+(side-fx)*low),by=Math.round(B.y+fy*(1-low)+S.low*low);
+    const ctx=renderer.ctx;ctx.save();ctx.translate(bx+shake+tx,by+ty);if(B.flip)ctx.scale(-1,1);
     PROP_PIXELS.draw(ctx,name,q?-h/2:-w/2,q?-w/2:-h/2,k,q);
     ctx.restore();
   }

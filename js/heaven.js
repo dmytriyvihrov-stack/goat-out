@@ -304,7 +304,10 @@ const Heaven = {
     if (!m.mended && m.poured && !m.bought && !Object.keys(m.ranks || {}).some((k) => m.ranks[k] > 0)) {
       for (const k of Object.keys(m.poured)) if (k === 'tower' || k.startsWith('stand:')) { m.sacrifices = (m.sacrifices || 0) + m.poured[k]; delete m.poured[k]; }
     }
-    this.meta = Object.assign({ sacrifices: 0, souls: 0, soulsEarned: 0, earned: 0, pending: 0, ranks: {}, saved: {}, visits: 0, deaths: 0,
+    // REBIRTH FOR SOULS (16 Oct 2026, `Game.rebirthCost`): `spent` is every sacrifice spent up here in all, the mirror's ranks and
+    // the pours. A store from before it counts what it can: the pours as they stand, the ranks bought at their prices.
+    if (m.spent === undefined) { let n = 0; for (const k of Object.keys(m.poured || {})) n += m.poured[k] | 0; for (const id of Object.keys(m.ranks || {})) { const u = MIRROR.find((x) => x.id === id); if (u && u.costs) for (let r = 0; r < (m.ranks[id] | 0); r++) n += u.costs[r] | 0; } m.spent = n; }
+    this.meta = Object.assign({ sacrifices: 0, souls: 0, soulsEarned: 0, earned: 0, pending: 0, ranks: {}, saved: {}, visits: 0, deaths: 0, spent: 0, rebirths: 0,
       combed: 0, heard: {}, killers: {}, best: -1, lastBest: -1, bought: 0, sung: false, told: {}, gift: false, brought: 0 }, m);
     return this.meta;
   },
@@ -461,7 +464,7 @@ const Heaven = {
   // on the way in and again after anything up here rebuilds them (`pickHorns`' `applyBoons`).
   heavenMods(game) {
     game.mods = Object.assign({}, game.mods, { breath: false, spit: false, screamStun: false, bomb: false, splash: false,
-      venomRoll: false, rollStun: 0, leapfrog: null, boomerang: null, blink: null, effigy: null, sprout: null, ruin: null, venomHold: 0, brandHold: 0,
+      venomRoll: false, rollStun: 0, leapfrog: null, boomerang: null, blink: null, effigy: null, sprout: null, ruin: null, venomHold: 0, brandHold: 0, web: false, kinesis: null,
       headbuttRecovery: TUNING.heaven.buttRecovery, headbuttWindup: TUNING.heaven.buttWindup });
     game.mods.speed *= TUNING.heaven.speed;   // up here even a plain goat runs light (8 Oct 2026 playtest)
   },
@@ -1271,7 +1274,7 @@ const Heaven = {
     if (cost === undefined || !this.rowOpen(u)) { P.shake = 0.35; P.shakeRow = i; game.audio.sfxThud(); return; }
     const sc = this.soulCost(u, r);
     if (this.meta.sacrifices < cost || (this.meta.souls || 0) < sc) { P.shake = 0.35; P.shakeRow = i; game.audio.sfxThud(); return; }
-    this.meta.sacrifices -= cost; this.meta.souls = (this.meta.souls || 0) - sc; this.meta.ranks[u.id] = r + 1; this.meta.bought++; this.save(); Stats.mirror(game, u.id, r + 1);
+    this.meta.sacrifices -= cost; this.meta.spent = (this.meta.spent | 0) + cost; this.meta.souls = (this.meta.souls || 0) - sc; this.meta.ranks[u.id] = r + 1; this.meta.bought++; this.save(); Stats.mirror(game, u.id, r + 1);
     P.flash = i; P.flashT = 0;
     game.audio.sfxChime(TUNING.heaven.bells[2]); game.audio.sfxChime(TUNING.heaven.bells[4], 0.6, 0.1); game.audio.sfxBell();
     this.noteOpened(game, true);

@@ -220,6 +220,15 @@ const Motes = {
     return true;
   },
   // While it plays the floor waits (`Game.update`): up out of him, a beat, and back down into him.
+  // REBIRTH FOR SOULS (16 Oct 2026, `Game.rebirth`): the dead goat put back on his feet off the death card, the same way up as
+  // ONE MORE LIFE puts him (`updateRevive` → `stand`, `V.rebirth` the share of hearts). He is dead when this is asked.
+  rebirth(game, g) {
+    g.dead = false; g.hp = 0; g.vx = g.vy = 0; g.state = 'ko'; g.timer = 0; g.dazed = 0;
+    game.revive = { t: 0, x: g.x, y: g.y, extra: true, rebirth: true };
+    if (game.mods.helldive) Object.assign(game.revive, { dive: game.mods.helldive, phase: 'up', pt: 0, mx: g.x, my: g.y, vx: 0, vy: 0 });
+    game.hitstop(0.12); game.flash('#f4f8ff', 0.35);
+    game.audio.sfxAscend();
+  },
   updateRevive(game, dt) {
     const V = game.revive, S = TUNING.heaven.second, g = game.goat;
     if (V.dive) { this.updateDive(game, dt); return; }
@@ -247,7 +256,8 @@ const Motes = {
   stand(game, V) {
     const S = TUNING.heaven.second, g = game.goat;
     game.revive = null;
-    g.hp = Math.min(g.maxHp, V.extra ? Math.max(1, Math.ceil(g.maxHp * TUNING.heaven.extraLife.hearts)) : game.mods.secondChance || S.hearts);
+    g.hp = Math.min(g.maxHp, V.rebirth ? Math.max(1, Math.ceil(g.maxHp * TUNING.heaven.rebirth.hearts)) : V.extra ? Math.max(1, Math.ceil(g.maxHp * TUNING.heaven.extraLife.hearts)) : game.mods.secondChance || S.hearts);
+    if (V.rebirth) game.floatText(g.x, g.y - 60, 'REBORN', '#fff4c2');
     g.state = 'idle'; g.timer = 0; g.invuln = S.invuln; g.dazed = 0; g.vx = g.vy = 0;
   },
 

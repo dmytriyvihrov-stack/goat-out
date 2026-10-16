@@ -120,7 +120,7 @@ Object.assign(Heaven, {
       P.acc -= 1;
       if ((M.poured[P.key] || 0) >= P.cost) break;
       if (M.sacrifices <= 0) { H.pour = null; H.plates.push({ x: P.n.x, y: P.n.y - 70, text: `${M.poured[P.key] || 0} / ${P.cost}. THAT WAS ALL YOU HAD.`, life: TUNING.heaven.plate }); this.save(); return; }
-      M.sacrifices--; M.poured[P.key] = (M.poured[P.key] || 0) + 1;
+      M.sacrifices--; M.spent = (M.spent | 0) + 1; M.poured[P.key] = (M.poured[P.key] || 0) + 1;   // `spent`: REBIRTH FOR SOULS reads it
       (H.pourFx || (H.pourFx = [])).push({ x0: g.x, y0: g.y - 16, x1: P.n.x, y1: P.n.y - 34, t: 0, bend: (Math.random() - 0.5) * 60 });
       game.audio.sfxChime(TUNING.heaven.bells[(M.poured[P.key] % 5) + 2], 0.18);
     }

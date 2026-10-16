@@ -35,7 +35,8 @@ const Thrower = {
   viewOf(a) { const d = (Math.round(a / (Math.PI / 4)) % 8 + 14) % 8; return d === 2 ? 'W' : d === 6 ? 'E' : d >= 3 && d <= 5 ? 'N' : 'S'; },
   // The hold point in world px: the screen offset turned back through the tilt, so a thing drawn at its
   // own feet there sits on his fist.
-  holdAt(e) { const h = Thrower.HOLD[Thrower.viewOf(e.facing)] || Thrower.HOLD.S; return { x: e.x + h[0], y: e.y + h[1] / TILT }; },
+  // (scaled with his picture: a boss BANE is drawn bigger, `TUNING.thrower.scale` x `boss.scale`, and the fist with him)
+  holdAt(e) { const h = Thrower.HOLD[Thrower.viewOf(e.facing)] || Thrower.HOLD.S, k = typeof Renderer !== 'undefined' ? Renderer.bodyScaleOf(e) : 1; return { x: e.x + h[0] * k, y: e.y + h[1] * k / TILT }; },
 
   // ---- what he looks for ----
   liftable(e, game, o, type) {
@@ -124,6 +125,12 @@ const Thrower = {
         e.twAim = { x: g.x, y: g.y }; e.facing = Math.atan2(g.y - e.y, g.x - e.x);
         Thrower.hold(e, game);
         if (e.timer <= 0) Thrower.release(e, game, e.twAim);
+        return true;
+      case 'twpant':
+        // BANE's breather after a throw (16 Oct 2026, his: "the throws balanced by catching his breath"): he stands
+        // bent over his fist, open to every blow, then goes back to running the goat down with it
+        e.vx = 0; e.vy = 0; e.timer -= dt;
+        if (e.timer <= 0) { e.state = 'chase'; e.timer = 0; }
         return true;
       case 'twgrab':
         e.vx = 0; e.vy = 0; e.timer -= dt; e.facing = Math.atan2(g.y - e.y, g.x - e.x);
@@ -257,6 +264,8 @@ const Thrower = {
     const T = TUNING.thrower, c = e.carry, slow = game.mods.enemySlow;
     e.carry = null; e.twAim = null; e.state = 'recover'; e.timer = T.recover * slow; e.twCd = T.cd * slow;
     if (!c) return;
+    // the breather (`pant`): every throw costs him `pant.time` s bent double, and `pant.cd` s before he looks for the next
+    const P = T.pant; if (P) { e.state = 'twpant'; e.timer = P.time * slow; e.twCd = P.cd * slow; game.floatText(e.x, e.y - 40, P.word, PALETTE.ashHi); }
     const o = c.o, a = Math.atan2(aim.y - e.y, aim.x - e.x), ux = Math.cos(a), uy = Math.sin(a);
     // It leaves from in front of him, not from the fist over his head: the fist is a picture, and from
     // up there the first step was through whatever wall stood behind him.
@@ -266,7 +275,9 @@ const Thrower = {
     if (c.type === 'prop') { o.fling(ux * T.thing, uy * T.thing, true); o.byCult = e; }
     else if (c.type === 'man') {
       o.liftedBy = null; o.fling(ux * T.man, uy * T.man, true); o.flungBy = e; o.tossBy = e;
-    } else if (c.type === 'beast') {
+    }
+    // where it comes down, a ring of witchfire (`Thrower.flights`); never round one of the goat's animals
+    if (T.witch && c.type !== 'beast') (game.twFlights || (game.twFlights = [])).push({ o, t: 0 }); else if (c.type === 'beast') {
       o.held = true;   // in the air its own step stays off it (`Thrower.fly`)
       (game.tossed || (game.tossed = [])).push({ p: o, vx: ux * T.beast, vy: uy * T.beast, by: e });
       if (Math.abs(ux) > 0.1) o.face = Math.sign(ux);
@@ -405,7 +416,29 @@ const Thrower = {
   },
   // Animals in the air (`game.tossed`): his throw, its own drag; stone or a man brings it down, the goat
   // takes `hit` from it, a drop takes it, and the throw hurts the animal once (`Beast.hurt`) on what it meets.
+  // What BANE threw, watched until it is down (16 Oct 2026, his: "when he throws a thing, magic fire lights round it"):
+  // stopped, broken, dead or `witch.max` s out, a ring of witchfire `witch.r` tiles round where it lies, its own tile left
+  // cold (`witch.dur` s of it), so the goat it landed on is ringed, not lit.
+  flights(dt, game) {
+    const L = game.twFlights; if (!L || !L.length) return;
+    const W = TUNING.thrower.witch, w = game.world;
+    for (let i = L.length - 1; i >= 0; i--) {
+      const f = L[i], o = f.o; f.t += dt;
+      const gone = o.dead || o.broken || (o.kind && game.props.indexOf(o) < 0 && !o.state);
+      const still = f.t > W.min && (o.state ? o.state !== 'flung' : hyp(o.vx || 0, o.vy || 0) < W.still);
+      if (!(gone || still || f.t > W.max)) continue;
+      L.splice(i, 1);
+      const cx = Math.floor(o.x / TILE), cy = Math.floor(o.y / TILE), R = W.r;
+      for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+        if (!dx && !dy) continue;
+        if (hyp(dx, dy) > R + 0.5 || !w.los(o.x, o.y, (cx + dx + 0.5) * TILE, (cy + dy + 0.5) * TILE)) continue;
+        w.ignite(cx + dx, cy + dy, true, W.dur, true);
+      }
+      game.audio.sfxFire && game.audio.sfxFire(0.7);
+    }
+  },
   fly(dt, game) {
+    Thrower.flights(dt, game);
     const L = game.tossed; if (!L || !L.length) return;
     const T = TUNING.thrower, w = game.world, g = game.goat;
     for (let i = L.length - 1; i >= 0; i--) {

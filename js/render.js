@@ -491,10 +491,15 @@ class Renderer {
       this.drawPits(game, cam);
       this.drawFallers(game);
       this.drawPowder(game);
+      this.drawWallMarks(game);
+      Status.drawWebs(this, game);   // WEB SPIT's web (js/status.js)
+      Kinesis.draw(this, game);      // TELEKINESIS charging
       this.drawSkyTables(game, 'ground');
       const dark = Dark.on(game);
       if (!dark) this.drawHints(game);   // in THE DARK the floor words go on over it (below)
+      if (typeof Oil !== 'undefined') Oil.draw(this, game);   // THE FACTORY's oil on the floor (js/factory-props.js)
       Machines.drawGround(this, game);   // THE FACTORY's belts, burners and a press's warning (js/machines.js)
+      if (typeof FACTORY_PROPS !== 'undefined') FACTORY_PROPS.drawGasRings(this, game);   // a gas cylinder's shove going out
       this.drawFire(game, cam);
       Sacrifice.draw(this, game);   // THE SACRIFICE ALTAR, carved in the floor (js/sacrifice.js)
       Waves.draw(this, game);   // a corrupted ogre's witchfire rings and bands (js/waves.js)
@@ -582,11 +587,13 @@ class Renderer {
       if (game.bless && game.bless.on) this.drawBlessWorld(game);
       EndBoss.drawWorld(this, game);
       for (const p of game.props) if (!p.broken && near(p) && lit(p) && inFront(p) && !carried(p)) this.drawProp(p);
+      if (typeof Snow !== 'undefined') Snow.drawBits(this, game);   // THE SNOW shaken off a man as he moves (js/snow.js)
       // Nearest the camera first, so a plate that has to step aside is the one behind.
       const heads = this.overheads.sort((a, b) => b.e.y - a.e.y), plates = []; this.overheads = null;
       for (const h of heads) { ctx.globalAlpha = h.a; this.drawOverhead(h.e, plates); }
       ctx.globalAlpha = 1;
       Shaman.drawWorld(this, game);   // THE CALL: the held key over the goat (js/shaman.js)
+      if (typeof ShieldGen !== 'undefined') ShieldGen.drawWorld(this, game);   // the shield generator's domes over its machines (js/factory.js)
       if (typeof Arm !== 'undefined') Arm.drawMark(this, game);   // the goat in a grip: a claw over him, the ways out (js/factory.js)
       Beast.drawHealth(this, game, (p) => near(p) && lit(p));   // the animals' hearts over their heads (js/beasts.js)
       this.drawGrass(game, cam);
@@ -1916,7 +1923,9 @@ class Renderer {
         const key = null;
         const block = (lines.length - 1) * lh + (key ? lh * 0.95 : 0);
         let y = hn.y - block / 2;
-        ctx.fillStyle = `rgba(239,230,208,${hn.a || 0.27})`;   // the showroom's names read brighter (hints 0.15 → 0.27, 9 Oct 2026)
+        // on snow (js/snow.js) the words are ink, bone was invisible on it
+        const onSnow = typeof Snow !== 'undefined' && Snow.at(game, hn.x, hn.y);
+        ctx.fillStyle = onSnow ? `rgba(26,16,22,${(hn.a || 0.27) * 1.4})` : `rgba(239,230,208,${hn.a || 0.27})`;   // the showroom's names read brighter (hints 0.15 → 0.27, 9 Oct 2026)
         for (const l of lines) { ctx.fillText(l, hn.x, y * TILT); y += lh; }
         // The button the line is about, under it and warmer, so a hint about a verb says which verb.
         if (key) {
@@ -2058,7 +2067,7 @@ class Renderer {
   // simulation; the notches over his head stay, this is the same count where the eye already is (Hades, Dead Cells).
   static bossKind(e) {
     return e.flayed ? 'flayed' : e.warden ? 'warden' : e.kind === 'ratogre' ? 'ratogre' : e.champion ? 'champion'
-      : e.shieldman ? 'shield' : e.thrower ? 'thrower' : e.shaman ? 'shaman' : e.automaton ? 'automaton' : e.welder ? 'welder' : e.sawbot ? 'sawbot' : e.arm ? 'arm' : e.kind;
+      : e.shieldman ? 'shield' : e.thrower ? 'thrower' : e.shaman ? 'shaman' : e.automaton ? 'automaton' : e.welder ? 'welder' : e.sawbot ? 'sawbot' : e.arm ? 'arm' : e.sweeper ? 'sweeper' : e.shieldgen ? 'shieldgen' : e.cartridge ? 'cartridge' : e.kind;
   }
   drawBossBar(game) {
     const B = TUNING.hud.boss, L = game.level, g = game.goat;
@@ -2069,6 +2078,8 @@ class Renderer {
     if (!g.dead && game.state !== 'dead') for (const e of game.enemies) {
       if (e.dead || e.held || !e.woke || e.scripted || e.caged || e.endHold || e.disguise || e.mimicDoor || e.statue) continue;
       if (!(Renderer.isBoss(e) || e.kind === 'ratogre' || e.warden || e.flayed || e.automaton)) continue;
+      // a champion (a boss with no soul, no gate, not the floor's last man) is read off his outline and notches alone (16 Oct 2026, his ask)
+      if (e.boss && !e.soul && !e.keeper && e.endBoss === undefined && !e.warden && !e.flayed && !e.automaton) continue;
       if (game.hidden(e.x, e.y)) continue;
       if (roomAt(L, e.x, e.y) !== here && hyp(e.x - g.x, e.y - g.y) > near) continue;
       let b = bars.get(e);
@@ -2450,10 +2461,12 @@ class Renderer {
     const ctx = this.ctx, L = TUNING.status.look, px = L.cell, R = L.globR + (Math.sin(this.t * 30) > 0 ? px * 0.5 : 0);
     ctx.save(); ctx.translate(b.x, b.y); ctx.scale(1, 1 / TILT);
     const disc = (r, col) => { ctx.fillStyle = col; ctx.beginPath(); const m = Math.round(r / px); for (let j = -m; j <= m; j++) { const w = Math.round(Math.sqrt(Math.max(0, m * m - j * j))); ctx.rect(-w * px, j * px, (w * 2 + 1) * px, px); } ctx.fill(); };
-    disc(R + px, PALETTE.venomDark); disc(R - px * 0.5, PALETTE.venom);
-    ctx.fillStyle = PALETTE.venomHi; ctx.fillRect(-px * 2, -px * 2, px, px);
+    // WEB SPIT's glob is the same ball in silk (`b.web`)
+    const C0 = b.web ? '#8e8878' : PALETTE.venomDark, C1 = b.web ? WEB_COL.strand : PALETTE.venom, C2 = b.web ? WEB_COL.knot : PALETTE.venomHi;
+    disc(R + px, C0); disc(R - px * 0.5, C1);
+    ctx.fillStyle = C2; ctx.fillRect(-px * 2, -px * 2, px, px);
     const sp = hyp(b.vx, b.vy) || 1, ux = -b.vx / sp, uy = -b.vy / sp;
-    for (let k = 1; k <= L.tail; k++) { const d = R + px * (k + 1); ctx.fillStyle = k === 1 ? PALETTE.venom : PALETTE.venomDark; ctx.fillRect(Math.round(ux * d / px) * px, Math.round(uy * d / px) * px, px, px); }
+    for (let k = 1; k <= L.tail; k++) { const d = R + px * (k + 1); ctx.fillStyle = k === 1 ? C1 : C0; ctx.fillRect(Math.round(ux * d / px) * px, Math.round(uy * d / px) * px, px, px); }
     ctx.restore();
   }
   // A carried thing is drawn in his teeth rather than at the hold point (`grab.holdDist` out along
@@ -3320,6 +3333,7 @@ class Renderer {
   }
 
   drawPropBody(p) {
+    if (typeof Snow !== 'undefined') Snow.propLook(this.game, p.x, p.y);   // THE SNOW: a cap of snow on what stands in it (js/snow.js)
     if (p.kind === 'heal' && p.pail) { this.drawPail(p); return; }
     if (p.kind === 'spire') { this.drawSpire(p); return; }
     if (p.kind === 'rock') { if (this.game && this.game.level && this.game.level.def.shroom) this.drawBigShroom(p); else this.drawRock(p); return; }
@@ -3327,6 +3341,7 @@ class Renderer {
     if (p.kind === 'sconce') { if (this.painted.sconce) this.painted.sconce(this.ctx, p, this.t); return; }
     // THE FACTORY's furniture (js/factory-props.js): a machine, junk on the floor, a fixture on the far wall
     if (p.kind === 'machine' || p.kind === 'junk' || p.kind === 'wallfix') { if (typeof FACTORY_PROPS !== 'undefined') FACTORY_PROPS.draw(this, p); return; }
+    if (p.kind === 'crate' && p.gas && typeof FACTORY_PROPS !== 'undefined') { FACTORY_PROPS.drawGas(this, p); return; }   // THE FACTORY's gas cylinder
     if (p.kind === 'cleat') { if (this.painted.cleat) this.painted.cleat(this, p); return; }
     if (p.kind === 'armor') { if (this.painted.armor) this.painted.armor(this, p); return; }
     if (p.kind === 'suit') { if (this.painted.suit) this.painted.suit(this, p); return; }
@@ -4088,6 +4103,18 @@ class Renderer {
     const tell = this.tellFade(game);
     if (tell > 0) { const a0 = ctx.globalAlpha; ctx.globalAlpha = a0 * tell; this.drawTelegraph(e); this.drawSwingSmear(e); this.drawAimTelegraph(e); this.drawHopMark(e); ctx.globalAlpha = a0; }
     if (e.shield && !e.dead && !e.held && !e.statue) this.drawGuard(e);
+    // WHO DID IT (`juice.blame`): four short red brackets of cells snapping in to his feet like a sight closing on him,
+    // gone after `ringFor` s (16 Oct 2026, his: "not such a harsh red circle"; it was a whole ring for the mark's life).
+    const blame = this.blameK(e, game), bAge = blame > 0 ? (game || this.game).timer - e.blameAt : 0;
+    if (blame > 0 && bAge < TUNING.juice.blame.ringFor) {
+      const B = TUNING.juice.blame, C = TUNING.effects.pixel;
+      const snap = 1 - Math.pow(1 - clamp(bAge / B.snap, 0, 1), 2), rx = e.r * B.ring * (B.snapFrom + (1 - B.snapFrom) * snap);
+      const k = 1 - clamp((bAge - B.ringFor * 0.6) / (B.ringFor * 0.4), 0, 1), half = B.arc / 2;
+      ctx.save(); ctx.globalAlpha *= B.ringAlpha * k; ctx.fillStyle = PALETTE.blame; ctx.beginPath();
+      for (let q = 0; q < 4; q++) { const a = Math.PI / 4 + q * Math.PI / 2; this.floorArc(e.x, e.y + e.r * 0.4, rx, rx - C, C, a - half, B.arc); }
+      ctx.fill();
+      ctx.restore();
+    }
     // The man with a soul in him. Which boss is carrying one is decided before the level starts and
     // was, until now, something you found out by killing him: two Butchers in a run looked the same
     // and one of them was worth a verb. He glows, a low violet haze that breathes, the colour of the
@@ -4188,6 +4215,17 @@ class Renderer {
       else if (e.kind === 'ratogre') this.drawRatOgre(e, r);
       else this.drawCultist(e, r);
     };
+    // WHO DID IT (`juice.blame`): the man who took the heart, outlined in red outside any boss outline, pulsing.
+    // Not on a unit laid live in cells (eight passes over hundreds of cells), nor in THE DARK's silhouette pass.
+    const blame = this.silPass || e.arm || e.sweeper || e.cartridge ? 0 : this.blameK(e, game);
+    if (blame > 0) {
+      const B = TUNING.juice.blame, out = Renderer.isBoss(e) && !e.dead ? TUNING.boss.outline.px * 2 : 0;
+      ctx.save(); ctx.globalAlpha *= B.alpha * blame * (0.7 + 0.3 * Math.sin(this.t * B.pulse));
+      // a dark line outside the red first, as a boss's has: the clubman's own robe is red
+      this.bossOutline(body, out + B.px * 2, PALETTE.ink);
+      this.bossOutline(body, out + B.px, PALETTE.blame);
+      ctx.restore();
+    }
     // A boss's outline goes down first, under him: the dark `back` line one px further out, then
     // the colour: violet on a man carrying a soul, yellow on a champion (`TUNING.boss.outline`).
     // Not in THE DARK's silhouette pass, which cuts him to a flat shape anyway.
@@ -4207,7 +4245,7 @@ class Renderer {
       const W = TUNING.juice.windupTint;
       // the pop: the last share of the windup is one bright beat, not the end of a fade
       ctx.save(); ctx.globalAlpha *= W.pop && wind > W.pop ? W.popMax : wind * W.max;
-      if (e.arm) this.flatBody(body, '#ffe2a0', (TUNING.arm.reach + 1.5) * TILE); else { ctx.filter = `brightness(0) invert(1) sepia(1) saturate(${W.warm})`; body(); }
+      if (e.arm) this.flatBody(body, '#ffe2a0', (TUNING.arm.reach + 1.5) * TILE); else if (e.sweeper || e.shieldgen || e.cartridge) this.flatBody(body, '#ffe2a0', 2 * TILE); else { ctx.filter = `brightness(0) invert(1) sepia(1) saturate(${W.warm})`; body(); }
       ctx.restore();
     }
     // The hit flash: the same body again, burnt to a white silhouette. It used to be a disc laid
@@ -4216,7 +4254,7 @@ class Renderer {
     // 2.9 s a frame (15 Oct 2026, "hitting the arm drops the game to 0 FPS"). Its silhouette is a flat shadow instead.
     if (e.flash > 0) {
       ctx.save(); ctx.globalAlpha = Math.min(0.9, e.flash * 10);
-      if (e.arm) this.flatBody(body, '#ffffff', (TUNING.arm.reach + 1.5) * TILE); else { ctx.filter = 'brightness(0) invert(1)'; body(); }
+      if (e.arm) this.flatBody(body, '#ffffff', (TUNING.arm.reach + 1.5) * TILE); else if (e.sweeper || e.shieldgen || e.cartridge) this.flatBody(body, '#ffffff', 2 * TILE); else { ctx.filter = 'brightness(0) invert(1)'; body(); }
       ctx.restore();
     }
     if (e.stuck && e.stuck.length) this.drawStuck(e, paintedKey, true);
@@ -4370,8 +4408,28 @@ class Renderer {
         ctx.fillRect(x, top, wdt, 4.5);
       }
     }
+    // WHO DID IT (`juice.blame`): a red arrowhead of cells pointing down at him, over his notches and any bark.
+    const blame = this.blameK(e, G);
+    if (blame > 0) {
+      const B = TUNING.juice.blame, C = TUNING.juice.marks.px, n = 4;
+      const y0 = e.y * TILT - head - (notched ? 16 : 8) - (e.say ? 15 : 0) - n * C - Math.abs(Math.sin(this.t * 7)) * B.bob;
+      ctx.save(); ctx.scale(1, 1 / TILT); ctx.globalAlpha *= blame;
+      const cells = (dy) => { ctx.beginPath(); for (let i = 0; i < n; i++) { const half = (n - 1 - i) * C; ctx.rect(Math.round(e.x / C) * C - half - C / 2, Math.round(y0 / C) * C + i * C + dy, half * 2 + C, C); } ctx.fill(); };
+      ctx.fillStyle = PALETTE.ink; cells(C);   // a dark step under each row, so it reads on any floor
+      ctx.fillStyle = PALETTE.blame; cells(0);
+      ctx.restore();
+    }
   }
 
+  // WHO DID IT (`juice.blame`): 1 while he is marked, fading over the last `fade` share of `life`, 0 once it is
+  // over or he is dead, held or out of the goat's sight.
+  blameK(e, game) {
+    game = game || this.game;
+    if (e.blameAt === undefined || !game || e.dead || e.held || e.statue || e.state === 'hidden') return 0;
+    const B = TUNING.juice.blame, age = game.timer - e.blameAt;
+    if (!(age >= 0) || age >= B.life) return 0;
+    return clamp((B.life - age) / (B.life * B.fade), 0, 1);
+  }
   // How far above his foot the top of his sprite stands, in screen px: the pixel unit's own extent
   // where he has one, otherwise what the old painted bodies came to off his footprint.
   spriteHead(e) {
@@ -4500,7 +4558,11 @@ class Renderer {
     // THE FACTORY (js/factory.js): the welder's cone while he aims and sprays, the automaton's stomp and his fall.
     if (e.welder) { if (e.state === 'wdaim' || e.state === 'wdfire') Welder.drawTell(this, e); return; }
     if (e.automaton) { Automaton.drawTell(this, e); return; }
+    if (e.shieldgen) { ShieldGen.drawTell(this, e); return; }   // its tethers and the domes' rings (js/factory.js)
     if (e.arm) { Arm.drawTell(this, e); return; }   // THE ARM's ring, always on the floor (js/factory.js)
+    if (e.cartridge) { Cartridge.drawTell(this, e); return; }   // the fan its volley will cover (js/factory.js)
+    // the sawbot's leap: where it comes down, filling through the crouch (js/factory.js `Sawbot.leap`)
+    if (e.sawbot && e.leapAim && (e.state === 'windup' || e.state === 'hop')) { this.drawLandCells(e.leapAim.x, e.leapAim.y, TUNING.sawbot.leap.r * TILE, e.state === 'hop' ? 1 : this.windP(e, TUNING.sawbot.leap.wind)); return; }
     // The thrower's grab (`twgrab`, js/thrower.js) is laid like a windup: the wedge it reaches.
     if (e.kind === 'dog' || (e.state !== 'windup' && e.state !== 'twgrab')) return;
     const ctx = this.ctx, cfg = TUNING[e.kind];
@@ -5057,7 +5119,7 @@ class Renderer {
     // STEALTH: crates, boulders, barrels and far grass cut the rays as they cut his sight (`Enemy.screenAt`).
     const screen = !!(game.stealthLive && e.screenAt && e.kind !== 'wraith');
     // No front: a post, the dead, a hound with his eyes on the goat, a kind whose cone is the whole turn.
-    const round = !!(e.watchful || e.kind === 'wraith' || (e.kind === 'dog' && e.aware) || !(cfg.cone < two));
+    const round = !!(e.watchful || e.welder || e.kind === 'wraith' || (e.kind === 'dog' && e.aware) || !(cfg.cone < two));
     const c = e.sightPoly, same = c && c.R === R && c.round === round;
     if (same && (this.sightBudget <= 0 || Math.abs(c.x - e.x) < L.px && Math.abs(c.y - e.y) < L.px
       && (round || Math.abs(angleDiff(c.f, e.facing)) < L.turn) && Math.abs(game.timer - c.at) < L.keep)) return c;
@@ -5136,7 +5198,7 @@ class Renderer {
     if (d.hearing) {
       const g = game.goat;
       // With the STEALTH test on, each man's ears too: how far off he hears a running hoof (`stealth.step`).
-      if (d.stealth) {
+      if (game.stealthLive) {
         const px = TUNING.stealth.look.px / 2, earR = TUNING.stealth.step * TILE;
         ctx.fillStyle = TUNING.stealth.look.ear; ctx.beginPath();
         for (const e of game.enemies) if (!e.dead && !e.ghosted && !e.held && hyp(e.x - g.x, e.y - g.y) < 30 * TILE) this.floorRing(e.x, e.y, earR, earR - px, px);
@@ -5144,11 +5206,11 @@ class Renderer {
       }
       ctx.lineWidth = 1.5;
       ctx.strokeStyle = 'rgba(185,135,58,0.55)';
-      ctx.beginPath(); ctx.arc(g.x, g.y, (d.stealth ? TUNING.stealth.step : TUNING.noise.footstep) * TILE, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(g.x, g.y, (game.stealthLive ? TUNING.stealth.step : TUNING.noise.footstep) * TILE, 0, Math.PI * 2); ctx.stroke();
       ctx.strokeStyle = 'rgba(192,57,43,0.6)';
       ctx.beginPath(); ctx.arc(g.x, g.y, TUNING.noise.headbutt * TILE, 0, Math.PI * 2); ctx.stroke();
       ctx.font = `700 10px ${FONT_SC}`; ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(239,230,208,0.75)'; ctx.fillText('WALK', g.x, g.y - (d.stealth ? TUNING.stealth.step : TUNING.noise.footstep) * TILE - 4);
+      ctx.fillStyle = 'rgba(239,230,208,0.75)'; ctx.fillText('WALK', g.x, g.y - (game.stealthLive ? TUNING.stealth.step : TUNING.noise.footstep) * TILE - 4);
       ctx.fillStyle = 'rgba(255,150,130,0.85)'; ctx.fillText('FIGHT', g.x, g.y - TUNING.noise.headbutt * TILE - 4);
       ctx.textAlign = 'left';
     }
@@ -5260,8 +5322,6 @@ class Renderer {
           ['textedit', TextEdit.on ? 'TEXT EDIT  ON' : 'TEXT EDIT  OFF'], ['rules', 'TOOLS'],
           ['vision', d.vision ? 'VISION  ON' : 'VISION  OFF'],
           ['hearing', d.hearing ? 'HEARING  ON' : 'HEARING  OFF'],
-          // ALT switches the sneak; the cult's sight and ears on the floor; a blow from unseen throws further.
-          ['stealth', d.stealth ? 'STEALTH (ALT)  ON' : 'STEALTH (ALT)  OFF'],
           ['dark', d.dark ? 'DARK  ON' : 'DARK  OFF'],
           // THE CHASE (js/chase.js) laid over whatever floor is up; THE ROAD has it of its own.
           ['chase', d.chase ? 'CHASE  ON' : 'CHASE  OFF'],
@@ -5280,6 +5340,7 @@ class Renderer {
           ['lastroom', 'LAST ROOM · SCENE'],   // this floor's last room with its scene (js/endboss.js; THE LAST SUPPER on the last floor)
           ['showroom', 'SHOWROOM'],
           ['factory', 'FACTORY (TEST)'],   // THE FACTORY's test floor: its three machines and the traps in nine rooms (js/factory.js)
+          ['snow', 'SNOW (TEST)'],   // THE SNOW's test floor: THE ALTAR's men and furniture under snow, tracks in it (js/snow.js)
           // Up to heaven as a death would send him, and sacrifices to try the mirror with (js/heaven.js).
           ['heaven', 'HEAVEN'], ['sacrifices', '+100 SACR · +5 SOULS'], ['addkey', '+1 KEY'],
           // Every frame over `photo.dip.ms` writes down where it was, with a small picture (js/photo.js).
@@ -5334,7 +5395,7 @@ class Renderer {
         ctx.fillText(col.head, px + 8 * s, py - 7 * s);
         col.rows.forEach(([id, label], i) => {
           const y = py + i * (rh + gap);
-          const on = (id === 'tester-pets' && d.testerPets) || (id === 'god' && d.god) || (id === 'textedit' && TextEdit.on) || (id === 'vision' && d.vision) || (id === 'hearing' && d.hearing) || (id === 'stealth' && d.stealth) || (id === 'chase' && d.chase);
+          const on = (id === 'tester-pets' && d.testerPets) || (id === 'god' && d.god) || (id === 'textedit' && TextEdit.on) || (id === 'vision' && d.vision) || (id === 'hearing' && d.hearing) || (id === 'chase' && d.chase);
           ctx.fillStyle = on ? 'rgba(192,57,43,0.5)' : 'rgba(59,34,51,0.75)';
           ctx.fillRect(px + 5 * s, y, rw - 10 * s, rh);
           ctx.strokeStyle = on ? PALETTE.blood : 'rgba(239,230,208,0.2)'; ctx.lineWidth = 1 * s;
@@ -5426,12 +5487,13 @@ class Renderer {
   // What the drawer's list rows open (`d.devList`): every floor, every man the SPAWN rows used to hold, every animal.
   devLists(game) {
     return {
-      levels: LEVELS.map((L, i) => ['lvl=' + i, (i + 1) + ' · ' + L.name]).concat([['lvl=dark', 'THE DARK (IN THE CAVE\'S PLACE)']]),
+      // THE TRIP and THE FACTORY's test floor too (15 Oct 2026 playtest: "here also the mushrooms and the factory")
+      levels: LEVELS.map((L, i) => ['lvl=' + i, (i + 1) + ' · ' + L.name]).concat([['lvl=dark', 'THE DARK (IN THE CAVE\'S PLACE)'], ['lvl=trip', 'THE TRIP (IN THE ROAD\'S PLACE)'], ['lvl=factory', 'THE FACTORY (TEST)'], ['lvl=snow', 'THE SNOW (TEST)']]),
       enemies: [
         ['bearer', 'BEARER'], ['enemy-spawn=shield', 'SHIELDMAN'], ['enemy-spawn=thrower', 'THROWER (BANE)'], ['enemy-spawn=shaman', 'SHAMAN'], ['hunter', 'HUNTER'], ['dog', 'HOUND'], ['seer', 'SEER'],
         ['wraith', 'WRAITH'], ['wraithdoor', 'WRAITH DOOR'], ['butcher', 'OGRE'], ['ratogre', 'RAT OGRE'],
         ['enemy-spawn=warden', 'THE WARDEN'], ['enemy-spawn=flayed', 'THE FLAYED'],   // the villain's two phases (js/warden.js)
-        ['enemy-spawn=sawbot', 'SAWBOT'], ['enemy-spawn=welder', 'WELDER'], ['enemy-spawn=automaton', 'THE AUTOMATON'], ['enemy-spawn=arm', 'THE ARM'],   // THE FACTORY (js/factory.js)
+        ['enemy-spawn=sawbot', 'SAWBOT'], ['enemy-spawn=welder', 'WELDER'], ['enemy-spawn=automaton', 'THE AUTOMATON'], ['enemy-spawn=arm', 'THE ARM'], ['enemy-spawn=sweeper', 'THE SWEEPER'], ['enemy-spawn=shieldgen', 'SHIELD GENERATOR'], ['enemy-spawn=cartridge', 'THE CARTRIDGE'],   // THE FACTORY (js/factory.js)
         ['enemy-spawn=coward', 'THE COWARD'], ['enemy-spawn=cowardgift', 'COWARD + GRASS'],   // js/coward.js
       ],
       pets: [['coop', 'HEN'], ['tortoise', 'TORTOISE'], ['goose', 'GOOSE'], ['crow', 'CROW'], ['horse', 'HORSE'],
@@ -6322,6 +6384,20 @@ class Renderer {
     editRow('HINT', 'hint');
     editRow('THEME', 'theme');
     editRow('DECOR', 'decor');
+    // LEVEL MODIFIERS (16 Oct 2026, `LEVEL_MODS`; his: "update the levels in the dev tool, and the option to make such edits"):
+    // one chip a modifier, lit where this floor carries it; a click throws it on or off this floor (`Game.devAction`
+    // 'level-mod='), written into js/tuning.js off the dev server. THE SNOW dresses the floor's colours at once (js/snow.js).
+    if (LEVELS.includes(def)) {
+      ctx.font = `700 ${8.5 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.fillText('MODS', pad, y);
+      let mx = pad + 56 * s;
+      for (const mid of Object.keys(LEVEL_MODS)) {
+        const on = !!(def.mods && def.mods.includes(mid)), w = textW(ctx, LEVEL_MODS[mid].name) + 14 * s;
+        this.devButton(d, mx, y - 9 * s, w, 12 * s, LEVEL_MODS[mid].name, `level-mod=${def.name}.${mid}`, on);
+        mx += w + 4 * s;
+      }
+      ctx.font = `400 ${7.3 * s}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.35)'; ctx.fillText('on from the next time the floor is laid', mx + 6 * s, y);
+      y += 14 * s;
+    }
     // Every floor's first words side by side (25 Sep 2026: the words a floor opens on, read and
     // edited in one place rather than a tab at a time). Each line edits that level's HINT.
     y += 4 * s;
@@ -7013,8 +7089,11 @@ class Renderer {
         stats: M.hits ? `${M.hits} blow${M.hits > 1 ? 's' : ''}, then a wreck that blocks nothing · a thing thrown past ${Math.round(P.machine.hit / TILE)} tiles/s cracks it` : 'never breaks',
         note: M.hits ? 'A wall that stands in the room (pillar 3: a body thrown into it dies on it). Butt it, throw a thing or a man at it, or blow it up: cracked first, then its parts fly and what is left lies flat, so a lane opens.' : 'A wall that stands in the room and never comes down. Put a man into it.' }))),
       ...(typeof FACTORY_PROPS === 'undefined' ? [] : [
-        { kind: 'junk', label: 'JUNK', make: (x, y) => new Prop(x, y, 'junk', { look: 'gears' }), hits: [], stats: FACTORY_PROPS.JUNK.join(', '), note: 'Litter on the floor, nothing to anybody. One look a tile off the hash.' },
-        { kind: 'wallfix', label: 'WALL FIXTURE', make: (x, y) => new Prop(x, y, 'wallfix', { look: 'gauge' }), hits: [], stats: FACTORY_PROPS.FIXES.join(', '), note: 'On the far wall, like THE DARK\'s lantern: a gauge whose needle twitches, a valve, a caged lamp that flickers, a hazard sign, a vent breathing steam.' }]),
+        { kind: 'crate', label: 'GAS CYLINDER', make: (x, y) => new Prop(x, y, 'crate', { gas: true }), hits: ['HEADBUTT', 'THROWN', 'FIRE', 'BLAST'],
+          stats: `breaks like a crate; the shove throws men within ${P.gas.r} tiles at ${P.gas.fling} tiles/s, dazed ${P.gas.daze}s`,
+          note: 'Picked up and thrown like a crate. Where it breaks the gas goes off in a shove that throws every man round it away; the wall he meets kills him, the gas never does.' },
+        { kind: 'junk', label: 'JUNK', make: (x, y) => new Prop(x, y, 'junk', { look: 'gears' }), hits: [], stats: FACTORY_PROPS.JUNK.join(', ') + ` · drawn at ${P.junkAlpha}`, note: 'Litter on the floor, nothing to anybody, drawn quiet so it reads as dressing.' },
+        { kind: 'wallfix', label: 'WALL FIXTURE', make: (x, y) => new Prop(x, y, 'wallfix', { look: 'lamp' }), hits: [], stats: FACTORY_PROPS.FIXES.join(', '), note: 'On the far wall, like THE DARK\'s lantern: a valve, a bulkhead lamp that flickers and lays a pool of light in cells, a vent breathing steam. A vent in a side wall is a wall that gives: a duct to the next room.' }]),
       { kind: 'crate', label: 'CRATE', make: (x, y) => new Prop(x, y, 'crate'), hits: ['HEADBUTT', 'THROWN', 'FIRE'],
         stats: `floors for ${P.crate.stun}s on a hit, catches if thrown through flame and leaves one tile burning ${P.crate.burstTime}s`,
         note: 'The one thing on the floor you pick up and throw. Breaks on a door, table, gong or man; a burning tile makes it burst into a wider, longer fire instead of just breaking. Carried, it blocks one club for free, then it is gone.' },
@@ -7888,9 +7967,29 @@ class Renderer {
   }
 
   drawBullet(b) {
+    if (b.bolt) { this.drawBolt(b); return; }   // THE CARTRIDGE's bolt (js/factory.js)
     const ctx = this.ctx; ctx.strokeStyle = PALETTE.fireHi; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
     const l = 13 / (hyp(b.vx, b.vy) || 1);
     ctx.beginPath(); ctx.moveTo(b.x - b.vx * l, b.y - b.vy * l); ctx.lineTo(b.x, b.y); ctx.stroke();
+  }
+
+  // THE CARTRIDGE's bolt (16 Oct 2026, js/entities.js `Bullet.updateBolt`): an arc in cells, Gungeon's bouncing bullet's
+  // look with a lightning's body: a jagged tail of `volt` cells behind a white head, re-jittered every few frames off the
+  // bolt's own clock, two stray cells sparking off it. Cells on the world grid; never a smooth stroke.
+  drawBolt(b) {
+    const ctx = this.ctx, c = TUNING.effects.pixel * 2, l = hyp(b.vx, b.vy) || 1, ux = b.vx / l, uy = b.vy / l, px = -uy, py = ux;
+    const k = Math.floor((b.age || 0) * 24), seg = 5, len = 14;
+    ctx.fillStyle = PALETTE.volt;
+    for (let i = 1; i <= seg; i++) {
+      const h = ((k * 31 + i * 17 + ((b.x | 0) & 7)) % 7) - 3, d = i * len / seg;
+      const x = b.x - ux * d + px * h * 0.8, y = b.y - uy * d + py * h * 0.8;
+      ctx.fillRect(Math.round(x / c) * c, Math.round(y / c) * c, c, c);
+    }
+    const s1 = ((k * 13) % 5) - 2, s2 = ((k * 7 + 3) % 5) - 2;
+    ctx.fillRect(Math.round((b.x + px * s1 * 3 - ux * 4) / c) * c, Math.round((b.y + py * s1 * 3 - uy * 4) / c) * c, c, c);
+    ctx.fillRect(Math.round((b.x + px * s2 * 4 - ux * 9) / c) * c, Math.round((b.y + py * s2 * 4 - uy * 9) / c) * c, c, c);
+    ctx.fillStyle = PALETTE.voltHi;
+    ctx.fillRect(Math.round(b.x / c) * c - c, Math.round(b.y / c) * c - c, c * 2, c * 2);
   }
 
   drawGoat(g, game) {
@@ -8392,21 +8491,23 @@ class Renderer {
     let x = right;
     ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillText(souls, x + 1 * s, top + 17 * s);
     ctx.fillStyle = '#d9ccff'; ctx.fillText(souls, x, top + 16 * s);
-    x -= textW(ctx, souls) + 12 * s;
+    // The corrupted soul on one line with the white one and a size over it (15 Oct 2026 playtest: "on one level, the
+    // corrupted soul a little bigger"): both centred on `top + 8.5 s`, the white wisp's own height x `purse.violet`.
+    const sk = HEAVEN_PIXELS.sprites.skull, c = 1.9 * s, vw = Math.max(sk.w, sk.h) * c * 1.1 * TUNING.hud.purse.violet;
+    x -= textW(ctx, souls) + 6 * s + vw / 2;
     if (this.painted.ready) {
-      ctx.save(); ctx.translate(x, top + 10 * s); this.painted.soulWispBody(ctx, 17 * s); ctx.restore();
+      ctx.save(); ctx.translate(x, top + 8.5 * s); this.painted.soulWispBody(ctx, vw); ctx.restore();
     } else { ctx.fillStyle = PALETTE.witch; ctx.fillRect(x - 4 * s, top + 3 * s, 8 * s, 12 * s); }
-    let left = x - 10 * s;
+    let left = x - vw / 2;
     // The heap only once the god has given him the gathering (js/motes.js): before it, nothing pays.
     if (Heaven.gifted() || M.sacrifices > 0) {
-      x -= 22 * s;
+      x -= vw / 2 + 10 * s;
       // a white soul reaching him lights the heap a moment (`game.purseFlash`)
       const fl = clamp((game.purseFlash || 0) / 0.35, 0, 1);
       ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillText(heap, x + 1 * s, top + 17 * s);
       ctx.fillStyle = fl > 0 ? '#ffffff' : '#fff4c2'; ctx.fillText(heap, x, top + 16 * s - fl * 2 * s);
       const hx = x;
       x -= textW(ctx, heap) + 6 * s;
-      const sk = HEAVEN_PIXELS.sprites.skull, c = 1.9 * s;
       Heaven.skull(ctx, x - sk.w * c, top + 8.5 * s - sk.h * c / 2, c);
       left = x - sk.w * c;
       // What the god is counting toward (his twenty that mend the mirror, then two hundred), under the heap.
@@ -9102,6 +9203,23 @@ class Renderer {
     ctx.globalAlpha = 1;
   }
 
+  // Where his horns struck stone (`Game.wallMark`): a chip of a few dark cells on the effects' grid with one pale cell of
+  // fresh-broken stone in it, the cells off the mark's own seed so it never flickers. Under everything standing.
+  drawWallMarks(game) {
+    const M = game.wallMarks; if (!M || !M.length) return;
+    const ctx = this.ctx, px = TUNING.juice.wallMark.cell * TUNING.effects.pixel;
+    for (const m of M) {
+      if (game.hidden(m.x, m.y)) continue;
+      let h = m.seed, x = Math.round(m.x / px), y = Math.round(m.y / px);
+      const next = () => (h = (Math.imul(h ^ (h >>> 15), 2246822507) + 0x9e3779b9) >>> 0);
+      for (let i = 0; i < m.n; i++) {
+        ctx.fillStyle = i === 1 ? 'rgba(220,206,180,0.6)' : 'rgba(12,9,10,0.72)';
+        ctx.fillRect(x * px, y * px, px, px);
+        const r = next() % 4; x += r === 0 ? 1 : r === 1 ? -1 : 0; y += r === 2 ? 1 : r === 3 ? -1 : 0;
+      }
+    }
+  }
+
   drawParticles(game) {
     const ctx = this.ctx;
     // Every bit is whole world pixels on the grid the sprites are drawn at.
@@ -9342,9 +9460,10 @@ class Renderer {
   drawSneakStatus(game, g, x, y, h, s) {
     if (!game.stealthLive || game.state !== 'play' || g.dead) return;
     const L = TUNING.stealth.look, on = game.sneak && (g.sneakK || 0) > 0.02;
-    // ALT pressed while a fight keeps the sneak shut (`Game.toggleSneak`): the eye and NOT IN A FIGHT for a beat.
-    const refused = !on && game.timer - (game.sneakRefusedAt ?? -9) < L.refuse;
-    if (!on && !refused) return;
+    // ALT pressed while a fight keeps the sneak shut says nothing here (15 Oct 2026, his: "no need for this text and icon,
+    // the context says it"): the amber ring at his feet is the answer.
+    const refused = false;
+    if (!on) return;
     const ctx = this.ctx, c = Math.max(2, Math.round(2 * s)), EYE = ['...###...', '.##...##.', '#..###..#', '.##...##.', '...###...'];
     const w = EYE[0].length * c, top = Math.round(y + (h - EYE.length * c) / 2);
     ctx.save(); ctx.globalAlpha = refused ? 1 : Math.min(1, (g.sneakK || 0) * 2);
@@ -9363,6 +9482,7 @@ class Renderer {
     if (game.heaven && game.level && game.level.def.heaven) { Heaven.drawHud(this, game); return; }   // js/heaven.js
     // THE CHASE's red at the left and its words (js/chase.js): under every part of the HUD.
     if (game.chase) { Chase.draw(this, game); Chase.drawBanner(this, game); }
+    if (typeof Snow !== 'undefined') { Snow.off(); Snow.drawFlakes(this, game); }   // THE SNOW's flakes over the picture, under the HUD (js/snow.js)
     this.drawBossBar(game);   // THE BOSS BAR, top centre, under GOD MODE's word
     const g = game.goat, s = this.hs, top = 3 * s + (this.portrait ? 12 * s : 0);
     ctx.textAlign = 'left';
@@ -9579,6 +9699,7 @@ class Renderer {
         recover: M.coldEye && game.aimSlow > 0 ? clamp(game.aimSlow / M.coldEye.time, 0, 1) : 0,
         note: (game.mods.grabMen ? 'Carry a crate, a blade, a shield or a man. Let go to throw.'
           : 'Carry a crate, a blade or a shield. Let go to throw. Men are too heavy for now.')
+          + (M.kinesis ? ' Hold it with nothing near to send everything around you at the enemies.' : '')
           + (game.mods.brandHold ? ' Hold it a moment to set its path on fire.'
             : game.mods.venomHold ? ' Hold it a moment to drop poison as it flies.' : '')
           + (M.coldEye ? ' Picking up slows time.' : ''),
@@ -9595,14 +9716,15 @@ class Renderer {
         get stat() { return `${sayN(R.speed * R.duration * M.rollDistance / TILE)} TILES · UNTOUCHABLE ${sayN(R.invuln)}s · ${sayN(R.cooldown * M.rollCooldown)}s COOLDOWN`
           + (M.rollStun > 0 ? ` · DAZES ${sayN(M.rollStun)}s` : '')
           + (M.leapfrog ? ` · LEAP: A MAN UP TO ${sayN(M.leapfrog.reach)} TILES AHEAD, ${sayN(R.cooldown * M.rollCooldown * M.leapfrog.cooldownMul)}s COOLDOWN` : ''); } },
-      { id: 'scream', name: game.mods.spit ? 'SPIT' : fire ? 'FIRE' : game.mods.screamStun ? 'BAAH' : 'CALL', cap: trip ? K.roll : K.scream,
+      { id: 'scream', name: game.mods.spit || game.mods.web ? 'SPIT' : fire ? 'FIRE' : game.mods.screamStun ? 'BAAH' : 'CALL', cap: trip ? K.roll : K.scream,
         cd: g.screamCd, max: game.mods.screamCooldown, ready: g.screamCd <= 0,
-        half: !fire && !game.mods.screamStun && !game.mods.spit,
+        half: !fire && !game.mods.screamStun && !game.mods.spit && !game.mods.web,
         note: game.mods.spit ? 'Spit a glob of poison where you point.'
+          : game.mods.web ? 'Spit a ball of web. Men who step in it are stuck. It burns.'
           : fire ? 'Breathe fire ahead of you.'
           : game.mods.screamStun ? 'Stun men near you, even as they swing.'
             : 'A shout. A man right next to you stops his attack. The rest come to you.',
-        get stat() { return (M.spit ? `FLIES UP TO ${sayN(TUNING.status.spit.range * (M.screamReach || 1))} TILES`
+        get stat() { return (M.spit || M.web ? `FLIES UP TO ${sayN(TUNING.status[M.web ? 'web' : 'spit'].range * (M.screamReach || 1))} TILES`
           : fire ? `CONE ${sayN(TUNING.goat.breath.range * (M.screamReach || 1) / TILE)} TILES`
           : M.screamStun ? `DAZES WITHIN ${sayN(M.screamRadius * (M.screamReach || 1))} TILES FOR ${sayN(V.stun)}s`
           : `BREAKS SWINGS WITHIN ${sayN(V.balk * (M.screamReach || 1))} TILES · CALLS MEN FROM ${sayN(M.screamCall * (M.screamReach || 1))} TILES`)
@@ -10320,7 +10442,7 @@ class Renderer {
       const sub = asTrip ? `in place of ${def.name.toLowerCase()} · ${def.rooms} rooms · ${carry}`
         : `${def.canon ? def.canon.name.toLowerCase() : 'the compound'} · ${def.rooms} rooms · ${carry}${li === TUNING.dark.fork.at ? ' · ends on the fork' : ''}`;
       // The floor's last man (js/endboss.js), in the soul's violet, and the meeting he will be on next.
-      const endName = !asTrip && li <= 4 && EndBoss.nameOf(def);
+      const endName = !asTrip && li <= 3 && EndBoss.nameOf(def);
       if (endName) {
         ctx.save(); ctx.textAlign = 'right'; ctx.fillStyle = '#b98cff'; ctx.font = `700 ${12 * s}px ${FONT_SC}`;
         ctx.fillText(`☠ ${endName} · MEETING ${EndBoss.meetFor(game, li)}`, x0 + bw - 64 * s, y + rowH * 0.42);
@@ -10608,7 +10730,7 @@ class Renderer {
     const ctx = this.ctx, s = this.ts, touch = game.touch && game.touch.active, o = opt || {};
     const bh = 36 * s, lf = `700 ${18 * s}px ${FONT_SC}`, kf = `700 ${10 * s}px ${FONT_SC}`;
     ctx.font = lf; const lw = textW(ctx, label);
-    ctx.font = kf; const key = touch ? '' : o.key || keysOf(game).go, kw = key ? textW(ctx, key) + 12 * s : 0;
+    ctx.font = kf; const key = touch || o.key === null ? '' : o.key || keysOf(game).go, kw = key ? textW(ctx, key) + 12 * s : 0;   // `key: null`: no key box at all (REBORN)
     const tri = 9 * s, bw = Math.round(lw + tri + 12 * s + (kw ? kw + 12 * s : 0) + 40 * s), bx = Math.round(cx - bw / 2), by = Math.round(top);
     if (o.measure) return { x: bx, y: by, w: bw, h: bh };
     const over = game.input.mouse && !touch && game.input.mouse.x >= bx && game.input.mouse.x <= bx + bw && game.input.mouse.y >= by && game.input.mouse.y <= by + bh;

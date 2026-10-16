@@ -159,6 +159,14 @@ window.TALCHECK = {
       g.hp = g.maxHp - 1; g.vx = g.vy = 0; TALCHECK.steps(150);
       return [took && g.hp === g.maxHp, `grass at full hearts went in the bag ${took}; hurt and standing still it was eaten: hearts ${g.hp}/${g.maxHp}`];
     },
+    hourglass() {
+      TALCHECK.wear('hourglass'); TALCHECK.arena();
+      const g = game.goat; g.hp = g.maxHp; g.rollCd = 3; g.screamCd = 3; g.invuln = 0;
+      g.damage(1, game, 0, 0, false, 'fire');
+      const ready = g.rollCd === 0 && g.screamCd === 0, free = g.freeVerbs;
+      TALCHECK.steps(2); g.rollCd = 2; TALCHECK.steps(2);
+      return [ready && free === 1 && g.rollCd === 0 && g.freeVerbs === 0, `a heart lost: waits cleared ${ready}, free verbs ${free}; the next roll's wait wiped: ${g.rollCd === 0}`];
+    },
   },
   shelf() {
     const out = [];

@@ -120,6 +120,7 @@ const JUICE_NOPLAY = {
   'Rifle recoil': 'SPAWN a HUNTER in the dev drawer',
   'The horns land': 'any headbutt on a man: SPAWN a BEARER in the dev drawer and butt him',
   'A heart taken, on him': 'any blow taken with GOD off',
+  'Who did it': 'any blow a man lands with GOD off: SPAWN a BEARER in the dev drawer and let him swing',
   'A heart breaks': 'any blow taken with GOD off: the heart row, top left',
   'Souls poured in': "heaven: the dev drawer's HEAVEN, then hold GRAB at the broken mirror, the overlook or the horse's stand",
   'An escort dies': 'SPAWN a PIG (or any animal) and let a man club it, or walk two rooms on without it',

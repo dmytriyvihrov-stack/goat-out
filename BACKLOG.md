@@ -17,6 +17,52 @@ Tags: **bug** something is wrong; **feel** it works and does not read; **number*
 
 ## Batches
 
+### 16 Oct 2026, his marks on the factory catalogue doc (22 rows marked), 0.027
+
+The doc: https://claude.ai/code/artifact/136e0822-de01-47e2-9974-b1e8e0e2e05d (every factory object, wall and floor, a picture
+alone and in its room, his KEEP / CHANGE / DELETE and notes, a `0.027:` line under each saying what shipped).
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | art | the arm: a bit more grounded base, other colours or details | Base plate bigger, sunk in the floor, ribs and bolts (`arm-base`). |
+| 2 | art | the sweeper's saws harder | Saws longer and broader, teeth on both edges, a motor housing; reach 0.45 → 0.6. |
+| 3 | system | shield generator: no big circle, only round the one it shields; bigger antenna, readable; 1 heart | Field disc gone, tethers and bubbles stay; lattice mast and dish with signal arcs, a shield badge; `hp` 1. |
+| 4 | art | bomb machine: redo as real production | A small line in cells (hopper, belt, press, chute); the bomb comes out of the chute (`dispenser.outX`). |
+| 5 | system | gas cylinders: throwable, shoves enemies apart | A crate with `gas`: the shove on breaking (`gasBurst`, `prop.gas`). |
+| 6 | cut | boiler, cabinet, anvil, drums, cable reel, pipe, offal, gauge, CHECKER floor, BRICK / PIPES / GIRDER walls | Deleted; machines in the templates became steel posts (`fac-post`, also the factory's pillars). |
+| 7 | art | gears less visible, clearer as decoration | Drawn at `prop.junkAlpha` (0.55), dull colours. |
+| 8 | system | oil: spilled, flows, a couple of cells stretch behind you | `Oil` (js/factory-props.js, `TUNING.oil`, template `K`). |
+| 9 | art | lamp: redo | A bulkhead lamp, its light a pool of cells. |
+| 10 | system | vent: a secret way between rooms, Deus Ex; crates in front; less visible | A wall that gives in a side wall, a duct to the next room (`carveFactoryVents`, `vents` on a template); three rooms, crates in front. |
+| 11 | art | PLATES strange crossings; GRATE looks like the fire grate; FURNACE side and top differ | Painted again: PLATES on the tile grid, GRATE a fine mesh, FURNACE's face its top's plates. |
+
+### 15 Oct 2026, THE FACTORY's second playtest (his 19 notes and nine screenshots), 0.021
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | art | the automaton's sides more exposed when down, not lit so red; the legs cover them | Down, all four legs fold out behind the frame (`pose.low`), splayed wider (`fall.splay` 1.75 → 2.1); the flat red panels over the openings are gone, only the meat's glint breathes. |
+| 2 | art | after death the automaton falls apart | The wreck is the bare frame split down the middle; each leg flies off as a shin and a knee (`fac-bit-leg`, `fac-bit-knee`) with gears, plates and meat. |
+| 3 | art | the HUD's two souls on one line, the corrupted one a bit bigger | Both centred on one row, the violet wisp × `hud.purse.violet` (1.2) of the white one's size. |
+| 4 | art | the horns curve the wrong way (from behind) | LONG's lyre seen from behind lay flat sideways with the tips curled down; on the three away views it now rises as from the front (`hornLooks.gazelle.awayLean`). |
+| 5 | text | no "A SOUL IN HIM" on the boss bar | Gone; the bar's violet says it (`BOSS_HINTS.tags.soul` empty). |
+| 6 | tool | THE TRIP and THE FACTORY in PLAY LEVEL's list | Two more rows: THE TRIP (in THE ROAD's place), THE FACTORY (TEST). |
+| 7 | number | in THE HAMMERS the rams gentler with the bots | A ram shoves iron (sawbot, welder, sweeper) at `ram.ironMul` (0.4) of flesh: they no longer die on the far wall every cycle. |
+| 8 | feel | bots avoid the press, but a chance they miss it | A man after the goat misses a press, ram or glowing burner at `machine.miss.chance` (0.2) once every `gap` (4) s, blind to the machines `blind` (0.9) s. |
+| 9 | number | the test floor: the goat's normal speed | THE FACTORY floor no longer runs him at THE SHOWROOM's pace. |
+| 10 | number | ordinary fire hurts 30% faster | `goat.fireSooner` 1 / 1.3 on the fire interval (a heart every ~0.92 s); witchfire's clock moves with it. |
+| 11 | number | on the test floor without GOD, normal speed | Same fix as 9: GOD's ×3 only with GOD on. |
+| 12 | system | a passive: the headbutt also kicks with the hooves, a small shove back, half the SHORT horns' | MULE KICK (`hooves`, a headbutt passive): whoever is behind within a tile is thrown back at 0.5 of the SHORT's shove; a hoof on the rail's chip. |
+| 13 | system | a fall off a ledge gives back every cooldown | `Goat.freshVerbs` on the landing: grab, roll, voice, cape. |
+| 14 | system | a skill or item: after damage every cooldown back, and the next skill free | THE HOURGLASS (talisman, RARE): a lost heart clears every wait, the next verb used sets none. In THE SHOWROOM and `TALCHECK`. |
+| 15 | bug | the welder did not see me (screenshot) | The welder has no cone: his facing is only the line he drives; he looks all round out to his range. |
+| 16 | system | the headbutt damages the arm; it cannot move after you | A butt costs it a heart (two hearts: two butts). It was already bolted down. Its own step now runs the flash and daze clocks (a butt had left it white and dazed for good). |
+| 17 | system | a robot vacuum with chainsaws in front, always driving at you, one heart | THE SWEEPER (`Sweeper`, `TUNING.sweeper`): a disc with two saw bars, after him for good in its room, turns at 2.6 rad/s, saws only in front (a heart, then it backs off); one heart, light, the wall breaks it. Two in THE SAW HALL; SPAWN row; the showroom's factory gallery. |
+| 18 | system | the robot hits from a small jump, a bit more reach, like hopping a chasm | The sawbot leaps from 1.3 to 3.2 tiles off: a crouch with the landing ring, a hop, a ring of 1.05 tiles where it lands (`Sawbot.leap`, `sawbot.leap`). Up close it still swings. |
+| 19 | system | the headbutt damages the arm; after a grab it needs time to recharge | `arm.recharge` 3.5 s after it lets the goat go (slammed or escaped), shown as its ring dim and filling back round. |
+
+Read as: 7 "gentler with the bots" taken to be THE HAMMERS (the screenshot's rams); 18 "the robot" taken to be the
+sawbot. Every new number is a first guess.
+
 ### 13 Oct 2026, THE FACTORY's first playtest (his 15 notes and three screenshots)
 
 | # | tag | note | what shipped |
@@ -297,6 +343,9 @@ Read one way and built that way; his word settles it.
 - (1 Oct) keyword tips (`KEYWORDS`) work on the cards and the book only; the rail's note closes when the pointer leaves the chip, so a word in it cannot be pointed at.
 
 ### number, first guesses waiting on a playtest
+- THE FACTORY 0.027: the gas cylinder's shove (`prop.gas`: 2.6 tiles, 13 tiles/s, 0.8 s daze), the oil (`TUNING.oil`:
+  a tile every 2.5 s to 9, a trail of 2), and whether oil should burn at all (`oil.burns`, my addition: a trail is a fuse;
+  his call to keep or switch off).
 - BIG and LONG (reach, windup, `tipMul`, `shaftMul`), retuned 7 and 8 Oct, never played by anyone else.
 - Heaven: the horse's stable 40, the overlook 30 (`home.tower.cost`), the pour rate 14 a second (`home.pour.rate`), the extra life's half of the hearts.
 - The trench room on 60% of floors (`rooms.flank.chance`); the chasm on 45% of floors from the third (`chasm.chance`), maybe too many.

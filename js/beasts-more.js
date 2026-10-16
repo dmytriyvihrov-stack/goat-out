@@ -342,7 +342,7 @@ Object.assign(Beast, {
     // In a song his voice is a goat's whatever a soul made of it: DRAGON BREATH and VENOM SPIT still
     // burn and spit (`Goat.update` goes on to them), but he bleats as he does it, so he is heard
     // singing back (2 Oct 2026). The plain voice and THE FULL THROAT are a BAAAH already.
-    if (game.mods.spit || game.mods.breath) {
+    if (game.mods.spit || game.mods.web || game.mods.breath) {
       const g = game.goat; game.audio.sfxBleat(C.beh[0], C.beh[1], C.beh[2]);
       game.floats.push({ x: g.x, y: g.y - 26, text: 'BEH!', color: PALETTE.bone, life: 0.8 });
     }

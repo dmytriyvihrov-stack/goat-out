@@ -5,6 +5,258 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 0.033, 16 Oct 2026: the goat 10% faster
+
+- **The goat runs 10% faster** ("add 10% extra speed for the goat"; `TUNING.goat.speed` one more x1.1). The run-up, the roll and the cult are as they were.
+
+## 0.032, 16 Oct 2026: a softer blame ring, crates catch, horns arc back, THE CARTRIDGE redrawn
+
+- **The blame ring is four brackets** ("not such a harsh red circle"; `juice.blame.arc` / `ringAlpha` / `ringFor`): the
+  whole red ring at the feet of the man who took a heart, held for the mark's whole life, is now four short brackets of
+  cells closing in, fainter and a size tighter, gone after 0.7 s. The outline and the arrow over his head stay.
+- **A crate standing in fire catches** ("a crate over the fire has to catch"; `prop.crate.burnFor`): a burner, a fire
+  or witchfire under a crate lights it where it stands; it burns 3 s, a brand to pick up and throw, then comes apart
+  into its one burning tile. Not the gas cylinder nor a body.
+- **LONG's horns arc the right way** ("curl the horns the right way everywhere"): from the side and the front
+  diagonals the gazelle lyre bowed back along his head first and rose only after, as if it grew from his neck; it now
+  rises off his crown and sweeps back over him, an ibex's arc (`PIXEL_ART.hornShapeOf`). Front and back views unchanged.
+- **THE CARTRIDGE is a Shotgun Kin made of iron** ("more like Gungeon's bullets, but seen to be a robot, with a robotic
+  gun"): a ribbed red hull with the folded crimp, a brass head with its rim standing proud, a riveted steel collar, a
+  visor with two slanted cyan LED eyes, a stub antenna, steel legs on feet, and a jointed arm holding a blaster (a coil
+  lit in its receiver, a barrel to a muzzle) laid a cell at a time along its aim, so the gun turns to the goat.
+  Charging, the coil and the muzzle blink hot and spark; the shot recoils the gun with a flash.
+
+## 0.031, 16 Oct 2026: the factory's men after his first round in THE TEST LAB
+
+His marks on the test doc (https://claude.ai/artifact/VJ1HpXgbmYpW1z9nVrHSz5), each tried there in rooms of one, two
+and three:
+- **THE ARM no longer takes him dead** ("I stumble on the arm after it died"): its step ran on the wreck, took him again
+  the frame he was let go, and he fell stunned out of it over and over. `Arm.step` stops on `e.dead`.
+- **THE WELDER's tank goes up** ("after death he blinks and soon blows up with a little fire"; `Welder.wreck`,
+  `TUNING.welder.boom`): a light on the body blinks faster for `fuse` s, then a small blast and `r` tiles of fire.
+- **The sawbot's leap is a chop** ("in the jump the saw blow more obvious"; `leap.chop`, `leap.sawBig`): the saw raised
+  over its head through the crouch and the first half of the air, brought down for the landing and held there a beat,
+  a size bigger, sparks off it.
+- **THE AUTOMATON lying has no red legs** ("down, his legs are lit as if hit"): the red says which leg to hit; down there is none.
+- **THE SHIELD GENERATOR** ("a second of recharge once you hit a charged one, or with a few it is overpowered"; "at the
+  start it ran away; it should back off from the goat and keep behind its own, not so fast"): a blow that bounces off a
+  dome takes that machine's dome off `recharge` (1) s, so the next blow lands (fire and poison do not); alone it backs off
+  only inside `flee` tiles of him (its spot was three tiles past itself, recomputed every step, so it ran for good), and
+  at 0.42 of a clubman's pace (0.6).
+- **THE SWEEPER drives like ARC Raiders' Pop** ("it picks up speed well, but turns and comes round badly"; `sweeper.run`):
+  its pace climbs to 2.1 × a clubman's; the faster it goes the slower it turns, a sharp turn brakes it, and stone it
+  drives into stops it dead with a clang. A late side step beats it, a straight run away does not.
+
+## 0.030, 16 Oct 2026: THE CARTRIDGE, rebirth for souls, snow on THE ROAD
+
+- **THE CARTRIDGE** (his ask: "a robot that looks like a shotgun shell out of Enter the Gungeon and shoots electric bolts;
+  it looks alike, but this is another game and the dynamic works differently"; js/factory.js `Cartridge`, `TUNING.cartridge`).
+  A brass-based red shell on two little legs, drawn live in cells, one heart and light. Gungeon's Bullet Kin plinks a round at
+  you; this one is a conductor: it keeps its distance like the rifleman, charges (its mouth lit cyan, a fan of cells on the
+  floor saying where), spits three slow bolts that bounce off stone once, and kicks itself back. A bolt SEIZES what it meets:
+  the goat a heart and a short stun (the roll slips it), a man of flesh a daze, the factory's own iron a short, never a heart on
+  anybody but him: the wall is what kills, and standing so its own machines are in its line is the trick. Fire cooks it off;
+  dead it bursts in a ring of shock with stray bolts, so a headbutt into a crowd is its use. On THE ENGINE's crowd (met alone
+  early), on the test floor across THE DROP and in THE WORKS, in THE SHOWROOM's galleries, a SPAWN row, a JUICE row.
+- **REBIRTH FOR SOULS** (his ask: "once you have spent 500 souls and die, an option to be reborn for 100 after the full
+  death, and 200 after the second; an extra option that eases the game"). SETTINGS → REBIRTH FOR SOULS, on by default; heaven
+  counts every sacrifice spent up there (`meta.spent`), and from 500 the death card offers REBORN · 100 SOULS, 200 the next time
+  in the same run: he gets up where he fell on half his hearts, as ONE MORE LIFE puts him up, the run going on. The death
+  still counts. `TUNING.heaven.rebirth`.
+- **Snow on THE ROAD** (his: "snow on the fourth level"). THE SNOW is a level modifier now (`LEVEL_MODS.snow`, `mods:
+  ['snow']` on THE ROAD): the snow sheet, caps and icicles on the walls, snow on every prop, tracks and the path trodden out,
+  flakes; the floor wears THE SNOW's colours while it is on (`Snow.dress`), no rugs out in it, and the card says `under snow`.
+  THE SHOWROOM's room for THE ROAD is snowed too. The dev drawer's LEVEL tab has a MODS row: a click throws a modifier on or
+  off that floor and writes it into tuning.js (`/tuning-edit` writes lists now); the level's facts name its mods.
+- THE ENGINE meets the cartridge early (`introduce` 0.14): met alone past the middle it cost the floor a late room's worth and
+  put its total under THE FOUNDRY's (`GEN_RULES.harder`).
+
+## 0.029, 16 Oct 2026: the machine floors, BANE, every man of the cult in the first four
+
+- **The first four floors hold everything the first five did** (his: "everything up to the fifth floor into the first four,
+  the shieldman too"). THE CAVE meets the shieldman alone; THE ROAD meets the shaman alone (in a room cut by drops) beside
+  its rifles, a room longer (15) and one trap room fewer so the chasm's lesson still has an empty room.
+- **THE FOUNDRY and THE ENGINE are the fifth and sixth floors** (his: "from the fifth and sixth the mechanicus, two levels
+  built for them; the enemies harder and the traps nastier"). THE THRESHING FLOOR and THE BRIDGE are gone as floors; their
+  rooms stay in the mix of THE RAFTERS and THE OSSUARY (`RETIRED_CANONS`). The machine floors are generated like any other
+  (`levelDef.mech`): every ordinary room is one of THE FACTORY's templates (`mechTemplates`, laid by `layMechRoom`), four
+  new ones off the test floor's rooms (THE CRUSHER, THE BURNERS, THE BELTS, THE HAMMERS, `MECH_TEMPLATES`), the men are
+  machines bought off the curve and stood on the marks the template left (`MECH_MARK`), the gate kept by a sawbot, the last
+  room THE RING (`MECH_RING`: the bomb machine behind burners) with THE AUTOMATON. THE FOUNDRY meets the sawbot, the
+  welder and THE ARM one at a time and the automaton alone; THE ENGINE has every trap room (the grill, the jets, the
+  gantry, the island), meets the sweeper and the shield generator, a sawbot champion in the middle and the automaton
+  again with machines at his back. The mouse's third shelf is THE ENGINE's.
+- **Fewer and stronger** (his): a machine floor's room holds four (THE FOUNDRY) or five men at most, and each machine is
+  dearer on the curve (sawbot 3, welder 4, THE ARM 3.6, sweeper 2.4, shield generator 3, automaton 10).
+- **BANE** (his: "the thrower a bit bigger and a boss; when he throws a thing, magic fire lights round it; his throws
+  balanced by catching his breath; he runs after you beating you with the big arm"): THE ROAD's last man, a soul in him,
+  never in a crowd any more (off THE RAFTERS and THE OSSUARY, THE THROWER IN THE ARMORY combo gone). Drawn bigger
+  (`thrower.scale` 1.18), quicker after you with a longer, harder fist; every throw is followed by `pant.time` s bent
+  double (HUFF... HUFF, open to blows) and `pant.cd` s before the next; where a thrown thing comes down a ring of
+  witchfire lights round it (`Thrower.flights`, `thrower.witch`). The boss bar names him BANE.
+- **A champion has no plate at the top of the screen** (his): his outline and notches say it. A soul-bearer, a keeper and
+  a floor's last man keep theirs.
+- THE SHOWROOM lays the new rooms and THE RING on a fifth row under the factory's, and the floors' rooms show THE
+  FOUNDRY's and THE ENGINE's furniture and galleries.
+
+## 0.028, 17 Oct 2026: snow that sits on things, and on the men
+
+- **Snow on the objects is a cap now** (his: "nicer snow on the objects"; `Snow.contour`, `coverCells`, `TUNING.snow.cap`).
+  It is cut along the drawing's top contour only (the highest pixel of each column, along stretches that climb no more
+  than a cell a column), off each column's own pixel, so it sits on the art's pixels whatever its grain (the first cut
+  sampled a grid the atlas did not share and came out a comb). On the top face lies a white cover a sixth or so of the
+  drawing deep, its lower edge a slow wave in shade with a drip a cell or two longer here and there; over the outline a
+  low heap, round at its ends, draping a lip over each end; the heap ringed in the snow's own ink (`PALETTE.snowInk`) so
+  it reads on the white floor. The heap rides above the sprite (`padTop`), the sprite keeps its place.
+- **The men get snowed on standing still** (his: "and the men get a dusting of snow if they stand still"; `Snow.settle`,
+  `Snow.dust`, `TUNING.snow.dust` / `settle`). On snow, a man who stands gathers it over nine seconds in three steps (a cap
+  on the widest runs of his hood and shoulders, then a thicker one, then thick with drips), laid over his frame
+  (`PIXEL_ART.snowK`, lent by `PaintedArt.character`); the moment he moves it is shaken off, a handful of flakes falling
+  round him (`game.snowBits`, `Snow.drawBits`). The men in a room the goat has not reached have stood there all along:
+  they start under it, and so does THE SHOWROOM's gallery.
+
+## 0.027, 16 Oct 2026: the factory after his marks (gas, oil, vents; deletions and redraws)
+
+His marks on the factory catalogue doc (every object, wall and floor, alone and in its room), row by row:
+- **Deleted**: the boiler, cabinet, anvil, drums and cable reel (the `machine` frame stays, empty); the pipe and offal junk;
+  the gauge fixture; the CHECKER floor; the BRICK, PIPES and GIRDER walls (and their painters). Rooms that wore them wear
+  others (THE ARMS CORRUGATED, THE SCRAPYARD FURNACE, THE CAROUSEL BRICK floor, THE GANTRY and THE FLAME PIPES IRON).
+  The machines in the templates became **steel posts** (`fac-post`, a template's `P` and the factory's pillars, which were
+  drawn as boilers and cabinets), so the cover and the walls that kill stay where they were.
+- **THE GAS CYLINDER** ("a throwable; after the throw it pushes the enemies apart"): a crate with `gas` (template `n`),
+  lifted and thrown as a crate; where it breaks (a man, a wall, fire, a blast) the gas goes off in a shove that throws
+  every man within 2.6 tiles away from it and dazes him (`FACTORY_PROPS.gasBurst`, `TUNING.prop.gas`); the wall he meets
+  kills him, the gas never does; a ring of cells goes out. Domed machines refuse it.
+- **OIL** ("spilled oil that can flow; step in it and a couple of cells of it stretch out behind you"): `Oil` in
+  js/factory-props.js, `TUNING.oil`, template `K`, `level.oil`. A spill starts three tiles big and creeps a tile every
+  2.5 s to nine; whoever walks through it (the goat, men, hounds, machines on their feet) smears two tiles of it behind
+  him. My addition, on a switch (`oil.burns`): fire on oil burns it and the oil beside it catches, so a trail is a fuse.
+  Drawn as baked round pools in cells with a rim and a sheen, a smear thinner.
+- **THE VENT** ("make it do something: a secret way between rooms, like Deus Ex; a few crates in front; a little less
+  visible"): a template's `vents` [{ side, y }] carves a duct through the rock to the room beside it once every room is
+  laid (`carveFactoryVents`); the vent is a wall that gives (`secret` with `vent`), drawn as its room's wall with a dull
+  grille, two blows (THE GRILLE GIVES, A WAY THROUGH THE DUCT). THE SCRAPYARD, THE WORKSHOP and THE FLAME PIPES have one
+  each, crates stacked in front.
+- **THE SHIELD GENERATOR** ("the big blue circle round it is not needed, only round the one it shields; a bigger antenna,
+  something to read better; 1 heart"): one heart; the field disc on the floor is gone (the tethers, the rings under its
+  machines and their bubbles stay); a tall lattice mast with a dish sending rings of signal up, a cyan shield badge on its front.
+- **THE SWEEPER** ("the saws harder"): chainsaws longer and broader, teeth on both edges, a motor housing at the root;
+  its reach after them (0.45 to 0.6 tiles).
+- **THE ARM** ("a bit more grounded base"): the base plate bigger, sunk in the floor, with ribs and bolts.
+- **THE BOMB MACHINE** ("redo, as if real production"): a small line in cells: a hopper of powder marked with a bomb, a
+  belt carrying the casing, a press stamping it, a chute it drops out of (the bomb now comes out of the chute, `outX`).
+- **Redrawn**: the lamp fixture (a bulkhead lamp, its light a pool of cells); the gears drawn quiet (`prop.junkAlpha`);
+  PLATES painted in texels on the tile grid (the pack's sheet "crossed strangely" at its edge); GRATE a fine mesh walkway
+  (it "looked like the fire grate"); FURNACE's face the same riveted plates as its top ("the side and the top differ").
+
+## 0.026, 16 Oct 2026: THE SNOW, a test floor
+
+- **THE SNOW** (his: "let us imagine a level with snow: the current mechanics, snow laid on top, tracks in it, or trodden
+  deeper; a few short test rooms with the first zone's men, the same objects, snowed in"; `js/snow.js`, `SNOW_LEVEL`,
+  `TUNING.snow`, `PALETTE.snow*`). A dev floor like THE FACTORY's (dev drawer SNOW (TEST), PLAY LEVEL → THE SNOW, `#snow` +
+  NEW GAME): five short rooms in a row, THE ALTAR's men (clubmen, two hounds, a rifleman behind his tables, a butcher with
+  two at his back) and its furniture, nothing of the fight changed. The floor is a sheet of snow, nearly plain white (his,
+  the same hour: "less texture on the snow altogether, white with the least of effects, and they appear as you move"): the
+  faintest hollows, a few low drifts, sparkle. Every wall's cap wears a blanket of it and icicles hang off its lip; every
+  prop keeps its drawing and gets a cap of snow on whatever faces up (`Snow.capCanvas`: the crate, the tables, a barrel,
+  the lamp, the stand of arms, a pillar; not the brazier). The picture is what is written on it: every `track.stride` px
+  anyone covers lays a print in the floor's paint, the goat's cloven hoof, a man's boot, a hound's paw, left and right of
+  his line in turn; a roll and a flung body plough a streak; a tile walked three times is trodden out wider, eight times
+  down to the ground, so a path appears by itself and the cult's own comings and goings are readable. Flakes fall over the
+  picture. Floor words are ink on it. THE SHOWROOM has its room, last in the floors' row, with its gallery.
+- **Fire melts it** (his: "by the brazier the snow is melted, and fire melts it"; `Snow.thaw` / `melt`, `TUNING.snow.melt`):
+  a lit bowl stands in a patch thawed to the wet ground from the start, a ring of slush dithered into the white round it,
+  and every tile that catches fire on snow thaws the same way once, so a fire leaves its dark scar behind it.
+
+## 0.025, 16 Oct 2026: the shield generator's field you can read
+
+- **THE SHIELD GENERATOR's dome reads at a glance** (his: "the shield field visually stronger, so it is clear";
+  `ShieldGen.drawTell` / `drawWorld`, `TUNING.shieldgen.look.field`). Its reach (4.5 tiles) lies on the floor as a field
+  of cells round it: faint rings across it, a rim two cells thick that beats, and a wave running out from the generator
+  to the rim, so where a machine stops being covered is seen before a blow is spent. The tethers are thicker, with a
+  packet of light running down each from the generator to its machine, and a thick ring lies under each machine it
+  covers. Over each covered machine a whole bubble of cells (was a faint arch): a rim two cells thick, a dithered
+  body with a band of light rising through it, a glint up on the left, all white for a beat when a blow bounces. The
+  bubbles are laid as a few fills, not a fill a cell (that was 6 ms for three; now about 0.7).
+
+## 0.024, 16 Oct 2026: three factory rooms off Enter the Gungeon's traps
+
+- **THE GRIDIRON** (Gungeon's spike floors that rise in turn): a 16 x 10 checker of burners on the two halves of one
+  clock, so the safe squares swap every beat and a goat crossing it steps onto the colour that just went out. Two
+  sweepers come for him over it and burn; a sawbot walks it red-hot. Cold strips at both doors. PLATES floor, IRON wall.
+- **THE FLAME PIPES** (Gungeon's flame jets): three pipes in the far wall and two in the near one, each throwing a jet two
+  tiles wide most of the way across, lit from the pipe outward, the five fired out of order, so the way through crosses
+  every jet. Two sawbots and two sweepers. RUST floor, PIPES wall (the first room in it).
+- **THE ISLAND** (Gungeon's pit rooms and its casters to kill first): THE SHIELD GENERATOR on an island in a drop with two
+  sawbots under its dome, reached by two causeways each cut by a one-tile gap (the roll). The drop takes a domed machine
+  all the same; THE BOMB MACHINE on the near shore throws bombs across; a welder drives the far shore. A sawbot leaps the
+  gap after the goat and leaves the dome doing it. CONCRETE floor, IRON wall.
+- All three are `FACTORY_TEMPLATES`, laid on the test floor after THE GANTRY (the world 720 wide, was 620) and in THE
+  SHOWROOM's factory row. The template legend learned `1` / `2` (a burner on either beat), `R` THE SWEEPER, `G` THE SHIELD
+  GENERATOR, `D` THE BOMB MACHINE, and a template's own `burn(tx, ty)` clock, `gaps` (more than one) and `label` spot
+  (`factoryLabelAt`, which THE GANTRY's walk words now use too).
+
+## 0.023, 15 Oct 2026: THE SHIELD GENERATOR
+
+- **THE SHIELD GENERATOR**, a new machine of THE FACTORY (his ask: "never attacks, holds a dome over the machines next to
+  it; while it lives they cannot be broken: target number one, like the shaman"; `ShieldGen` in js/factory.js,
+  `TUNING.shieldgen`, pseudo-kind `shieldgen`). A squat steel box on tracks with a mast and a cyan core, two hearts, and
+  fire and poison take it as a man: it is the soft one. It never swings; it drives to a spot 1.5 tiles behind the middle of
+  the machines near it, away from the goat, and never leaves its room. Every sawbot, welder, automaton, arm and sweeper
+  within 4.5 tiles of it is under its dome (`o.domed`, `ShieldGen.tick` from `Machines.update`): no blow, throw, fire,
+  poison, blast or crush lands (`Enemy.die`, `fling`, `ignite`, `Status.poison`; the horns bounce off as off the ogre;
+  `Arm.horns`, `Automaton.legHit` and his blast fall). A cyan tether of cells crawls from it to each machine it covers,
+  with a ring of cells under each and an arch of cells over each, all flashing white when a blow bounces, and DOME · BREAK
+  ITS GENERATOR over the machine now and then. Lifted in the goat's teeth (BY THE COLLAR) or flung, it holds nothing, so
+  carrying it away works too; it never domes another generator; THE ARM does not grab it (it is iron). On the factory test
+  floor behind THE WORKS' far chamber, in THE SHOWROOM's factory gallery, and a SPAWN row. Numbers a first guess, his to tune.
+
+## 0.022, 15 Oct 2026: two new souls, the web and the pull; stealth for good
+
+- **WEB SPIT**, a voice active: BAAH spits a ball of silk that bursts into six tiles of web (`TUNING.status.web`,
+  `Status.webSpatter` / `updateWebs` / `webHold`). A man of flesh who steps in it is stuck where he stands for 3.2 s (half
+  for a heavy one; he still swings at what is in reach), and that tile is spent; a blow that throws him tears him out. Web
+  burns: fire on a tile runs along the rest and a man stuck in it catches. The ogre, the rat ogre, the wraith and iron are
+  never held. A patch lies in THE SHOWROOM's hall (`level.webs`).
+- **TELEKINESIS**, a grab active (`Kinesis`): the grab held with nothing to take charges 1.05 s, then every crate, bomb
+  and blade within 4 tiles (a blade out of its stand too) flies at the nearest man it can see, the men shared out, as hard
+  as his own throw; the grab then waits 3.6 s.
+- **Horns on stone leave a mark**: a chip of dark cells where his head met the wall, kept for the floor, and a few sparks
+  thrown back (`juice.wallMark`, `Game.wallMark`, `Renderer.drawWallMarks`).
+- **A man dying throws small drops of blood** away from the goat, half of them left on the floor (`juice.deathBits`).
+- **Who did it**: a heart lost to a man marks him for 1.6 s, a red outline outside any boss outline, a ring of red
+  cells closing in to his feet and a red arrowhead of cells over his head (`juice.blame`, `Game.blame`, `e.blameAt`,
+  `Renderer.blameK`). A round marks its shooter, a thrown thing its thrower. THE ARM and the sweeper, laid live in cells,
+  get the ring and the arrow only.
+- **The goat runs 10% faster** (`goat.speed`).
+- **THE BOMB MACHINE takes 3 s to make a bomb**, not 1.6.
+- **Stealth is the game's, not the drawer's**: the dev drawer's STEALTH switch is gone, it works on THE TRIP too, and a
+  press refused in a fight no longer writes NOT IN A FIGHT by the hearts (the ring at his feet says it).
+
+## 0.021, 15 Oct 2026: THE FACTORY's second playtest, nineteen notes
+
+- **THE SWEEPER**, a new machine: a robot vacuum cleaner with two chainsaws out of its front, one heart (`Sweeper`,
+  `TUNING.sweeper`, drawn live in cells, `FACTORY_PIXELS.drawSweeper`). In the goat's room it drives at him for good,
+  turning at a set rate, so a side step beats it; the saws cut only in front, then it backs off. The horns throw it light,
+  the wall breaks it. Two in THE SAW HALL, a SPAWN row, the showroom's factory gallery.
+- **The sawbot leaps**: from 1.3 to 3.2 tiles off it crouches with the landing ring on the floor, hops and comes down with a
+  ring of 1.05 tiles (`Sawbot.leap`). Up close it swings as before.
+- **THE ARM**: a butt costs it a heart, and after it lets the goat go it recharges `arm.recharge` (3.5) s, its ring dim and
+  filling back. Its own step now runs the flash and daze clocks every other man's `act` runs (a butt left it white and dazed).
+- **THE WELDER has no cone**: he sees all round out to his range.
+- **Machines and the bots**: a ram shoves iron at 0.4 of flesh (THE HAMMERS threw every sawbot dead on the far wall), and a
+  man after the goat misses a press, ram or glowing burner now and then (`machine.miss`).
+- **THE AUTOMATON**: down, his legs fold out behind the frame so its sides lie open, no flat red panels; dead, his legs come
+  off and fly, the frame split.
+- **MULE KICK**, a headbutt passive: the hind hooves throw whoever is behind at half the SHORT horns' shove.
+- **THE HOURGLASS**, a talisman: a lost heart clears every wait and makes the next verb free.
+- **A fall off a ledge gives back every cooldown** (`Goat.freshVerbs`).
+- **Fire bites 30% sooner** (`goat.fireSooner`).
+- **The factory floor runs the goat at his own pace**, GOD's only with GOD on.
+- **HUD**: the two souls on one line, the corrupted one a size up; no "A SOUL IN HIM" on the boss bar.
+- **LONG's horns from behind** rise as from the front instead of lying flat with the tips curled down.
+- **Dev drawer**: PLAY LEVEL lists THE TRIP and THE FACTORY too.
+
 ## 0.020, 15 Oct 2026: nine notes (the arm's frame drop, the dev drawer, the supper, the Warden)
 
 - **Hitting THE ARM no longer drops the game to 2 FPS.** Its hit flash and windup tint went through `ctx.filter`, which the

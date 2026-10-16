@@ -32,7 +32,7 @@ const Machines = {
   start(game) {
     const L = game.level, w = game.world;
     game.machines = (L && L.machines || []).map((s, i) => Object.assign({ id: i, t: s.phase || 0, k: 0, state: 'open', cycle: 0, scroll: 0, w: 1 }, s));
-    game.wrecks = [];
+    game.wrecks = []; game.welderFuses = [];
     w.noFlame = new Set();
     game.beltAt = new Map(); game.burnerAt = new Map();
     for (const m of game.machines) {
@@ -143,6 +143,8 @@ const Machines = {
 
   update(game, dt) {
     if (typeof Sawbot !== 'undefined') Sawbot.tick(game, dt);
+    if (typeof ShieldGen !== 'undefined') ShieldGen.tick(game, dt);   // which machines stand under a generator's dome (js/factory.js)
+    if (typeof Welder !== 'undefined') Welder.tickFuses(game, dt);   // a dead welder's tank going up
     for (const p of game.props) if (p.kind === 'dispenser' && !p.broken) Machines.stepDispenser(game, p, dt);
     const ms = game.machines; if (!ms || !ms.length) return;
     const w = game.world, MT = TUNING.machine;
@@ -191,7 +193,15 @@ const Machines = {
         // a whole room of them hisses once, not thirty times over
         if (m.state === 'warn' && was !== 'warn' && game.machineGas <= 0) { const where = Machines.hear(game, m); if (where) { game.audio.sfxGas(where); game.machineGas = MT.gasGap; } }
         if (m.state === 'fire') {
-          if (was !== 'fire') { w.ignite(m.tx, m.ty, true, TUNING.burner.fire); game.audio.sfxFire(); }
+          if (was !== 'fire') {
+            w.ignite(m.tx, m.ty, true, TUNING.burner.fire); game.audio.sfxFire();
+            // standing on it as it goes up costs the heart at once (16 Oct 2026, his mark on the test lab); walking onto
+            // one already alight is ordinary fire, its first bite after the usual interval
+            const g = game.goat;
+            if (!g.dead && Math.floor(g.x / TILE) === m.tx && Math.floor(g.y / TILE) === m.ty && g.state !== 'roll' && !(g.invuln > 0) && !game.mods.fireImmune) {
+              g.damage(1, game, 0, 0, true, 'fire'); g.fireTick = 0;
+            }
+          }
           w.fire[i] = Math.max(w.fire[i], 0.25); w.fireKind[i] = 0; w.noFlame.add(i);
         } else w.noFlame.delete(i);
       } else if (m.kind === 'belt') m.scroll += TUNING.belt.speed * dt;
@@ -219,7 +229,7 @@ const Machines = {
     if (Math.floor(p.makeT * 6) !== Math.floor((p.makeT + dt) * 6)) game.audio.sfxThud();   // it rattles while it works
     if (p.makeT > 0) return;
     p.makeT = 0;
-    const b = new Prop(p.x, p.y + D.out, 'bomb');
+    const b = new Prop(p.x + (D.outX || 0), p.y + D.out, 'bomb');   // out of its chute (js/factory-pixels.js `drawDispenser`)
     b.vx = (Math.random() - 0.5) * 30; b.vy = 40;
     game.props.push(b); p.lastBomb = b;
     game.audio.sfxCageHit(); game.dust(b.x, b.y, 5, 0, 1);
@@ -319,7 +329,9 @@ const Machines = {
       game.particles(g.x, g.y, 8, PALETTE.ash, 220);
     });
     for (const e of game.enemies) if (Machines.manOnFloor(e)) fit(e, e.r, (kx, ky) => {
-      const sh = m.shove || R.shove;   // a ram laid with its own `shove` (THE HAMMERS', to reach the far wall)
+      // a ram laid with its own `shove` (THE HAMMERS', to reach the far wall); iron is shoved `ironMul` as hard (15 Oct 2026
+      // playtest of THE HAMMERS: "gentler with the bots", every sawbot that wandered in was thrown dead on the far wall)
+      const sh = (m.shove || R.shove) * (typeof Arm !== 'undefined' && Arm.iron(e) ? R.ironMul : 1);
       e.fling(kx * sh * TILE, ky * sh * TILE, true); game.hitstop(0.04); game.audio.sfxThud();
     });
     for (const p of game.props) if (Machines.loose(p)) fit(p, p.r, (kx, ky) => { p.vx = kx * R.shove * TILE; p.vy = ky * R.shove * TILE; });
@@ -357,6 +369,7 @@ const Machines = {
     if (typeof FACTORY_PIXELS === 'undefined' || !FACTORY_PIXELS.ready) return;
     // what is left of THE AUTOMATON, flat on the floor where he died (13 Oct 2026 playtest: "show his body after")
     if (game.wrecks && game.wrecks.length) for (const w of game.wrecks) if (Machines.seen(game, R, w.x, w.y, 200, 160)) FACTORY_PIXELS.drawWreck(R.ctx, w);
+    if (typeof Welder !== 'undefined') Welder.drawFuses(R, game);
     const ms = game.machines; if (!ms || !ms.length) return;
     const ctx = R.ctx, smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
     for (const m of ms) {
@@ -473,12 +486,28 @@ const Machines = {
   },
   // THE FACTORY's grate trap (`p.flame`, js/entities.js `updateSpike`) wears the burner's picture: cold resting, the
   // warning glow while it arms, catching as it goes down, the column of flame while it is up.
+  // 16 Oct 2026, his mark on the test lab ("a good thing, but it must read apart from the burner"): its own plate under the
+  // flame, a square of dark steel the tile wide with a rim of hazard cells (amber and black, stepped round it) and a 3 x 3
+  // of nozzles, dark cold, blinking amber as it arms, hot while it burns; the burner is a round grate on a clock and has
+  // none of it. Only the flame itself is the burner's.
   drawFlameGrate(R, p) {
     if (typeof FACTORY_PIXELS === 'undefined' || !FACTORY_PIXELS.ready) return;
     const st = p.spikeState, state = st === 'armed' ? 'warn' : st === 'up' ? 'fire' : st === 'down' ? 'ignite' : 'off';
-    const ctx = R.ctx, smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
-    Machines.drawBurner(ctx, { state, tx: Math.floor(p.x / TILE) }, p.x, p.y, R.t);
-    ctx.imageSmoothingEnabled = smooth;
+    const ctx = R.ctx, c = 2, tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE), x0 = tx * TILE + 2, y0 = ty * TILE + 2, n = (TILE - 4) / c;
+    ctx.save();
+    ctx.fillStyle = '#1c1d22'; ctx.fillRect(x0, y0, TILE - 4, TILE - 4);
+    for (let i = 0; i < n; i++) for (const [x, y] of [[i, 0], [i, n - 1], [0, i], [n - 1, i]]) {
+      ctx.fillStyle = Math.floor((x + y) / 2) % 2 ? '#f2aa30' : '#141417'; ctx.fillRect(x0 + x * c, y0 + y * c, c, c);
+    }
+    const hot = state === 'fire' || state === 'ignite', arm = state === 'warn' && Math.floor(R.t * 8) % 2;
+    ctx.fillStyle = hot ? '#ffe08a' : arm ? '#f2aa30' : '#3a3c44';
+    for (const a of [0.28, 0.5, 0.72]) for (const b of [0.28, 0.5, 0.72]) ctx.fillRect(Math.round((x0 + (TILE - 4) * a) / c) * c - c, Math.round((y0 + (TILE - 4) * b) / c) * c - c, c * 2, c * 2);
+    ctx.restore();
+    if (state === 'fire' || state === 'ignite') {
+      const smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
+      Machines.drawBurner(ctx, { state, tx }, p.x, p.y, R.t, true);
+      ctx.imageSmoothingEnabled = smooth;
+    }
   },
   // The burner stands up out of the floor (its flame rises), its foot a little under the tile's middle.
   drawBurner(ctx, m, cx, cy, t) {

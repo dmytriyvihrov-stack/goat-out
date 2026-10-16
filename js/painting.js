@@ -530,9 +530,19 @@ const Painting = {
       if (game.stateTimer <= 0) { ctx.globalAlpha = clamp(-game.stateTimer / 0.4, 0, 1); r.goButton(game, card.go, left + ra.w / 2, by); }
       // Small, under them (9 Oct 2026 playtest): for a playtest, this floor again instead of a new run. Only where a death
       // would end the run; with SETTINGS `sameFloor` on, RESTART already is that.
+      // REBIRTH FOR SOULS (16 Oct 2026, `Game.rebirthCost`): REBORN under the two with its price in souls, once the card is up,
+      // only while heaven's heap can pay it; the playtest line steps down under it.
+      this.rebirthRect = null;
+      const rowBottom = (side || !rq ? by : Math.min(by + 44 * s, H - 40 * s)) + ra.h, rc0 = game.rebirthCost ? game.rebirthCost() : null;
+      let under = rowBottom;
+      if (rc0 !== null && game.stateTimer <= 0) {
+        ctx.globalAlpha = clamp(-game.stateTimer / 0.4, 0, 1);
+        const rb = r.goButton(game, `REBORN · ${rc0} SOULS`, W / 2, Math.min(rowBottom + 10 * s, H - 40 * s), { key: null });
+        this.rebirthRect = rb; under = rb.y + rb.h;
+      }
       this.sameRect = null;
       if (game.permadeath && game.permadeath() && game.stateTimer <= 0) {
-        const txt = '(FOR A PLAYTEST: RESTART ON THIS FLOOR)', px = Math.max(12 * r.s, 12 * s), sy = Math.min((side || !rq ? by : Math.min(by + 44 * s, H - 40 * s)) + ra.h + 18 * r.ts + px, H - 14 * s);   // clear under the buttons' own height (9 Oct 2026: it sat on their rims)
+        const txt = '(FOR A PLAYTEST: RESTART ON THIS FLOOR)', px = Math.max(12 * r.s, 12 * s), sy = Math.min(under + 18 * r.ts + px, H - 14 * s);   // clear under the buttons' own height (9 Oct 2026: it sat on their rims)
         ctx.font = `700 ${px}px ${FONT_SC}`; ctx.textAlign = 'center';
         const w = textW(ctx, txt), m = game.input.mouse, rc = { x: W / 2 - w / 2 - 6 * s, y: sy - px - 4 * s, w: w + 12 * s, h: px + 10 * s };
         const hot = !game.touch.active && this.hit(m, rc);
@@ -547,6 +557,7 @@ const Painting = {
   hit(p, rc) { return !!(p && rc && p.x >= rc.x && p.x <= rc.x + rc.w && p.y >= rc.y && p.y <= rc.y + rc.h); },
   onSave(p) { return this.canSave && this.hit(p, this.saveRect); },
   onQuick(p) { return this.hit(p, this.quickRect); },
+  onRebirth(p) { return this.hit(p, this.rebirthRect); },
   onSame(p) { return this.hit(p, this.sameRect); },
 
   // What leaves the game: the picture at `export` times its own pixels, with its name, the run's

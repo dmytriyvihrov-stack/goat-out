@@ -9,7 +9,7 @@
 const PIXEL_EXTENT = {
   goat: 34, clubman: 36, brute: 38, mage: 38, hound: 40, hunter: 38, butcher: 48, wraith: 38,
   chicken: 22, ratogre: 70, ogre: 66, spartan: 36, thrower: 48, shaman: 44, warden: 52, flayed: 80, mouse: 26, goose: 28, raven: 22, turtle: 28, 'sheep-pet': 32,
-  sawbot: 34, welder: 57, automaton: 210, arm: 48,   // THE FACTORY's machines (js/factory-pixels.js)
+  sawbot: 34, welder: 57, automaton: 210, arm: 48, sweeper: 18, shieldgen: 40, cartridge: 36,   // THE FACTORY's machines (js/factory-pixels.js)
 };
 // The painted slot names this pass fills. `sheep` is the goat's old slot name, not a sheep.
 const PIXEL_UNIT = {
@@ -21,7 +21,7 @@ const PIXEL_UNIT = {
   coward: 'clubman',    // THE COWARD: the clubman's frames in a study of his own (`COWARD_STUDY`, js/coward.js)
   warden: 'warden',     // THE WARDEN, off js/warden-pixels.js (front view only, js/endboss.js's supper)
   flayed: 'flayed',     // THE FLAYED, his second phase, off js/flayed-pixels.js (the ogre's body re-skinned)
-  sawbot: 'sawbot', welder: 'welder', automaton: 'automaton', arm: 'arm',   // THE FACTORY's machines, off js/factory-pixels.js
+  sawbot: 'sawbot', welder: 'welder', automaton: 'automaton', arm: 'arm', sweeper: 'sweeper', shieldgen: 'shieldgen', cartridge: 'cartridge',   // THE FACTORY's machines, off js/factory-pixels.js
 };
 
 // The throat of the pixel goat in each of his eight idle facings, world px from the foot (the same
@@ -538,6 +538,17 @@ const PIXEL_ART = {
       if (flip) ctx.restore();
       ctx.imageSmoothingEnabled = smooth;
     } else this.frame(ctx, f, id, 1, flip);
+    // THE SNOW settled on him while he stood (js/snow.js `Snow.dust`, `snowK` lent by `PaintedArt.character`), over the frame drawn
+    if (this.snowK > 0.08 && typeof Snow !== 'undefined') {
+      const k = PIXEL_EXTENT[id] / PIXEL_ASSETS.target, s = !fix && this.studyOf(id), lv = Math.min(3, Math.ceil(this.snowK * 3));
+      const cell = Math.max(1, Math.round(TUNING.snow.dust.texel / k));
+      const dust = fix ? Snow.dust(fix, 0, 0, f[2], f[3], cell, lv) : s ? Snow.dust(s.img, f[0] - s.ox, f[1] - s.oy, f[2], f[3], cell, lv, f) : Snow.dust(this.image, f[0], f[1], f[2], f[3], cell, lv, f);
+      const smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+      if (flip) { ctx.save(); ctx.scale(-1, 1); }
+      ctx.drawImage(dust, -f[4] * k, -f[5] * k, f[2] * k, f[3] * k);
+      if (flip) ctx.restore();
+      ctx.imageSmoothingEnabled = smooth;
+    }
     // the lightning over his eye, once a corrupted soul is in him (`splitMark`, `markOn`)
     const mark = id === 'goat' && this.marks && this.marks.get(f);
     if (mark && this.markOn()) {
@@ -1145,13 +1156,21 @@ const PIXEL_ART = {
   // A cell on the art's own grid (`cell` atlas px), one step of `ramp` (or a soul's look) a cell, outlined like the sprite.
   // `grow` (13 Oct 2026): the LONG HORNS soul worn on top of the shape (`hornLooks[shape].grow`): longer, and the soul's
   // own tines in bone off it, so the soul shows on the BIG and the LONG as it does on the SHORT.
-  hornShapeOf(hn, spread, back, shape, look, grow) {
-    const key = shape + ':' + (look || '') + (grow ? ':grow' : '');
+  hornShapeOf(hn, spread, back, shape, look, grow, away) {
+    const key = shape + ':' + (look || '') + (grow ? ':grow' : '') + (away ? ':away' : '');
     hn.skins = hn.skins || {};
     if (hn.skins[key]) return hn.skins[key];
     const A = TUNING.goat.hornLooks[shape], C = A.cell, [bx, by] = hn.base, [tx, ty] = hn.tip, G = grow ? A.grow : null;
-    const L = Math.max(6, hyp(tx - bx, ty - by)), ux = (tx - bx) / L, uy = (ty - by) / L;
-    const sd = back || spread || 1;
+    const L = Math.max(6, hyp(tx - bx, ty - by));
+    let ux = (tx - bx) / L, uy = (ty - by) / L;
+    // Seen from behind (`away`: the three views facing up the screen) the packed horn lies flat out to the side, and the
+    // lyre grown off it lay flat with its tips curled down (15 Oct 2026 playtest: "the horns curve the wrong way"): there
+    // the beam rises as it does from the front, leaning out by `awayLean` of its own sideways run.
+    if (away && A.awayLean !== undefined) { const ax = ux * A.awayLean, l = hyp(ax, 1); ux = ax / l; uy = -1 / l; }
+    // From the side and the front diagonals the lyre's belly is up toward his nose and the tip sweeps back over him, an
+    // ibex's arc (16 Oct 2026, his: "curl the horns the right way everywhere"; it bowed back along his head first and only
+    // then rose, as if it grew out of his neck). From the front and behind it bows out to its own side, as before.
+    const sd = (shape === 'gazelle' && back && !away ? -back : back) || spread || 1;
     let nx = -uy, ny = ux; if (nx * sd < 0) { nx = -nx; ny = -ny; }
     const B = L * A.len * (G ? G.len : 1), pad = Math.ceil(B * 1.9 + A.w0) + C * 2;
     const W = Math.ceil((hn.w + pad * 2) / C), Hh = Math.ceil((hn.h + pad * 2) / C);
@@ -1244,7 +1263,7 @@ const PIXEL_ART = {
     ctx.translate(-f[4] * k, -f[5] * k); ctx.scale(k, k);
     const all = this.hornsOf(f, this.hornFix(id, d, f)), mid = all.reduce((s, h) => s + h.base[0], 0) / (all.length || 1);
     // Which way is "back" on this facing: away from his nose. 0 on the straight front and back views.
-    const back = [0, 1, 1, 1, 0, -1, -1, -1][d];
+    const back = [0, 1, 1, 1, 0, -1, -1, -1][d], away = d >= 3 && d <= 5;
     // BIG and LONG: one shape a facing, grown off the standing frame's horns and carried on each step's own roots, so the
     // stride moves them with his head and never redraws them (`bare` took the packed ones off the frame under them).
     const byX = (a) => a.slice().sort((p, q) => p.base[0] - q.base[0]);
@@ -1257,7 +1276,7 @@ const PIXEL_ART = {
       const mdy = pair ? now.reduce((a, h, i) => a + h.base[1] - ref[i].base[1], 0) / now.length : f[5] - fi[5];
       const dx = Math.round(mdx), dy = Math.round(mdy);
       ref.forEach((rh) => {
-        const spread = Math.abs(rh.base[0] - refMid) > 4 ? Math.sign(rh.base[0] - refMid) : 0, a = this.hornShapeOf(rh, spread, back, shape, look, antler);
+        const spread = Math.abs(rh.base[0] - refMid) > 4 ? Math.sign(rh.base[0] - refMid) : 0, a = this.hornShapeOf(rh, spread, back, shape, look, antler, away);
         if (look) { ctx.shadowColor = H[look].glow; ctx.shadowBlur = H[look].blur * (0.75 + 0.25 * Math.sin(t * 7 + rh.base[0])); }
         ctx.drawImage(a.canvas, dx - a.pad, dy - a.pad); ctx.shadowBlur = 0;
       });
@@ -1269,7 +1288,7 @@ const PIXEL_ART = {
       if (look) { ctx.shadowColor = H[look].glow; ctx.shadowBlur = H[look].blur * (0.75 + 0.25 * Math.sin(t * 7 + bx)); }
       // BIG and LONG keep their own shape (the moose's, the gazelle's); LONG HORNS the soul grows the SHORT into an antler
       if (shape || antler) {
-        const spread = Math.abs(bx - mid) > 4 ? Math.sign(bx - mid) : 0, a = shape ? this.hornShapeOf(hn, spread, back, shape, look, antler) : this.antlerOf(hn, spread, back, look);
+        const spread = Math.abs(bx - mid) > 4 ? Math.sign(bx - mid) : 0, a = shape ? this.hornShapeOf(hn, spread, back, shape, look, antler, away) : this.antlerOf(hn, spread, back, look);
         ctx.drawImage(a.canvas, -a.pad, -a.pad);
       } else ctx.drawImage(this.hornSkin(hn, look), 0, 0);
       ctx.shadowBlur = 0;
@@ -1529,8 +1548,40 @@ const FLOOR_SHEET = (() => {
       s.rect(x, y, 2, 2, c); s.set(x, y, mix(c, P.light, 0.35)); s.set(x + 1, y + 2, mix(P.base, P.dark, 0.5)); s.set(x, y + 2, mix(P.base, P.dark, 0.4));
     }
   }
+  // THE SNOW (16 Oct 2026, js/snow.js): a blanket in three whites off `PALETTE` (never the swatch's: snow is its own colour),
+  // soft noise in bands with a dither along each step, sparkle, a few drifts (a long low mound lit on top with its crest's
+  // shadow under it) and, on the floor only, patches where the stone shows through, rimmed in shade. `cap` is the wall's
+  // blanket: whiter, more drifted, nothing showing through.
+  function snow(s, P, r, cap) {
+    const hx = (c) => [1, 3, 5].map((k) => parseInt(c.substr(k, 2), 16));
+    const hi = hx(PALETTE.snow), md = hx(PALETTE.snowMid), sh = hx(PALETTE.snowShade), tr = hx(PALETTE.snowTrod), white = [255, 255, 255];
+    const G = 32, n = S / G, grid = Array.from({ length: n * n }, () => r()), sm = (t) => t * t * (3 - 2 * t);
+    const at = (i, j) => grid[(((j % n) + n) % n) * n + (((i % n) + n) % n)];
+    // Nearly plain white (16 Oct 2026, his: "less texture on the snow altogether, white with the least of effects, and they
+    // appear as you move"): the only marks are the faint hollows of the lowest noise, dithered, a few low drifts and the sparkle.
+    // What is written on it afterwards (the tracks, js/snow.js) is the picture.
+    const low = mix(hi, md, cap ? 0.35 : 0.55);
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      const gx = x / G, gy = y / G, i = Math.floor(gx), j = Math.floor(gy), fx = sm(gx - i), fy = sm(gy - j);
+      const v = (at(i, j) * (1 - fx) + at(i + 1, j) * fx) * (1 - fy) + (at(i, j + 1) * (1 - fx) + at(i + 1, j + 1) * fx) * fy;
+      s.set(x, y, v < 0.16 || (v < 0.22 && (x + y) % 2) ? low : hi);
+    }
+    // the drifts: a low mound, white along its crest, its shadow a line of the middle white under it
+    for (let k = 0; k < (cap ? 4 : 3); k++) {
+      const cx = r() * S, cy = r() * S, rx = 20 + r() * 30, ry = 3 + r() * 3;
+      for (let dy = -ry; dy <= ry; dy++) for (let dx = -rx; dx <= rx; dx++) {
+        const d = Math.hypot(dx / rx, dy / ry); if (d > 1) continue;
+        s.set(Math.round(cx + dx), Math.round(cy + dy), dy < -ry * 0.4 ? white : hi);
+      }
+      for (let dx = -rx * 0.8; dx <= rx * 0.8; dx++) if (r() < 0.7) s.set(Math.round(cx + dx), Math.round(cy + ry + 1), md);
+    }
+    // sparkle: single white pixels
+    for (let k = 0; k < S * S / 700; k++) s.set(Math.floor(r() * S), Math.floor(r() * S), white);
+    void sh; void tr; void P;
+  }
   const KINDS = {
     rock,
+    snow: (s, P, r) => snow(s, P, r, false), snowcap: (s, P, r) => snow(s, P, r, true),
     flags: (s, P, r) => courses(s, P, r, [24, 32, 40, 48], [28, 60], 2, 1),
     cobble: (s, P, r) => courses(s, P, r, [20, 22, 24], [18, 28], 2, 3, 0.6),
     setts: (s, P, r) => courses(s, P, r, [26], [36, 50], 2, 1, 0.8),
@@ -1607,6 +1658,8 @@ const PIXEL_ROOMS = {
   // THE FACTORY (js/factory.js): riveted plate off its own picture (`image`, js/factory-pixels.js `seedFloor`), `plates` the
   // procedural stand-in `FLOOR_SHEET` paints until the picture is in.
   factory: { floor: 'floors-04', boards: 'floors-04', sheet: 'plates', image: 'floor-plates' },
+  // THE SNOW (js/snow.js): the snow sheet, painted in its own whites (`FLOOR_SHEET.KINDS.snow`); the cap's blanket is `snowcap`.
+  snow: { floor: 'floors-01', boards: 'floors-06', sheet: 'snow' },
 };
 // Packed items drawn recoloured while `ART_PASS[name]` is on (`PIXEL_ENV.study`): `v` scales the value,
 // `s` the saturation. The straw was the brightest thing in any room, a fifth over the goat himself
@@ -1662,8 +1715,14 @@ const PIXEL_LITTER = {
   cave: { rate: 0.035, ids: ['pebbles', 'pebbles', 'moss', 'puddle', 'crack', 'moss'], size: 24 },
 };
 
+// The packed items that take a cap of snow on THE SNOW (js/snow.js): what has a top for it to lie on. Not the brazier
+// (its fire), not the litter.
+const SNOW_ENV = new Set(['crate', 'table', 'pillar', 'boulder']);
+// how wide each is drawn, in world px (js/painted-art.js), so its snow is cut in the props' own grain
+const SNOW_ENV_W = { crate: 27, table: 40, pillar: 27, boulder: 30 };
 const PIXEL_ENV = {
   image: null,
+  snowOn: false,   // set round each prop drawn on snow (`Snow.propLook`)
   init() {
     if (typeof PIXEL_ENV_ASSETS === 'undefined') return;
     this.image = new Image(); this.image.src = PIXEL_ENV_ASSETS.src;
@@ -1677,7 +1736,11 @@ const PIXEL_ENV = {
     const h = w * f[3] / f[2];
     const smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
     const R = ENV_STUDY[name], st = R && ART_PASS[R.pass || name] && this.ready ? this.study(name, f) : null;   // never baked off an atlas still loading
-    if (st) ctx.drawImage(st, 0, 0, f[2], f[3], x - w / 2, y - h * ay, w, h);
+    // THE SNOW (js/snow.js): the same drawing with a cap of snow on it, baked once per item while `snowOn` is set for the prop
+    const sn = this.snowOn && SNOW_ENV.has(name) && this.ready ? this.snowed(name, f, st) : null;
+    // the heap rides over the item's top (`padTop` px of the canvas above it), so the item itself keeps its place
+    if (sn) { const pt = sn.padTop || 0; ctx.drawImage(sn, 0, 0, sn.width, sn.height, x - w / 2, y - h * ay - pt * h / f[3], w, h * sn.height / f[3]); }
+    else if (st) ctx.drawImage(st, 0, 0, f[2], f[3], x - w / 2, y - h * ay, w, h);
     else ctx.drawImage(this.image, f[0], f[1], f[2], f[3], x - w / 2, y - h * ay, w, h);
     ctx.imageSmoothingEnabled = smooth;
     return h;
@@ -1700,6 +1763,17 @@ const PIXEL_ENV = {
     if (R.relight) R.relight(a, f[2], f[3]);
     x.putImageData(d, 0, 0);
     this.studies.set(name, c); return c;
+  },
+  // The packed item under snow (THE SNOW, js/snow.js `Snow.capCanvas`), off its study where it has one, baked once.
+  snowed(name, f, st) {
+    if (typeof Snow === 'undefined') return null;
+    this.snows ||= new Map();
+    const key = name + (st ? '@study' : '');
+    let c = this.snows.get(key); if (c) return c;
+    // in cells of the props' grain (`snow.cap.texel` world px), whatever the item's own atlas scale
+    const cell = Math.max(1, Math.round(f[2] / (SNOW_ENV_W[name] || 27) * TUNING.snow.cap.texel));
+    c = st ? Snow.capCanvas(st, 0, 0, f[2], f[3], cell) : Snow.capCanvas(this.image, f[0], f[1], f[2], f[3], cell);
+    this.snows.set(key, c); return c;
   },
   floor(ctx, list, tx, ty, tint) {
     // The cave's floor as one seamless sheet in world space (`ART_PASS.cave`), painted in the colours of

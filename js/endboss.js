@@ -47,7 +47,7 @@ const EndBoss = {
     const L = game.level, def = L && L.def;
     if (!def || game.showroomOn || def.heaven || def.shroom || def.trip !== undefined || def.dark) return;
     const li = levelIndexOf(def);
-    if (!(li >= 0) || (li > 4 && li !== LEVELS.length - 1)) return;
+    if (!(li >= 0) || (li > 3 && li !== LEVELS.length - 1)) return;   // the first four (THE FOUNDRY and THE ENGINE are the machines' since 16 Oct 2026)
     // The last ring's room: the floor's last room on all five since 8 Oct 2026.
     const arenas = def.arenas || [], ring = arenas[arenas.length - 1];
     if (!ring) return;
@@ -57,7 +57,8 @@ const EndBoss = {
     if (!room) return;
     const e = game.enemies.find((o) => o.boss && o.soul && !o.dead && o.room === last);
     if (!e) return;
-    const kind = e.champion ? 'champion' : e.kind, meet = this.meetFor(game, li), T = TUNING.endBoss;
+    // BANE (THE ROAD's last man since 16 Oct 2026) is a bearer with a flag, but none of the clubman's scenes are his
+    const kind = e.thrower ? 'thrower' : e.champion ? 'champion' : e.kind, meet = this.meetFor(game, li), T = TUNING.endBoss;
     e.endBoss = li; e.soulMeet = meet;
     const B = game.endBoss = { e, li, kind, meet, room: last, seen: false, bones: null };
     if (kind === 'butcher') {

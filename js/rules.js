@@ -14,7 +14,7 @@ const lessonOf = (L) => { const c = (L.controls || []).find((k) => k.part === 2)
 const quiet = (L, r) => r.index === 0 || SET_PIECE.has(r.role) || r.isAmbush || r.isRest || r.isCalm || r.index === lessonOf(L);
 const ORDINARY = new Set(['canon', 'mix', 'trap']);
 
-const kindOf = (s) => (s.champion ? 'champion' : s.shield ? 'shield' : s.thrower ? 'thrower' : s.shaman ? 'shaman' : s.sawbot ? 'sawbot' : s.welder ? 'welder' : s.automaton ? 'automaton' : s.arm ? 'arm' : s.kind);   // the tables' pseudo-kinds back (gen.js `threatKind`)
+const kindOf = (s) => (s.champion ? 'champion' : s.shield ? 'shield' : s.thrower ? 'thrower' : s.shaman ? 'shaman' : s.sawbot ? 'sawbot' : s.welder ? 'welder' : s.automaton ? 'automaton' : s.arm ? 'arm' : s.sweeper ? 'sweeper' : s.shieldgen ? 'shieldgen' : s.cartridge ? 'cartridge' : s.kind);   // the tables' pseudo-kinds back (gen.js `threatKind`)
 const roomAt = (L, x, y) => L.rooms.find((r) => x >= r.x * TILE && x < (r.x + r.w) * TILE && y >= r.y * TILE && y < (r.y + r.h) * TILE);
 // Every tile he can walk to from where he starts (stone and holes stop him), as flags by tile index.
 // A chasm's tiles (`L.gaps`) are a roll across, not a hole: he gets over them.
@@ -200,14 +200,14 @@ const GEN_RULES = [
       for (const r of L.rooms) {
         if (r.role !== 'mix') continue;
         const c = r.tpl.canon;
-        if (c && !(L.def.known && L.def.known.has(c))) return `room ${r.index} is ${r.tpl.name}, a ${c} room`;
+        if (c && !r.tpl.fac && !(L.def.known && L.def.known.has(c))) return `room ${r.index} is ${r.tpl.name}, a ${c} room`;   // (a machine floor's rooms are all its own)
       }
       return true;
     } },
   { id: 'written', text: 'A canon has at least four rooms written for it.',
     check: (L) => {
       if (!L.def.canon) return null;
-      const n = ROOM_TEMPLATES.filter((t) => t.canon === L.def.canon.id).length;
+      const n = L.def.mech ? mechTemplates(L.def).length : ROOM_TEMPLATES.filter((t) => t.canon === L.def.canon.id).length;
       return n >= CANON.minRooms ? true : `${n} rooms written for ${L.def.canon.id}`;
     } },
   { id: 'teach', text: 'Set pieces never introduce a kind.',
@@ -329,7 +329,7 @@ const GEN_RULES = [
     } },
   { id: 'chasm', text: 'THE CHASM: a drop one tile across a room, wall to wall, parting its way in from its way out, nothing heavy at its lip, a rifle or butcher across it; THE ROAD teaches it (chasmLesson), in an empty room, the roll on its floor and nothing lying on the words.',
     check: (L) => {
-      const def = L.def, list = L.chasms || [];
+      const def = L.def, list = (L.chasms || []).filter((c) => !c.fac);   // a machine room's own drops (THE ISLAND, THE GANTRY) are its template's
       if (def.shroom || def.dark) return list.length ? 'a chasm on THE TRIP or in THE DARK' : null;
       if (def.chasmLesson && !list.some((c) => c.lesson)) return 'no taught chasm on its floor';
       if (!list.length) return null;
@@ -533,7 +533,8 @@ const GEN_RULES = [
     } },
   { id: 'bomb', text: 'At most one bomb a level, standing in an ordinary room and never a set piece.',
     check: (L) => {
-      const bombs = L.props.filter((p) => p.kind === 'bomb');
+      // (a machine room's own bombs, and THE RING's by its bomb machine, are its template's: only the floor's own are held here)
+      const bombs = L.props.filter((p) => p.kind === 'bomb' && !(roomAt(L, p.x, p.y) || { tpl: {} }).tpl.fac);
       if (bombs.length > 1) return `${bombs.length} bombs`;
       if (!bombs.length) return null;
       const r = roomAt(L, bombs[0].x, bombs[0].y);
@@ -1121,7 +1122,7 @@ const GEN_RULES = [
         per.set(r.index, (per.get(r.index) || 0) + 1);
       }
       for (const [i, c] of per) {
-        const own = L.rooms[i].markers.filter((m) => m.c === 'w').length;
+        const R = L.rooms[i], own = R.tpl.fac ? (R.tpl.fac.rows.join('').match(/[wS]/g) || []).length : R.markers.filter((m) => m.c === 'w').length;   // a machine room's stands are its template's own
         if (c > own + 1) return `${c} stands in room ${i}`;
       }
       return true;
@@ -1149,7 +1150,7 @@ const GEN_RULES = [
       if (!rings.length) return null;
       for (const r of rings) {
         const name = r.tpl.name, v = ARENA_VARIANTS.find((o) => o.tpl.name === name);
-        if (!v) { if (name !== ARENA_TEMPLATE.name) return `room ${r.index} is "${name}"`; continue; }
+        if (!v) { if (name !== ARENA_TEMPLATE.name && !(def.mech && name === MECH_RING.name)) return `room ${r.index} is "${name}"`; continue; }
         if (def.shroom || def.dark || li < AV.from || !(def.met && def.met.has(r.arena.boss))) return `room ${r.index} is ${name} where the plain ring is owed`;
         if (!arenaVariantsFor(def, r.arena.boss, li).includes(v)) return `room ${r.index} is ${name}, which does not fit a ${r.arena.boss} on floor ${li + 1}`;
         if (r.bossSpot && L.tiles[Math.floor(r.bossSpot.y / TILE) * L.W + Math.floor(r.bossSpot.x / TILE)] === T.PIT) return `the boss of room ${r.index} stands on the drop`;
@@ -1204,7 +1205,7 @@ const GEN_RULES = [
   { id: 'endboss', text: 'The first five floors end on their own man with the soul in him: the last arena boss in the last room, carrying a soul, with every man its "with" names at his back.',
     check: (L) => {
       const li = levelIndexOf(L.def), last = L.rooms.length - 1, arenas = L.def.arenas || [], a = arenas[arenas.length - 1];
-      if (!(li >= 0 && li <= 4) || L.def.shroom || L.def.dark || L.def.again || !a) return null;
+      if (!(li >= 0 && li <= 3) || L.def.shroom || L.def.dark || L.def.again || !a) return null;
       if (a.at !== last) return `the last ring is room ${a.at}, not the last room`;
       const plan = soulPlan(L), i = L.spawns.findIndex((s) => s.boss && s.roomIndex === last);
       if (i < 0) return 'no boss in the last room';
@@ -1479,6 +1480,7 @@ function checkRules(L) {
 // so the page cannot drift from `LEVELS`.
 function levelFacts(def) {
   const E = def.encounters;
+  const mods = def.mods && def.mods.length ? def.mods.map((id) => (typeof LEVEL_MODS !== 'undefined' && LEVEL_MODS[id] ? LEVEL_MODS[id].name : id)).join(', ') : null;   // the floor's modifiers (`LEVEL_MODS`)
   const pct = (v) => (v ? Math.round(v * 100) + '%' : '-');
   const at = (v) => (v === undefined ? '-' : String(v));
   const fits = (t) => !t.needs || def[t.needs];
@@ -1488,7 +1490,7 @@ function levelFacts(def) {
   // Four lines and no sentences. The page is a thing you scan while a level is paused behind it, so
   // everything here is `name value`, in the order you would ask for it.
   return [
-    `${def.rooms} rooms · curve ${E.from}→${E.to} ease ${E.ease} · souls ${def.souls} · milk ≥${def.heals || 0}`,
+    `${def.rooms} rooms · curve ${E.from}→${E.to} ease ${E.ease} · souls ${def.souls} · milk ≥${def.heals || 0}` + (mods ? ` · mods ${mods}` : ''),
     `kinds ${E.kinds.join(' ')} · new ${(E.introduce || []).map(([k, a]) => `${k}@${a}`).join(' ') || '-'}`
       + (E.cap ? ' · caps ' + Object.entries(E.cap).map(([k, v]) => `${k} ${v}`).join(' ') : ''),
     `arenas ${(def.arenas || []).map((a) => `${a.boss}@${a.at}`).join(' ') || '-'} · mill ${at(def.millAt)}${def.millLesson ? '(lesson)' : ''}`

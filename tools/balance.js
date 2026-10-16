@@ -20,7 +20,7 @@ const path = require('path');
 const root = path.resolve(__dirname, '..');
 const ctx = { console, Math, Uint8Array, Int16Array, Int32Array, Float32Array };
 vm.createContext(ctx);
-for (const f of ['js/tuning.js', 'js/rng.js', 'js/rooms.js', 'js/gen.js', 'js/rules.js', 'js/beasts.js']) {
+for (const f of ['js/tuning.js', 'js/rng.js', 'js/rooms.js', 'js/gen.js', 'js/factory.js', 'js/rules.js', 'js/beasts.js']) {
   vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f });
 }
 

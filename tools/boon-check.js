@@ -119,6 +119,20 @@ window.BOONCHECK = {
       const n = game.world.poison.filter((v) => v > 0).length;
       return [flying && n >= 4, `a glob in the air: ${flying}, poison tiles after it landed: ${n} (6 said)`];
     },
+    // WEB SPIT (15 Oct 2026): the glob bursts into web, and the man it lands on is stuck in it.
+    webspit() {
+      const C = BOONCHECK; C.scene('webspit'); const e = C.man(4, 0); C.aimAt(e.x, e.y);
+      C.press('spacePressed', 1); const flying = (game.globs || []).length > 0; C.steps(60);
+      const x = e.x, y = e.y; C.steps(60);
+      return [flying && e.webT > 0 && hyp(e.x - x, e.y - y) < 1, `a glob in the air: ${flying}, he is stuck ${(e.webT || 0).toFixed(2)}s, moved ${hyp(e.x - x, e.y - y).toFixed(1)} px`];
+    },
+    // TELEKINESIS (15 Oct 2026): the grab held on nothing sends the crate lying near him at the man.
+    kinesis() {
+      const C = BOONCHECK; C.scene('kinesis'); const g = game.goat, e = C.man(6, 0);
+      const p = new Prop(g.x + 2 * TILE, g.y + 2 * TILE, 'crate'); game.props.push(p);
+      for (let i = 0; i < 90; i++) Kinesis.step(game, g, { rmbDown: true }, 1 / 60);
+      return [p.flung && p.vx > 0, `the crate flew: ${p.flung}, toward him: ${p.vx > 0}, the grab waits ${g.grabCd.toFixed(2)}s`];
+    },
     hide() {
       const C = BOONCHECK, b = C.base().maxHp; C.scene('hide'); const g = game.goat, p = BOONS.find((x) => x.id === 'hide').params;
       return [g.maxHp === b + p.heartsAdd, `max hearts ${b} → ${g.maxHp} (+${p.heartsAdd} said)`];

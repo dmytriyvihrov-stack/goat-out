@@ -11,7 +11,7 @@ function flipTemplate(tpl, rng) {
   let rows = tpl.rows.slice();
   if (rng.chance(0.5) && !tpl.noFlipY) rows = rows.slice().reverse();   // the roll is spent either way
   if (!tpl.noFlipX && rng.chance(0.5)) rows = rows.map((r) => r.split('').reverse().join(''));
-  return { name: tpl.name, rows, lamps: tpl.lamps };
+  return { name: tpl.name, rows, lamps: tpl.lamps, fac: tpl.fac };
 }
 
 // Which arena shapes a boss of `kind` may be rung in on floor index `li` (`ARENA_VARIANTS`, `TUNING.rooms.arena.fromOf`):
@@ -78,12 +78,12 @@ function roomMenCap(men, tpl) {
 // the shieldman (`TUNING.shieldman`), 'thrower' the thrower (`TUNING.thrower`). A spawn carries the real kind
 // and the flag; `threatKind` reads one back.
 // 'shaman' the shaman (`TUNING.shaman`, js/shaman.js).
-// 'sawbot', 'welder', 'automaton' THE FACTORY's machines (js/factory.js), bearers with the flag like the rest.
+// 'sawbot', 'welder', 'automaton', 'arm', 'sweeper', 'shieldgen', 'cartridge' THE FACTORY's machines (js/factory.js), bearers with the flag like the rest.
 function spawnKind(k) {
-  const pseudo = k === 'champion' || k === 'shield' || k === 'thrower' || k === 'shaman' || k === 'sawbot' || k === 'welder' || k === 'automaton' || k === 'arm';
-  return { kind: pseudo ? 'bearer' : k, champion: k === 'champion', shield: k === 'shield', thrower: k === 'thrower', shaman: k === 'shaman', sawbot: k === 'sawbot', welder: k === 'welder', automaton: k === 'automaton', arm: k === 'arm' };
+  const pseudo = k === 'champion' || k === 'shield' || k === 'thrower' || k === 'shaman' || k === 'sawbot' || k === 'welder' || k === 'automaton' || k === 'arm' || k === 'sweeper' || k === 'shieldgen' || k === 'cartridge';
+  return { kind: pseudo ? 'bearer' : k, champion: k === 'champion', shield: k === 'shield', thrower: k === 'thrower', shaman: k === 'shaman', sawbot: k === 'sawbot', welder: k === 'welder', automaton: k === 'automaton', arm: k === 'arm', sweeper: k === 'sweeper', shieldgen: k === 'shieldgen', cartridge: k === 'cartridge' };
 }
-function threatKind(s) { return s.champion ? 'champion' : s.shield ? 'shield' : s.thrower ? 'thrower' : s.shaman ? 'shaman' : s.sawbot ? 'sawbot' : s.welder ? 'welder' : s.automaton ? 'automaton' : s.arm ? 'arm' : s.kind; }
+function threatKind(s) { return s.champion ? 'champion' : s.shield ? 'shield' : s.thrower ? 'thrower' : s.shaman ? 'shaman' : s.sawbot ? 'sawbot' : s.welder ? 'welder' : s.automaton ? 'automaton' : s.arm ? 'arm' : s.sweeper ? 'sweeper' : s.shieldgen ? 'shieldgen' : s.cartridge ? 'cartridge' : s.kind; }
 
 // `crowd` (7 Oct 2026 playtest, `Game.crowdFor`): a thicker floor for a goat who has not died yet, ×1.5 on the third floor
 // and ×2 after it, "so that he reaches heaven and gets the gathering". It scales the ordinary rooms' budget and head
@@ -301,7 +301,8 @@ function dealCombo(levelDef, rooms, plan, seed, opts) {
 // multipliers on the odds of a second secret, of grass behind one, and of a loose rack, plus bowls
 // of milk on top of the level's own count. Nothing else the goat carries reaches the generator.
 function generateLevel(levelDef, seed, opts) {
-  if (levelDef.factory) return factoryLevel(levelDef, seed);   // THE FACTORY's test floor, laid too (js/factory.js)
+  if (levelDef.factory && levelDef.showroom) return factoryLevel(levelDef, seed);   // THE FACTORY's test floor, laid too (js/factory.js)
+  if (levelDef.snow) return snowLevel(levelDef, seed);         // THE SNOW's test floor (js/snow.js)
   if (levelDef.showroom) return showroomLevel(levelDef, seed);   // the dev floor is laid, not rolled (js/showroom.js)
   // Forty, not twenty: THE TRIP erodes every room into a cave and more than half its attempts die
   // on a room edge with no row a door can use, so twenty tries in a row failed about once in four
@@ -383,14 +384,18 @@ function tryGenerate(levelDef, seed, opts) {
   // Shuffled first, so templates that measure the same come out in a different order every seed.
   const byGround = (a, b) => groundOf(a) - groundOf(b);
   // A template marked `bridge` is never drawn: `levelDef.bridges` deals it (below).
-  const canonPool = rng.shuffle(ROOM_TEMPLATES.filter((t) => t.canon && t.canon === canonId && !t.bridge && fits(t))).sort(byGround);
+  // THE MACHINE FLOORS (16 Oct 2026, his: "from the fifth and sixth the mechanicus, two levels built for them"): a floor with
+  // `mech` draws every ordinary room off THE FACTORY's own templates (js/factory.js `FACTORY_TEMPLATES`, `mechTemplates`), laid by
+  // `layFactoryRoom` and never by the parser below, and nothing of the cult's rooms but the set pieces it names.
+  const mechPool = levelDef.mech ? rng.shuffle(mechTemplates(levelDef)).sort(byGround) : null;
+  const canonPool = mechPool || rng.shuffle(ROOM_TEMPLATES.filter((t) => t.canon && t.canon === canonId && !t.bridge && fits(t))).sort(byGround);
   const known = levelDef.known || new Set();
-  let mixPool = rng.shuffle(ROOM_TEMPLATES.filter((t) => !t.tag && !t.bridge && (!t.canon || known.has(t.canon)) && fits(t))).sort(byGround);
+  let mixPool = mechPool || rng.shuffle(ROOM_TEMPLATES.filter((t) => !t.tag && !t.bridge && (!t.canon || known.has(t.canon)) && fits(t))).sort(byGround);
   if (!mixPool.length) mixPool = canonPool;
   if (!mixPool.length) mixPool = rng.shuffle(ROOM_TEMPLATES.filter((t) => !t.tag && !t.bridge && !t.canon && (!t.needs || levelDef[t.needs]))).sort(byGround);
   // Which entries of each pool this level has already spent. A pool smaller than the level's share
   // of rooms simply starts again once it is empty.
-  const canonUsed = new Set(), mixUsed = new Set();
+  const canonUsed = new Set(), mixUsed = mechPool ? canonUsed : new Set();   // a machine floor's two pools are one: spent once between them
   // Rooms whose point is the floor rather than the men on it.
   let trapPool = rng.shuffle(ROOM_TEMPLATES.filter((t) => t.tag === 'trap' && fits(t)));
   // A `ROOM_LEVELS` that takes every template of a pool off this floor would leave nothing to build
@@ -483,7 +488,7 @@ function tryGenerate(levelDef, seed, opts) {
       if (pool.length && roll < AV.vary) arenaTplAt.set(a.at, pool[Math.min(pool.length - 1, Math.floor(pick * pool.length))].tpl);
     }
   }
-  const arenaTpl = (a) => a.supper ? SUPPER_TEMPLATE : a.boss !== 'butcher' ? (arenaTplAt.get(a.at) || ARENA_TEMPLATE)
+  const arenaTpl = (a) => a.supper ? SUPPER_TEMPLATE : levelDef.mech ? MECH_RING : a.boss !== 'butcher' ? (arenaTplAt.get(a.at) || ARENA_TEMPLATE)
     : levelDef.met && !levelDef.met.has('butcher') ? OGRE_FIRST_TEMPLATE : OGRE_ARENA_TEMPLATE;
   const fixedW = (j) => {
     const aj = (levelDef.arenas || []).find((a) => a.at === j);
@@ -543,6 +548,8 @@ function tryGenerate(levelDef, seed, opts) {
     return pool[k];
   };
 
+  // What a machine room lays besides its tiles (`layMechRoom`): the traps, the drops it is cut by, its vents, its oil, the look it wears.
+  const mechC = { tiles, W, props, machines: [], chasms: [], gaps: new Set(), vents: [], oil: [], zones: null, zoneDefs: [levelDef] };
   let stackRun = 0;
   for (let i = 0; i < n; i++) {
     let tpl;
@@ -602,7 +609,8 @@ function tryGenerate(levelDef, seed, opts) {
       isKillbox: i === levelDef.killboxAt, isTrap: trapRooms.has(i), isAmbush: i === levelDef.ambushAt,
       isRest: restsOf(levelDef).includes(i), isCalm: i === levelDef.calmAt, isCrowd: i === levelDef.crowdAt,
       isChand: i === levelDef.chandAt };
-    for (let ty = 0; ty < h; ty++) {
+    if (tpl.fac) layMechRoom(tpl, room, x, y, mechC);
+    else for (let ty = 0; ty < h; ty++) {
       for (let tx = 0; tx < w; tx++) {
         const c = tpl.rows[ty][tx];
         const wx = x + tx, wy = y + ty;
@@ -652,6 +660,8 @@ function tryGenerate(levelDef, seed, opts) {
     y += rng.int(jogR[0], jogR[1]) + Math.round((H * 0.55 - (y + h / 2)) * 0.2);
   }
 
+  // A machine room's vents are cut once the room beside each is laid (`carveFactoryVents`).
+  if (mechC.vents.length) carveFactoryVents(mechC.vents, tiles, W, props);
   // Exit: a 2-tall flight of stairs cut into the right wall of the last room, marked EXIT.
   const last = rooms[rooms.length - 1];
   const doorY = pickDoorY(last, 'right', rng, enterRow(last));
@@ -755,7 +765,8 @@ function tryGenerate(levelDef, seed, opts) {
     // a rest room is off the curve, and so is he.
     if (levelDef.gateKeeper && !shopGate) {
       const s = gates[gates.length - 1].soul;
-      spawns.push({ x: s.x, y: s.y, kind: 'bearer', roomIndex: g, keeper: true });
+      // (on a machine floor a sawbot keeps it: nobody of the cult works there)
+      spawns.push(Object.assign({ x: s.x, y: s.y, roomIndex: g, keeper: true }, levelDef.mech ? spawnKind('sawbot') : { kind: 'bearer' }));
     }
   }
 
@@ -855,7 +866,9 @@ function tryGenerate(levelDef, seed, opts) {
   // `gaps` is every tile of it: what the generator's and the rules' floods let the goat over (`reachable`,
   // `walkedFrom`), and what an animal hops (`Beast.hopGap`). `GEN_RULES.chasm`.
   const chasms = [], gaps = new Set();
-  if (!levelDef.shroom && !levelDef.dark) {
+  // a machine room's own drops (THE ISLAND's causeways) are the floor's chasms as they stand; no more are cut on a machine floor
+  for (const c of mechC.chasms) { chasms.push(c); rooms[c.room].chasm = c; for (const i of c.tiles) { gaps.add(i); grass.delete(i); } }
+  if (!levelDef.shroom && !levelDef.dark && !levelDef.mech) {
     const CH = TUNING.chasm, crng = new RNG((seed ^ 0xc4a5e) >>> 0), li = levelIndexOf(levelDef);
     const fits = (r) => chasmRoomFits(levelDef, r, rooms.length) && !sealedArenas.includes(r.index + 1)
       && !chasms.some((c) => Math.abs(c.room - r.index) < 2) && (!combo || combo.room !== r.index);
@@ -1106,7 +1119,7 @@ function tryGenerate(levelDef, seed, opts) {
     // clear of the way in; never where a room is teaching, resting or built narrow on purpose, never
     // in a cave or on the trip (no far wall to tie off to), never in THE DARK. Its own RNG stream.
     const CH = TUNING.chandelier, crng = new RNG(((seed ^ 0x0c4a9d3) + room.index * 6151) >>> 0);
-    if (!levelDef.cave && !levelDef.shroom && !levelDef.dark && room.index > 0 && chandeliers < CH.perLevel && !room.isAmbush && !room.isRest
+    if (!levelDef.cave && !levelDef.shroom && !levelDef.dark && !levelDef.mech && room.index > 0 && chandeliers < CH.perLevel && !room.isAmbush && !room.isRest
         && !room.isCalm && !room.isTrap && !room.isMill && !room.isGallery && !room.isKillbox && room.index !== lessonIndex && !room.isChand
         && activeIn(props, room) < TUNING.prop.clutter.max && crng.chance(CH.chance)) {
       // 2 Oct 2026 playtest: the cleat and the ring need not be one over the other. The cleat goes on
@@ -1151,7 +1164,7 @@ function tryGenerate(levelDef, seed, opts) {
     // Its own RNG stream, so no roll anywhere else moved when they came in. `GEN_RULES.armor` / `trophies`.
     const AR = TUNING.prop.armor, TR = TUNING.prop.trophy, drng = new RNG(((seed ^ 0x0a3d0f7) + room.index * 4099) >>> 0);
     const armory = room.tpl && room.tpl.name === 'armory';
-    if (!levelDef.cave && !levelDef.shroom && !levelDef.dark && room.index > 0 && !room.arena && !room.isAmbush && !room.isRest
+    if (!levelDef.cave && !levelDef.shroom && !levelDef.dark && !levelDef.mech && room.index > 0 && !room.arena && !room.isAmbush && !room.isRest
         && !room.isCalm && !room.isTrap && !room.isMill && !room.isHall && !room.isGallery && !room.isKillbox && room.index !== lessonIndex && !room.isChand
         && !props.some((p) => p.kind === 'chandelier' && inBox(room, p))) {
       // One roll a room for the dressing, then whichever of the two the floor has fewer of goes up first,
@@ -1189,7 +1202,7 @@ function tryGenerate(levelDef, seed, opts) {
     {
       const TB = TUNING.prop.trophy, cb = plan.rooms.get(room.index), brng = new RNG(((seed ^ 0x0b16f3a) + room.index * 6151) >>> 0);
       const big = !!cb && (room.arena ? room.arena.boss !== 'butcher' : (cb.men || []).includes('champion'));
-      if (big && !levelDef.cave && !levelDef.shroom && !levelDef.dark && room.index > 0 && !room.isAmbush && !room.isRest && !room.isCalm && !room.isTrap
+      if (big && !levelDef.cave && !levelDef.shroom && !levelDef.dark && !levelDef.mech && room.index > 0 && !room.isAmbush && !room.isRest && !room.isCalm && !room.isTrap
           && !room.isChand && room.index !== lessonIndex && !props.some((p) => (p.kind === 'trophy' || p.kind === 'armor' || p.kind === 'suit' || p.kind === 'chandelier') && inBox(room, p))
           && brng.chance(TB.big)) dressWall(tiles, W, room, props, grass, brng, 'trophy');
     }
@@ -1325,10 +1338,12 @@ function tryGenerate(levelDef, seed, opts) {
     rng.shuffle(spots);
     // A rifle likes a post and a mage likes his own mark; everyone else takes what is left.
     const take = (kind) => {
-      const wants = kind === 'hunter' ? 'rR' : kind === 'seer' ? 'mr' : 'e';
+      // a machine room's marks say which machine stands there (`layMechRoom`): a welder on its line, THE ARM bolted, ...
+      const wants = room.tpl.fac ? (MECH_MARK[kind] || 'e') : kind === 'hunter' ? 'rR' : kind === 'seer' ? 'mr' : 'e';
       let i = spots.findIndex((m) => wants.includes(m.c));
+      if (i < 0 && room.tpl.fac) i = spots.findIndex((m) => m.c === 'e');
       if (i < 0) i = spots.length ? 0 : -1;
-      if (i >= 0) { const m = spots.splice(i, 1)[0]; return { x: (m.tx + 0.5) * TILE, y: (m.ty + 0.5) * TILE }; }
+      if (i >= 0) { const m = spots.splice(i, 1)[0]; return { x: (m.tx + 0.5) * TILE, y: (m.ty + 0.5) * TILE, waxis: m.c === 'V' ? 'y' : m.c === 'W' ? 'x' : undefined }; }
       // Out of markers, which from level four on is most rooms: a late room buys nine men and its
       // template wrote four places to stand. This used to take the first floor tile the dice landed
       // on, so men came out stacked on one another, inside the furniture, and a fifth of them within
@@ -1358,7 +1373,7 @@ function tryGenerate(levelDef, seed, opts) {
     for (const kind of cell.men) {
       const at = take(kind); const i = slot++;
       if (!at) continue;
-      spawns.push(Object.assign({ x: at.x, y: at.y }, spawnKind(kind), { roomIndex: room.index, intro: cell.intro === kind,
+      spawns.push(Object.assign({ x: at.x, y: at.y }, spawnKind(kind), kind === 'welder' ? { waxis: at.waxis || (room.h > room.w ? 'y' : 'x') } : null, { roomIndex: room.index, intro: cell.intro === kind,
         // The first few men of a killbox are its rifles, and they are already watching the door.
         alert: cell.alert !== undefined && i < cell.alert }));
     }
@@ -2180,6 +2195,8 @@ function tryGenerate(levelDef, seed, opts) {
   // and the renderer then keeps it there (`c.fixed`) instead of sliding it at draw time. `GEN_RULES.wordsclear`.
   clearWordsRows(controls, rooms, tiles, W, grass, cleanProps, plan, wordOrders);
   // THE SACRIFICE ALTAR (9 Oct 2026, his ask; js/sacrifice.js): laid last, so nothing placed after it stands on it.
+  // a machine room's barrels are its template's: none left in a doorway he walks in by (`GEN_RULES.barrels`)
+  if (levelDef.mech) for (let k = cleanProps.length - 1; k >= 0; k--) { const p = cleanProps[k], r = p.kind === 'barrel' && rooms.find((q) => inBox(q, p)); if (r && r.enter && len(r.enter.x - p.x, r.enter.y - p.y) < 3 * TILE) cleanProps.splice(k, 1); }
   const sacrifice = LEVELS.indexOf(levelDef) === TUNING.sacrifice.at ? placeSacrifice(levelDef, rooms, tiles, W, grass, cleanProps, filtered, seed) : null;
   // THE COWARD's corners (js/coward.js), after the altar so its disc is already clear.
   const cowards = placeCowards(levelDef, rooms, tiles, W, grass, cleanProps, filtered, seed);
@@ -2193,6 +2210,8 @@ function tryGenerate(levelDef, seed, opts) {
     hints, controls, cagePrompt, vault, windows, plan, gates, sealedArenas, shop, combo, chasms, gaps, crowdMul, sacrifice, cowards,
     // Grass lying under a wall that went back up is not grass: only what is still on floor.
     grass: [...grass].filter((i) => tiles[i] === T.FLOOR), exitGate: null };
+  // a machine floor's traps, oil and the look each of its rooms wears (js/machines.js, js/factory-props.js, `PaintedArt.drawTiles`)
+  if (levelDef.mech) { level.machines = mechC.machines; level.oil = mechC.oil; level.zones = mechC.zones; level.zoneDefs = mechC.zoneDefs; }
   level.carpets = layCarpets(level);
   // THE EXIT GATE (1 Oct 2026: "a soul gate before the way out of every level"): the iron door in front
   // of the stairs is barred like a soul gate, and what lifts it is the soul the last boss carries
@@ -3442,7 +3461,7 @@ function carpetFits(tiles, W, grass, props, c, words) {
 }
 function layCarpets(level) {
   const C = TUNING.carpet, def = level.def, out = [];
-  if (def.cave || def.shroom) return out;
+  if (def.cave || def.shroom || (def.mods && def.mods.includes('snow'))) return out;   // no rugs out in the snow (js/snow.js)
   const tiles = level.tiles, W = level.W, grass = new Set(level.grass), rng = new RNG((level.seed ^ 0x0ca7e75) >>> 0), words = floorWords(level);
   for (const room of level.rooms) {
     if (out.length >= C.perLevel) break;

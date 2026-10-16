@@ -192,11 +192,11 @@ FUNNEL on THE BRIDGE (every room narrows somewhere, and seven men are one man in
 on THE RAFTERS, and THE NICHE on THE OSSUARY (a body cannot form inside stone, so the rooms are stone to
 put your back to with open floor between); THE LAMP is THE DARK's. The rest of a level's ordinary rooms
 are the mix: the plain rooms and the canons of every level before it, never an idea the run has not
-reached. On the floors crowded with set pieces (THE ROAD, THE BRIDGE) the canon takes every ordinary room
+reached. On the floors crowded with set pieces (THE ROAD) the canon takes every ordinary room
 there is and no mix is left. Within a pool a floor walks from its tightest rooms to its most open ones,
 so a level opens up as it goes. The dev drawer's RULES page shows the split for any level, room by room.
 
-**The killbox**, late on the five floors that have rifles. A wide room with almost nothing in it and two
+**The killbox**, late on the three floors that have rifles. A wide room with almost nothing in it and two
 rifles posted on the far side of it, watching the door you have to come in by. A posted man sees a good
 deal further than one wandering a room and he does not leave his post: he turns on the spot and fires
 whenever he has the shot. There is a shield on a stand beside the door, two of their own on your side of
@@ -210,12 +210,12 @@ the rest rooms):
 |---|---|---|---|---|
 | **THE ALTAR** | 12 | Stone | Bearers, butchers | A clubman with the soul in him, three hearts, two men |
 | **THE YARD** | 12 | Fire | Bearers, butchers, hounds, Seers | Butcher with one man (room 4, four hearts), elite Seer (sealed in), a mage by a brazier with a second mage (the last room) |
-| **THE CAVE** | 13 | The hollow | Bearers, butchers, hounds heavy, Seers | Butcher, ogre (the last room, the first of him) |
+| **THE CAVE** | 13 | The hollow | Bearers, butchers, hounds heavy, Seers, shieldmen new | Butcher, ogre (the last room, the first of him) |
 | *or* **THE DARK** | 12 | The lamp | Bearers, butchers, hounds and Seers heavy; never a rifle | Elite Seer, ogre, butcher |
-| **THE ROAD** | 14 | The line | All five, rifles new, the first drop across a room | Ogre; the butcher with four men and two mages (the last room) |
-| **THE THRESHING FLOOR** | 13 | Open ground | All five, the shaman new (in a room cut by drops) | Elite Seer, ogre, a rifleman, three hearts (the last room) |
-| **THE BRIDGE** | 15 | The funnel | All six, shieldmen new | Ogre, elite Seer, ogre |
-| **THE RAFTERS** | 15 | The drop | All seven, the thrower new | Elite Seer, ogre, butcher |
+| **THE ROAD** | 15 | The line | All six, rifles new, the shaman new (in a room cut by drops), the first drop across a room | Ogre; BANE, the thrower made a boss (the last room) |
+| **THE FOUNDRY** | 13 | Iron | The machines: sawbots, welders, THE ARM, each met alone | THE AUTOMATON in THE RING (the last room, the first of him) |
+| **THE ENGINE** | 12 | Iron | All the machines, sweepers and the shield generator new | A sawbot champion; THE AUTOMATON with machines at his back |
+| **THE RAFTERS** | 15 | The drop | All seven of the cult | Elite Seer, ogre, butcher |
 | **THE OSSUARY** | 15 | The niche | Wraiths, and a garrison | Ogre, elite wraith, elite Seer |
 
 **THE CAVE** is third: out under the compound the ground stops being built. No wall runs straight and
@@ -386,7 +386,7 @@ the player to believe that a goat reads.
 
 **A level gives up exactly two**, one in the middle and one at the end: the keeper of the middle gate
 carries the first, the last boss the second. On THE YARD, THE ROAD and THE BRIDGE the mouse stands in
-for the first, thirteen across a run, against twenty-nine boons (TURTLEIZE only once the tortoise's dare is won) and a build that holds seventeen, so no
+for the first, thirteen across a run, against 32 boons (TURTLEIZE only once the tortoise's dare is won) and a build that holds seventeen, so no
 run gets everything and no two runs are the same goat. Nothing else pays one: not a cleared room, not a
 lit boss on a lucky seed, not the vault. Every other boss leaves grass. **A man carrying one is lit**: an
 violet haze that breathes, a ring at his feet, and red eyes, so the one man in a room worth crossing the

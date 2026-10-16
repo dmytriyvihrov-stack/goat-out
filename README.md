@@ -88,8 +88,8 @@ and the death card carries a RUN CODE that rebuilds the floor you died on.
 
 **Eight floors, each built round one idea.** THE ALTAR (the wall is the weapon), THE YARD (coals and
 straw), THE CAVE (no wall runs straight; grass that hides you and them), THE ROAD (rifles and the cover
-between them), THE THRESHING FLOOR (almost no wall: herd them into the furniture), THE BRIDGE (seven men
-are one man in a doorway), THE RAFTERS (holes in the floor, windows in the walls) and THE OSSUARY (the dead
+between them, and BANE at the end of it), THE FOUNDRY and THE ENGINE (the cult's machine works: presses,
+belts and burners in every room, and machines walking them that do not bleed), THE RAFTERS (holes in the floor, windows in the walls) and THE OSSUARY (the dead
 come from behind). Each is a chain of hand-authored rooms dealt in a new order every run: the floor's own
 rooms first, then rooms from every idea the run has already taught you.
 
@@ -118,7 +118,7 @@ rifle, a shieldman, a thrower or a wraith holds that one enemy and nothing else 
 arena without company. After that they arrive mixed, and the mix gets worse as the floor goes on and
 worse again on the floor after.
 
-**Thirteen enemy types** (three of them THE FACTORY's machines, on a test floor only for now). Club-swinging Bearers; Butchers in bone aprons and bull-skull masks, too heavy
+**Seventeen enemy types** (seven of them THE FACTORY's machines, on THE FOUNDRY and THE ENGINE, the fifth and sixth floors). Club-swinging Bearers; Butchers in bone aprons and bull-skull masks, too heavy
 to carry, who hook you from across a room and drag you to the cleaver; Shieldmen behind a board of
 door planks that takes anything from in front, a headbutt, a crate, a blade, a round, and kills a man
 thrown into it like a wall, but who turn slowly and have a back; Throwers in goat-skull masks, one arm swollen
@@ -153,11 +153,11 @@ all four make you proof against it and your poison take a heart as it takes a ma
 the scream into a cone of fire, Bomb Charge detonates whoever you headbutt, Long Horns grows antlers,
 Firebrand leaves a line of fire behind anything you throw.
 
-**The mouse in the wall.** On THE YARD, THE ROAD and THE BRIDGE one gate is her room instead: a
+**The mouse in the wall.** On THE YARD, THE ROAD and THE ENGINE one gate is her room instead: a
 talisman, another talisman or three tufts of grass, and you take one. She takes nothing for it. Headbutting
 her stall is rude, and what comes out of the wall after the third time is not a mouse.
 
-**Talismans.** 18 of them, each COMMON, RARE or EPIC, up to three worn at once as charms on
+**Talismans.** 19 of them, each COMMON, RARE or EPIC, up to three worn at once as charms on
 a collar, each stated in plain words where it stands: a mirror shard that turns a blow back, a spade that
 leaves bodies lying to trip over and kick, a knucklebone that deals a soul's third card, a magnet that spins a sword
 or a crate round you to take a blow, a nosebag that keeps the grass you had no need of for later, and so on.

@@ -1692,26 +1692,41 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
   const UP = 4, TX = 1.35, baked = {}, S = PROP_PIXELS.sprites, rng = PROP_PIXELS.rng;
   // Always on since 1.74: the painted props they were drawn beside are gone (`#paintedprops` with them).
   PROP_PIXELS.on = true;
+  PROP_PIXELS.snowOn = false;   // THE SNOW: set round each prop drawn on snow (`Snow.propLook`)
   // The art pass's version of a sprite where it has one (`name@pass`), THE LIT PASS's (`name@lit`), the small-art pass's, else the sprite itself.
   const pick = name => {
     if (typeof ART_PASS === 'undefined') return name;
     if (ART_PASS.smallProps && S[name + '@small']) return name + '@small';
     return ART_PASS.on && S[name + '@pass'] ? name + '@pass' : ART_PASS.lit && S[name + '@lit'] ? name + '@lit' : name;
   };
+  // THE SNOW (js/snow.js): the sprites that take a cap of snow while `PROP_PIXELS.snowOn` is set for the prop being drawn,
+  // baked off the plain bake under `@snow` (the same frame: `Snow.capCanvas` paints inside the silhouette).
+  const SNOW_SPRITE = /^(v?barrel|rack-back|coop-|stall-|lantern-|stool|table-|altar|cage-post)/;
   const canvasOf = name => {
     name = pick(name);
     // ONE STYLE: the outline retinted at bake time, over whichever drawing was picked, under its own key
     const ink = typeof ART_PASS !== 'undefined' && ART_PASS.ink; if (ink) name += '@ink';
-    if (baked[name]) return baked[name];
-    const g = ink ? S[name.slice(0, -4)].ink(PROP_PIXELS.P.ol) : S[name], c = document.createElement('canvas'), x = c.getContext('2d');
-    c.width = g.w * UP; c.height = g.h * UP;
-    for (let j = 0; j < g.h; j++) for (let i = 0; i < g.w; i++) { const v = g.get(i, j); if (v) { x.fillStyle = v; x.fillRect(i * UP, j * UP, UP, UP); } }
-    return baked[name] = c;
+    const snow = PROP_PIXELS.snowOn && typeof Snow !== 'undefined' && SNOW_SPRITE.test(name), key = snow ? name + '@snow' : name;
+    if (baked[key]) return baked[key];
+    let c = baked[name];
+    if (!c) {
+      const g = ink ? S[name.slice(0, -4)].ink(PROP_PIXELS.P.ol) : S[name], x = (c = document.createElement('canvas')).getContext('2d');
+      c.width = g.w * UP; c.height = g.h * UP;
+      for (let j = 0; j < g.h; j++) for (let i = 0; i < g.w; i++) { const v = g.get(i, j); if (v) { x.fillStyle = v; x.fillRect(i * UP, j * UP, UP, UP); } }
+      baked[name] = c;
+    }
+    return snow ? (baked[key] = Snow.capCanvas(c, 0, 0, c.width, c.height, UP)) : c;
+  };
+  // A baked sprite into the box (X, Y, W, H). A snowed one (`@snow`) carries its heap above its own top (`padTop` px of the
+  // canvas), so the box grows up by that much and the sprite itself keeps its place.
+  const drawC = (ctx, c, X, Y, W, H) => {
+    const pt = c.padTop || 0; if (!pt) { ctx.drawImage(c, X, Y, W, H); return; }
+    const k = H / (c.height - pt); ctx.drawImage(c, X, Y - pt * k, W, H + pt * k);
   };
   // A sprite with its top-left at (x, y), `k` world px a texel.
   const put = (ctx, name, x, y, k = TX) => {
     const g = S[pick(name)], smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(canvasOf(name), x, y, g.w * k, g.h * k);
+    drawC(ctx, canvasOf(name), x, y, g.w * k, g.h * k);
     ctx.imageSmoothingEnabled = smooth;
   };
   // `put` with its box landed on whole screen pixels. The camera eases its zoom whenever he starts
@@ -1726,7 +1741,7 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     const X0 = Math.round(m.a * x + m.e), Y0 = Math.round(m.d * y + m.f);
     const X1 = Math.round(m.a * (x + g.w * k) + m.e), Y1 = Math.round(m.d * (y + g.h * k) + m.f);
     const smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(canvasOf(name), (X0 - m.e) / m.a, (Y0 - m.f) / m.d, (X1 - X0) / m.a, (Y1 - Y0) / m.d);
+    drawC(ctx, canvasOf(name), (X0 - m.e) / m.a, (Y0 - m.f) / m.d, (X1 - X0) / m.a, (Y1 - Y0) / m.d);
     ctx.imageSmoothingEnabled = smooth;
   };
   // A sprite with its top-left at (x, y), turned `q` quarter turns about its middle, whole turns only,
@@ -1760,7 +1775,7 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     let s = Math.min(W / g.w, H / g.h) * (o.k || 1), dw = g.w * s, dh = g.h * s;
     if (how === 'fill') { dw = W; dh = H; }
     const smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(canvasOf(name), X + (W - dw) / 2, how === 'bottom' ? Y + H - dh : Y + (H - dh) / 2, dw, dh);
+    drawC(ctx, canvasOf(name), X + (W - dw) / 2, how === 'bottom' ? Y + H - dh : Y + (H - dh) / 2, dw, dh);
     ctx.imageSmoothingEnabled = smooth;
     return true;
   };

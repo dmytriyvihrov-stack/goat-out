@@ -144,6 +144,7 @@ const CAPE_PIXELS = (() => {
     magnet: { rows: ['r.r', 'rrr'], r: '#c0392b' },
     tally: { rows: ['g.g', '.c.', '.n.', '.c.'], g: '#6f8a3a', c: '#c9d28a', n: '#7c8f52' },
     nosebag: { rows: ['g.g', 'bbb', 'bbb'], g: '#9fd84a', b: '#8a6238' },
+    hourglass: { rows: ['ggg', '.s.', 'ggg'], g: '#d8b46a', s: '#e8c27a' },
   };
   const cellSize = () => (typeof TUNING !== 'undefined' ? TUNING.goat.face.cell : 34 / 112 * 3);
   // One grid at cell (i0, j0) from the foot, cell size `C`, mirrored with `flip`, ringed in `edge`.

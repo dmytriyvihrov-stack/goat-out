@@ -18,6 +18,7 @@ const Status = {
   // Poison a man. Where it lands on something already wrong with him it reacts instead of stacking.
   poison(game, e, t) {
     if (e.dead || e.ghosted) return;
+    if (typeof ShieldGen !== 'undefined' && ShieldGen.holds(e)) { ShieldGen.refuse(game, e, false); return; }   // under a generator's dome (js/factory.js); poison is no blow, the dome stays
     // Iron (THE FACTORY's sawbot and automaton, js/factory.js): poison finds nothing in it to sicken.
     // The sawbot is soaked by it instead (`Sawbot.soak`): soaked and hot, it goes off.
     if (e.immunity && e.immunity.poison) { if (typeof Sawbot !== 'undefined') { if (e.sawbot || e.arm) Sawbot.soak(game, e); else Sawbot.shrug(game, e, 'poison'); } return; }
@@ -200,6 +201,7 @@ const Status = {
     if (lit !== null) Status.blast(game, (lit % w.W + 0.5) * TILE, (((lit / w.W) | 0) + 0.5) * TILE, TUNING.status.blast, null);
     Status.soak(game, dt);
     Status.updateGlobs(game, dt);
+    Status.updateWebs(game, dt);   // WEB SPIT's web (below)
     Status.updateCarried(game);
   },
 
@@ -337,12 +339,13 @@ const Status = {
 
   // VENOM SPIT: a glob along the pointer. It bursts on the first wall, man or solid thing it meets,
   // or where it runs out of range, and leaves three tiles by three of poison.
-  spit(game, g) {
-    const S = TUNING.status.spit;
+  // WEB SPIT (`web`, 15 Oct 2026) is the same glob in silk, bursting into web (`webSpatter`) instead of poison.
+  spit(game, g, web) {
+    const S = web ? TUNING.status.web : TUNING.status.spit;
     g.screamCd = game.mods.screamCooldown; g.screaming = 0.3;
     // BIG LUNGS: the glob flies further (`mods.screamReach`), at the same speed.
     game.globs.push({ x: g.x + g.aim.x * 14, y: g.y + g.aim.y * 14, vx: g.aim.x * S.speed, vy: g.aim.y * S.speed,
-      life: S.range * (game.mods.screamReach || 1) * TILE / S.speed });
+      life: S.range * (game.mods.screamReach || 1) * TILE / S.speed, web: !!web });
     game.audio.sfxSwing(); game.audio.sfxBleat(380, 0.14, 0.18); game.vibe(12);
     game.world.emitNoise(g.x, g.y, TUNING.noise.swing);
   },
@@ -363,11 +366,171 @@ const Status = {
         if (p.broken || !p.blocking) continue;
         if (hyp(p.x - nx, p.y - ny) < (p.r || 12) + 4) { burst = true; break; }
       }
-      if (burst) { b.dead = true; Status.spatter(game, b.x, b.y, TUNING.status.spit.tiles); continue; }
+      if (burst) { b.dead = true; if (b.web) Status.webSpatter(game, b.x, b.y, TUNING.status.web.tiles); else Status.spatter(game, b.x, b.y, TUNING.status.spit.tiles); continue; }
       b.x = nx; b.y = ny;
       if (Math.random() < 0.7) game.parts.push({ x: b.x, y: b.y, vx: (Math.random() - 0.5) * 30, vy: (Math.random() - 0.5) * 30,
-        life: 0.25, color: PALETTE.venom, size: 2 + Math.random() * 2 });
+        life: 0.25, color: b.web ? WEB_COL.strand : PALETTE.venom, size: 2 + Math.random() * 2 });
     }
     keepIf(game.globs, notDead);
   },
+  // ---- WEB SPIT's web (15 Oct 2026, `TUNING.status.web`) ----
+  // `game.webs`: tile index → seconds it still lies. Laid like the poison's spatter: its own tile and the rest of `n` off
+  // the eight round it, never stone or a drop.
+  webSpatter(game, x, y, n) {
+    const w = game.world, W = game.webs || (game.webs = new Map()), cx = Math.floor(x / TILE), cy = Math.floor(y / TILE), t = TUNING.status.web.time;
+    const ok = (tx, ty) => { const k = w.tileAt(tx, ty); return k !== T.WALL && k !== T.PIT; };
+    const ring = [];
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && ok(cx + dx, cy + dy)) ring.push([cx + dx, cy + dy]);
+    const mid = ok(cx, cy);
+    if (mid) W.set(w.idx(cx, cy), t);
+    for (let k = 0; k < n - (mid ? 1 : 0) && ring.length; k++) { const [tx, ty] = ring.splice((Math.random() * ring.length) | 0, 1)[0]; W.set(w.idx(tx, ty), t); }
+    game.particles(x, y, 12, WEB_COL.strand, 120);
+    w.emitNoise(x, y, TUNING.noise.splat);
+    game.audio.sfxSplat();
+  },
+  // A man the web may hold: flesh, on his feet, not one of the kinds too big or too unreal for it, not in the air.
+  webbable(e) {
+    const W = TUNING.status.web;
+    return !e.dead && !e.held && !e.ghosted && !e.statue && !e.aloft && !(e.webT > 0) && e.state !== 'flung' && e.state !== 'hop'
+      && W.immune.indexOf(e.kind) < 0 && !(typeof Arm !== 'undefined' && Arm.iron(e));
+  },
+  // Once a step (`Status.update`): the web ages, a burning tile burns away and lights the web beside it, a man stepping on
+  // web is caught and the tile is spent.
+  updateWebs(game, dt) {
+    const W = game.webs; if (!W || !W.size) return;
+    const w = game.world, B = TUNING.status.web;
+    for (const [i, t] of W) {
+      if (w.fire[i] > 0) {
+        W.delete(i);
+        const tx = i % w.W, ty = (i / w.W) | 0;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (W.has(w.idx(tx + dx, ty + dy))) w.ignite(tx + dx, ty + dy, true, B.burn, w.fireKind[i] === 1);
+        if (Math.random() < 0.5) game.particles((tx + 0.5) * TILE, (ty + 0.5) * TILE, 3, PALETTE.fireHi, 70);
+        continue;
+      }
+      if (t - dt <= 0) W.delete(i); else W.set(i, t - dt);
+    }
+    for (const e of game.liveEnemies || game.enemies) {
+      if (!Status.webbable(e)) continue;
+      const i = w.idx(Math.floor(e.x / TILE), Math.floor(e.y / TILE));
+      if (!W.has(i)) continue;
+      W.delete(i);
+      e.webT = B.hold * (e.unliftable ? B.bigMul : 1); e.webX = e.x; e.webY = e.y;
+      game.floatText(e.x, e.y - 28, 'STUCK', WEB_COL.strand);
+      game.audio.sfxSplat();
+    }
+  },
+  // A man held by the web (from the enemy loop, after his own step): wherever his step took him, he is put back. A blow that
+  // throws him, his being lifted or set alight tears him out.
+  webHold(e, dt, game) {
+    if (e.dead || e.held || e.state === 'flung' || e.burning > 0) { e.webT = 0; return; }
+    e.webT -= dt;
+    e.x = e.webX; e.y = e.webY; e.vx = 0; e.vy = 0;
+  },
+  // The web on the floor and round a held man's feet: one baked tile of strands a variant (`webTile`), cells on a 2 px grid.
+  webTile(v) {
+    const C = Status.webCache || (Status.webCache = []);
+    if (C[v]) return C[v];
+    const N = 16, px = TILE / N, cv = document.createElement('canvas'); cv.width = cv.height = TILE;
+    const c = cv.getContext('2d'), h = (a, b) => ((Math.imul(a * 73856093 ^ b * 19349663 ^ (v + 1) * 83492791, 2654435761) >>> 0) % 100) / 100;
+    const cell = (q, r, col) => { if (q < 0 || r < 0 || q >= N || r >= N) return; c.fillStyle = col; c.fillRect(q * px, r * px, px, px); };
+    const m = 7 + (v % 2);
+    for (let k = 0; k < N; k++) {
+      // spokes: the two diagonals and the cross, broken here and there
+      if (h(k, 1) > 0.18) cell(k, k, WEB_COL.strand);
+      if (h(k, 2) > 0.18) cell(k, N - 1 - k, WEB_COL.strand);
+      if (h(k, 3) > 0.3) cell(k, m, WEB_COL.faint);
+      if (h(k, 4) > 0.3) cell(m, k, WEB_COL.faint);
+    }
+    // two rings of the spiral
+    for (const R of [3, 6]) for (let a = 0; a < 40; a++) {
+      const an = a / 40 * Math.PI * 2; if (h(a, R) < 0.25) continue;
+      cell(Math.round(m + Math.cos(an) * R), Math.round(m + Math.sin(an) * R), R === 3 ? WEB_COL.strand : WEB_COL.faint);
+    }
+    cell(m, m, WEB_COL.knot);
+    return (C[v] = cv);
+  },
+  drawWebs(R, game) {
+    const W = game.webs, ctx = R.ctx, w = game.world;
+    if (W && W.size) for (const [i, t] of W) {
+      const tx = i % w.W, ty = (i / w.W) | 0, x = tx * TILE, y = ty * TILE;
+      if (game.hidden(x + TILE / 2, y + TILE / 2)) continue;
+      // fades in its last two seconds, blinking at the very end
+      ctx.globalAlpha = t > 2 ? 0.85 : t > 0.6 ? 0.85 * t / 2 : (Math.floor(R.t * 10) % 2 ? 0.3 : 0.1);
+      ctx.drawImage(Status.webTile((tx * 7 + ty * 13) & 3), x, y);
+    }
+    for (const e of game.enemies) {
+      if (!(e.webT > 0) || e.dead || game.hidden(e.x, e.y)) continue;
+      ctx.globalAlpha = 0.9; ctx.drawImage(Status.webTile(3), Math.round(e.x - TILE / 2), Math.round(e.y - TILE / 2));
+    }
+    ctx.globalAlpha = 1;
+  },
 };
+const WEB_COL = { strand: '#ece6d6', faint: 'rgba(236,230,214,0.55)', knot: '#ffffff' };
+
+// TELEKINESIS (15 Oct 2026, his ask; the `kinesis` soul, `BOONS`): the grab held with nothing in reach to take charges
+// `holdFor` s, and at the full charge every loose thing within `r` tiles flies at the nearest man it can see, the men
+// shared out among the things. Stepped from `Goat.update`'s grab block, after `tryGrab` (a thing at his teeth is just taken).
+const Kinesis = {
+  things(game, g, K) {
+    const R = K.r * TILE, out = [];
+    for (const p of game.props) {
+      if (p.broken || p.held || p.flung || p.heaven) continue;
+      if (!((p.kind === 'crate' && !p.noGrab) || p.kind === 'bomb' || p.kind === 'weapon')) continue;
+      if (hyp(p.x - g.x, p.y - g.y) > R || !game.sees(g.x, g.y, p.x, p.y)) continue;
+      out.push(p);
+    }
+    return out;
+  },
+  step(game, g, inp, dt) {
+    const K = game.mods.kinesis;
+    if (!K || !inp.rmbDown || g.holding || g.state !== 'idle' || g.grabCd > 0 || g.dead) { g.kinT = 0; return; }
+    const things = Kinesis.things(game, g, K);
+    if (!things.length) { g.kinT = 0; return; }
+    if (!(g.kinT > 0)) game.audio.sfxCageHit();
+    g.kinT = (g.kinT || 0) + dt;
+    if (Math.random() < 0.3) { const p = things[(Math.random() * things.length) | 0]; game.particles(p.x, p.y, 1, WEB_COL.knot, 40); }
+    if (g.kinT < K.holdFor) return;
+    g.kinT = 0;
+    Kinesis.launch(game, g, K, things);
+  },
+  launch(game, g, K, things) {
+    const count = new Map(), reach = K.reach * TILE, G = TUNING.goat.grab;
+    let sent = 0;
+    for (const p of things) {
+      let best = null, bestS = Infinity;
+      for (const e of game.liveEnemies || game.enemies) {
+        if (e.dead || e.held || e.ghosted || e.statue || e.scripted || game.hidden(e.x, e.y)) continue;
+        const d = hyp(e.x - p.x, e.y - p.y);
+        if (d > reach || !game.sees(p.x, p.y, e.x, e.y)) continue;
+        const s = d * (1 + 0.7 * (count.get(e) || 0));
+        if (s < bestS) { bestS = s; best = e; }
+      }
+      if (!best) continue;
+      count.set(best, (count.get(best) || 0) + 1);
+      const dx = best.x - p.x, dy = best.y - p.y, d = hyp(dx, dy) || 1;
+      const mul = (p.kind === 'weapon' ? TUNING.prop.weapon.throwMul : 1) * game.mods.throwFar * K.speedMul;
+      p.inStand = false;
+      p.fling(dx / d * G.throwImpulse * mul, dy / d * G.throwImpulse * mul, true);
+      game.particles(p.x, p.y, 6, WEB_COL.knot, 110);
+      sent++;
+    }
+    if (!sent) return;
+    g.grabCd = g.grabCdMax = K.cooldown;
+    game.ring(g.x, g.y, K.r * TILE, WEB_COL.strand, 0.35, 3);
+    game.audio.sfxSwing(); game.audio.sfxSteel(); game.vibe(18);
+    game.world.emitNoise(g.x, g.y, TUNING.noise.swing);
+  },
+  // The charge on the floor: a ring of cells round each thing that will fly, closing in as the charge fills, and the
+  // reach round him dotted.
+  draw(R, game) {
+    const g = game.goat, K = game.mods && game.mods.kinesis;
+    if (!K || !g || !(g.kinT > 0) || g.dead) return;
+    const ctx = R.ctx, px = 2, k = clamp(g.kinT / K.holdFor, 0, 1), things = Kinesis.things(game, g, K);
+    ctx.fillStyle = WEB_COL.strand; ctx.globalAlpha = 0.35 + 0.5 * k; ctx.beginPath();
+    for (const p of things) { const r = (p.r || 10) + 4 + (1 - k) * 14; R.floorRing(p.x, p.y, r, r - px, px); }
+    ctx.fill();
+    ctx.globalAlpha = 0.25; ctx.beginPath(); const rr = K.r * TILE; R.floorRing(g.x, g.y, rr, rr - px, px); ctx.fill();
+    ctx.globalAlpha = 1;
+  },
+};
+

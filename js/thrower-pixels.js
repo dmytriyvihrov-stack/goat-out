@@ -309,7 +309,7 @@ if (typeof document !== 'undefined') {
   // What his state shows (js/thrower.js): over his head through the lift, the carry, the aim and the goat
   // held; the fist back in a windup, out in the blow and the grab; the follow-through just after a throw.
   THROWER_PIXELS.poseOf = (e) => {
-    if (e.twFollow > 0) return 'throw';
+    if (e.twFollow > 0 || e.state === 'twpant') return 'throw';   // the breather: bent over the fist he threw with
     if (e.state === 'twlift' || e.state === 'twcarry' || e.state === 'twaim' || e.state === 'twhold') return 'up';
     if (e.state === 'windup') return 'punchwind';
     if (e.state === 'swing' || e.state === 'twgrab') return 'punch';
