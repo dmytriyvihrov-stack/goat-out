@@ -1684,14 +1684,12 @@ if (typeof module !== 'undefined') module.exports = PROP_PIXELS;
 
 // In the page: every sprite is baked once to a canvas at `UP` texels a side and handed to PaintedArt
 // in place of the painted image it asked for, inside the exact rect the painted one filled, its
-// footprint, anchor and collision are untouched, and the painted art stays the fallback. The props
+// footprint, anchor and collision are untouched. The props
 // that never had a painted image (coop, burrow, stool, bomb, pail, the small sprout, the roast) are
 // drawn here outright at `TX` world px a texel, the grain of the crate and barrel beside them.
-// There is nothing painted to fall back to any more (1.74): `PROP_PIXELS.on` is always true.
+// There is nothing painted to fall back to any more (1.74): a key with no sprite here draws nothing.
 if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() => {
   const UP = 4, TX = 1.35, baked = {}, S = PROP_PIXELS.sprites, rng = PROP_PIXELS.rng;
-  // Always on since 1.74: the painted props they were drawn beside are gone (`#paintedprops` with them).
-  PROP_PIXELS.on = true;
   PROP_PIXELS.snowOn = false;   // THE SNOW: set round each prop drawn on snow (`Snow.propLook`)
   // The art pass's version of a sprite where it has one (`name@pass`), THE LIT PASS's (`name@lit`), the small-art pass's, else the sprite itself.
   const pick = name => {
@@ -1780,29 +1778,26 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     return true;
   };
 
-  const A = PaintedArt.prototype, stamp = A.stamp, atlas = A.atlas, fire = A.fire, millArm = A.millArm, brokenDoor = A.brokenDoor, drawProp = A.drawProp;
-  // Asked by render.js wherever a primitive draw sits inline with no painted image to swap.
-  Object.defineProperty(A, 'pixelProps', { get: () => PROP_PIXELS.on });
+  const A = PaintedArt.prototype, drawProp = A.drawProp;
   A.stamp = function (ctx, key, x, y, w, h, anchor = 0.5) {
-    const name = PROP_PIXELS.on && STAMP[key], sz = PAINTED_SIZE[key];
-    if (!name) return stamp.call(this, ctx, key, x, y, w, h, anchor);
+    const name = STAMP[key], sz = PAINTED_SIZE[key];
+    if (!name) return;
     if (h === undefined) h = sz ? w * sz[1] / sz[0] : w * S[name].h / S[name].w;
     fit(ctx, name, x - w / 2, y - h * anchor, w, h);
   };
   A.atlas = function (ctx, name, x, y, w, h, anchor = 0.5) {
-    const box = PROP_PIXELS.on && CELL[name];
-    if (!box) return atlas.call(this, ctx, name, x, y, w, h, anchor);
+    const box = CELL[name];
+    if (!box) return false;
     if (h === undefined) h = w;
     return fit(ctx, name, x - w / 2 + box[0] * w / 128, y - h * anchor + box[1] * h / 128, box[2] * w / 128, box[3] * h / 128);
   };
   A.fire = function (renderer, key, x, y, w, anchor = 0.875) {
-    if (!PROP_PIXELS.on || key !== 'lanternFire') return fire.call(this, renderer, key, x, y, w, anchor);
+    if (key !== 'lanternFire') return false;
     return fit(renderer.ctx, 'lantern-' + (Math.floor(renderer.t * 10) % 8), x - w / 2 + 45 * w / 128, y - w * anchor + 12 * w / 128, 39 * w / 128, 104 * w / 128);
   };
   // Centred on the arm's own line and as tall as its iron head; the beam in the middle of the sprite
   // is the width that hits (`mill.armHalfWidth`), the head past it is the cap the old draw added.
   A.millArm = function (ctx, x, len) {
-    if (!PROP_PIXELS.on) return millArm.call(this, ctx, x, len);
     const h = TUNING.mill.armHalfWidth * TILE * 2 * 17 / 9;
     return fit(ctx, 'mill-arm', x, -h / 2, len, h);
   };
@@ -1814,13 +1809,10 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     return true;
   };
   A.brokenDoor = function (game, p) {
-    if (!PROP_PIXELS.on) return brokenDoor.call(this, game, p);
     const name = 'broken-' + (p.gate ? 'soul' : p.vault && !p.vaultEmpty ? 'vault' : p.iron ? 'iron' : 'wood'), ctx = game.world.dctx;
     ctx.save(); ctx.translate(p.x, p.y); if (!p.vertical) ctx.rotate(Math.PI / 2);
     ctx.globalAlpha = 0.85; fit(ctx, name, -12, -29, 24, 58); ctx.restore();
   };
-  // The pail as an offer on her shelf (render.js `drawMilkOffer`): `r` wide each side, standing on `y`.
-  A.pail = function (ctx, x, y, r) { const g = S.pail, k = r * 2 / (g.w - 2); put(ctx, 'pail', x - g.w * k / 2, y - g.h * k, k); return true; };
   // The ware's stool, under the talisman (render.js `drawWare` asks).
   // THE LAST SUPPER's platter over THE WARDEN's head on his way out (js/endboss.js `drawWorld`).
   A.platter = function (ctx, x, y) { const g = S.platter, k = 1.2 * TUNING.endBoss.supper.platter; put(ctx, 'platter', x - g.w * k / 2, y - g.h * k, k); return true; };
@@ -1978,7 +1970,6 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
   const STAND_GLOW = [[0, 'rgba(239,230,208,1)'], [1, 'rgba(239,230,208,0)']];
   const SPROUT_GLOW = [[0, 'rgba(168,189,108,0.22)'], [1, 'rgba(168,189,108,0)']];
   A.drawProp = function (renderer, p) {
-    if (!PROP_PIXELS.on) return drawProp.call(this, renderer, p);
     const ctx = renderer.ctx;
     // The stand of arms, with what it holds standing IN it: the uprights and base behind, the arm,
     // then the front of the base over its foot.
@@ -1998,7 +1989,7 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     // The bomb: the shell as drawn, and a fuse of cells as long as the time it has left, sparking
     // faster and further the closer it is to going.
     if (p.kind === 'bomb') {
-      const armed = p.fuseT >= 0, pct = armed ? clamp(p.fuseT / TUNING.prop.bomb.fuse, 0, 1) : 1, g = S.bomb, k = p.r * 2 / 12;
+      const armed = p.fuseT >= 0, pct = armed ? clamp(p.fuseT / TUNING.prop.bomb.fuse, 0, 1) : 1, k = p.r * 2 / 12;
       renderer.shadow(p.x, p.y, p.r * 0.9, p.r * 0.4);
       ctx.save(); ctx.translate(p.x, p.y - (p.held ? 6 : 0));
       if (p.flung) ctx.rotate(Math.atan2(p.vy, p.vx) * 0.3);
@@ -2169,11 +2160,9 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     return drawProp.call(this, renderer, p);
   };
 
-  const R = Renderer.prototype, drawPail = R.drawPail, drawBurrow = R.drawBurrow, drawRoast = R.drawRoast,
-    drawSpire = R.drawSpire, drawStairs = R.drawStairs;
+  const R = Renderer.prototype;
   // The cave's teeth, with their point catching the light now and then (`cave.spikes.glint`).
   R.drawSpire = function (p) {
-    if (!PROP_PIXELS.on) return drawSpire.call(this, p);
     const g = S.spire, k = p.r * 2.4 / g.w, x0 = p.x - g.w * k / 2, y0 = p.y + 5 - g.h * k;
     this.shadow(p.x, p.y + 2, p.r * 0.95, p.r * 0.42);
     put(this.ctx, 'spire', x0, y0, k);
@@ -2223,7 +2212,6 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     return baked[key] = c;
   };
   R.drawStairs = function (px, py, k, up, def, cold) {
-    if (!PROP_PIXELS.on) return drawStairs.call(this, px, py, k, up, def, cold);
     const ctx = this.ctx, smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
     ctx.drawImage(stairTile(def, k, up, !!cold, (py / TILE | 0) % 3), px, py, TILE, TILE);
     ctx.imageSmoothingEnabled = smooth;
@@ -2231,7 +2219,6 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
   };
   // The mouse's pail as tall as the goat, a pip on its hoop for every heart still in it.
   R.drawPail = function (p) {
-    if (!PROP_PIXELS.on) return drawPail.call(this, p);
     const ctx = this.ctx, g = S.pail, R = p.r * 1.7, k = R * 2 / (g.w - 2), y0 = p.y + 4;
     this.shadow(p.x, p.y + 4, R * 1.05, R * 0.45);
     put(ctx, 'pail', p.x - g.w * k / 2, y0 - g.h * k, k);
@@ -2244,14 +2231,12 @@ if (typeof document !== 'undefined' && typeof PaintedArt !== 'undefined') (() =>
     }
   };
   R.drawBurrow = function (p) {
-    if (!PROP_PIXELS.on) return drawBurrow.call(this, p);
     const g = S.burrow;
     put(this.ctx, 'burrow', p.gap.x - g.w * TX / 2, p.gap.y - g.h * TX / 2);
   };
   // The roast: stones behind, the fire (the game's own pixel flames), stones in front, the forked
   // sticks, and the crocodile on the spit, which turns, seen side on, the turn squashes him.
   R.drawRoast = function (p) {
-    if (!PROP_PIXELS.on) return drawRoast.call(this, p);
     const ctx = this.ctx, t = this.t, B = TUNING.prop.brazier;
     const heat = p.spillCd > 0 ? 0.35 + 0.65 * (1 - p.spillCd / B.spillCd) : 1;
     ctx.save(); ctx.translate(p.x, p.y + 6);

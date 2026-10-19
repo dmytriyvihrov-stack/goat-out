@@ -143,7 +143,6 @@ function keyFaceSet(code, v) {
   v = v.toUpperCase();
   if (KEY_FACE[code] === v) return;
   KEY_FACE[code] = v;
-  const F = KEY_FACE;
   bindLay();
   kbLay();
 }
@@ -1637,33 +1636,8 @@ class Renderer {
     shape(); ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 1.4; ctx.stroke();
   }
 
-  // One tile of a flight of stairs, three tiles long. `k` is the tile's place in the flight, left to
-  // right. The way out climbs to the right into light; the way in comes up from the dark on the left.
   // Whether tile row `ty` is THE FORK's dark flight.
   static forkRow(L, ty) { const f = L && L.forkTile; return !!f && ty >= f.y0 && ty <= f.y0 + 1; }
-  // `cold` is THE FORK's second flight (`level.forkTile`): the same steps, going up into black
-  // instead of into the light, with a cold edge on each tread and nothing warm at the top.
-  drawStairs(px, py, k, up, def, cold) {
-    const ctx = this.ctx, steps = 4, sw = TILE / steps;
-    ctx.fillStyle = def.wall; ctx.fillRect(px, py, TILE, TILE);
-    for (let i = 0; i < steps; i++) {
-      const n = k * steps + i, f = n / (3 * steps - 1), x = px + i * sw;
-      if (up && cold) {
-        ctx.fillStyle = def.wallTop; ctx.fillRect(x, py, sw, TILE);
-        ctx.fillStyle = `rgba(5,4,10,${0.3 + 0.68 * f})`; ctx.fillRect(x, py, sw, TILE);
-        ctx.fillStyle = `rgba(150,158,210,${0.26 * (1 - f)})`; ctx.fillRect(x + 2, py, 1, TILE);
-      } else if (up) {
-        ctx.fillStyle = def.wallTop; ctx.fillRect(x, py, sw, TILE);
-        ctx.fillStyle = `rgba(239,230,208,${0.1 + 0.68 * f * f})`; ctx.fillRect(x, py, sw, TILE);
-      } else {
-        ctx.fillStyle = `rgba(239,230,208,${0.04 + 0.34 * f})`; ctx.fillRect(x, py, sw, TILE);
-        ctx.fillStyle = `rgba(6,4,6,${0.85 * (1 - f) * (1 - f)})`; ctx.fillRect(x, py, sw, TILE);
-      }
-      // the riser: each step throws a shadow down onto the one below it
-      ctx.fillStyle = up ? 'rgba(0,0,0,0.42)' : 'rgba(0,0,0,0.5)'; ctx.fillRect(x, py, 2, TILE);
-    }
-    if (up && k === 2 && !cold && !this.baking) this.stairGlow(px, py);
-  }
   // The light at the top of the way out, breathing. Baked rooms lay it on live (`drawRoomsBaked`).
   stairGlow(px, py) {
     const pulse = 0.55 + 0.25 * Math.sin(this.t * 3.4);
@@ -2163,7 +2137,7 @@ class Renderer {
       b.a = clamp(b.a + (keep ? dt / B.show : -dt / B.hide), 0, 1);
       if (b.a <= 0 && !keep) bars.delete(e); else rows.push(b);
     }
-    if (!rows.length) { this.bossBarBottom = undefined; return; }
+    if (!rows.length) return;
     const lead = (b) => (b.e.endBoss !== undefined || b.e.warden || b.e.flayed ? 0 : 1);
     rows.sort((p, q) => lead(p) - lead(q) || (q.e.maxHp | 0) - (p.e.maxHp | 0) || p.since - q.since);
     const ctx = this.ctx, s = this.hs, cs = this.s, K = BOSS_HINTS, O = TUNING.boss.outline;
@@ -2212,7 +2186,6 @@ class Renderer {
       y += plateH + 4 * s;
     }
     ctx.restore(); ctx.textAlign = 'left';
-    this.bossBarBottom = y;
   }
 
   // The iron pair (`keys.iron.pair`, 5 Oct 2026, "it must read, grass or animal"): while both stand shut, the
@@ -2592,7 +2565,7 @@ class Renderer {
     };
     let pale, hard;
     if (HN.rows) {
-      const off = HN.rowGap * TILE, w = HN.rowW * TILE, tipAt = R * HN.tip, s0 = g.r * 0.8;
+      const w = HN.rowW * TILE, tipAt = R * HN.tip, s0 = g.r * 0.8;
       const inRows = (u, v) => { const s = u * ax + v * ay; return s >= s0 && !!Goat.hornHit(HN, u, v, ax, ay, front, w - HN.rowW * TILE); };
       pale = (u, v) => inRows(u, v) && u * ax + v * ay < tipAt;
       hard = (u, v) => inRows(u, v) && u * ax + v * ay >= tipAt;
@@ -2774,141 +2747,6 @@ class Renderer {
     if (flat) { ctx.save(); ctx.translate(x, y); ctx.scale(1, 1 / TILT); ctx.drawImage(cv, -nx * C, -ny * C, nx * 2 * C, ny * 2 * C); ctx.restore(); }
     else ctx.drawImage(cv, x - nx * C, y - ny * C, nx * 2 * C, ny * 2 * C);
     ctx.imageSmoothingEnabled = smooth;
-  }
-
-  // The roast: a campfire in a ring of stones, two forked sticks, and a crocodile turning on the
-  // spit between them. The fire keeps its stitched hatching; the animal is drawn plain and dark,
-  // as the real thing, charred. It turns: the spit's rotation is a vertical scale through zero, so
-  // half the time he is belly up with his legs in the air.
-  drawRoast(p) {
-    const ctx = this.ctx, t = this.t, B = TUNING.prop.brazier;
-    const heat = p.spillCd > 0 ? 0.35 + 0.65 * (1 - p.spillCd / B.spillCd) : 1;
-    const hatch = (path, color, angle, gap = 2.2) => {
-      ctx.save(); path(); ctx.clip();
-      ctx.strokeStyle = color; ctx.lineWidth = 0.7; ctx.globalAlpha *= 0.55;
-      const c = Math.cos(angle), s = Math.sin(angle);
-      ctx.beginPath();
-      for (let k = -60; k <= 60; k += gap) { ctx.moveTo(-c * 60 - s * k, -s * 60 + c * k); ctx.lineTo(c * 60 - s * k, s * 60 + c * k); }
-      ctx.stroke(); ctx.restore();
-    };
-    ctx.save(); ctx.translate(p.x, p.y + 6);
-    this.shadow(0, 4, 38, 10);
-    // the ring of stones, back half first so the flames stand inside it
-    const stone = (a, front) => {
-      const x = Math.cos(a) * 15, y = Math.sin(a) * 6 + 2;
-      if ((y > 2) !== front) return;
-      ctx.fillStyle = '#6b3f22'; ctx.beginPath(); ctx.ellipse(x, y, 4.2, 3, a * 0.3, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#8c5a30'; ctx.beginPath(); ctx.ellipse(x - 0.8, y - 0.8, 2.4, 1.5, a * 0.3, 0, Math.PI * 2); ctx.fill();
-    };
-    for (let k = 0; k < 9; k++) stone(k / 9 * Math.PI * 2, false);
-    // the fire: tongues red at the tips and yellow at the root, each with its own flicker
-    const tongue = (x, h, w, col, ph) => {
-      const hh = h * heat * (0.85 + 0.15 * Math.sin(t * 13 + ph));
-      const lean = Math.sin(t * 7 + ph) * 2.5;
-      const path = () => { ctx.beginPath(); ctx.moveTo(x - w, 2); ctx.quadraticCurveTo(x - w * 0.9, -hh * 0.5, x + lean, -hh);
-        ctx.quadraticCurveTo(x + w * 0.9, -hh * 0.5, x + w, 2); ctx.closePath(); };
-      ctx.fillStyle = col; path(); ctx.fill();
-      hatch(path, '#fff2b0', -1.35, 2);
-    };
-    tongue(-6, 16, 6, '#c8321a', 0); tongue(6, 15, 6, '#c8321a', 2); tongue(0, 22, 8, '#e8661e', 1);
-    tongue(-2, 15, 6, PALETTE.fire, 3); tongue(2, 10, 4.5, PALETTE.fireHi, 4);
-    for (let k = 0; k < 4; k++) {           // flecks lifting off it
-      const ph = (t * 0.9 + k * 0.27 + p.phase) % 1;
-      ctx.globalAlpha = (1 - ph) * heat; ctx.fillStyle = k % 2 ? '#c8321a' : PALETTE.fire;
-      ctx.fillRect(Math.sin(k * 3.1 + t * 2) * 12, -8 - ph * 26, 1.8, 2.8);
-    }
-    ctx.globalAlpha = 1;
-    for (let k = 0; k < 9; k++) stone(k / 9 * Math.PI * 2, true);
-    // the two forked sticks, a stitched brown with a lighter thread down one side
-    const stick = (x, dir) => {
-      ctx.lineCap = 'round';
-      ctx.strokeStyle = '#4a2a16'; ctx.lineWidth = 4.6;
-      ctx.beginPath(); ctx.moveTo(x + dir * 3, 10); ctx.lineTo(x, -30); ctx.moveTo(x, -26); ctx.lineTo(x - dir * 5, -35);
-      ctx.moveTo(x + dir * 1.5, -16); ctx.lineTo(x + dir * 4, -21); ctx.stroke();
-      ctx.strokeStyle = '#7a4a28'; ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.moveTo(x + dir * 3 - 1, 8); ctx.lineTo(x - 1, -29); ctx.stroke();
-    };
-    stick(-45, -1);
-    // the spit: pale cord, run through him and resting in both forks
-    const turn = Math.cos(t * B.roastTurn + p.phase);
-    ctx.strokeStyle = '#d9c078'; ctx.lineWidth = 3; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(-50, -29); ctx.lineTo(50, -29); ctx.stroke();
-    ctx.strokeStyle = '#f2dea0'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(-50, -30); ctx.lineTo(50, -30); ctx.stroke();
-    // the crocodile, facing right; `turn` is the spit's rotation seen side-on. Drawn as the animal
-    // rather than as a logo: a long flat snout, a straight tapering tail with the double crest on it,
-    // rows of armour down the back, legs hanging limp, and the hide dark and charred where the fire
-    // has had it. It was a bright green cartoon with a white border, which read as a shirt badge.
-    ctx.save(); ctx.translate(0, -29); ctx.scale(1, turn >= 0 ? Math.max(0.18, turn) : Math.min(-0.18, turn));
-    const body = () => {
-      ctx.beginPath();
-      ctx.moveTo(-48, -0.5);                                                 // the tip of the tail
-      ctx.quadraticCurveTo(-32, -3.5, -17, -6);                              // top of the tail
-      ctx.quadraticCurveTo(-4, -9, 9, -7.2);                                 // the back
-      ctx.quadraticCurveTo(15, -6.6, 18.5, -6.2);                            // the neck
-      ctx.quadraticCurveTo(22, -8.6, 25.5, -6.6);                            // the brow over the eye
-      ctx.lineTo(41, -3.4); ctx.quadraticCurveTo(44.5, -2.6, 44, -0.6);      // long flat snout, blunt tip
-      ctx.lineTo(27, 1.8);                                                   // under the lower jaw
-      ctx.quadraticCurveTo(20, 3.6, 14, 4.2);                                // the throat
-      ctx.quadraticCurveTo(-2, 8.5, -17, 4.2);                               // the belly, sagging
-      ctx.quadraticCurveTo(-32, 2, -48, 0.8);                                // under the tail
-      ctx.closePath();
-    };
-    // legs first, so the body sits over their tops: short, bent at the joint, hanging limp
-    const leg = (lx, ly, back) => {
-      const kx = lx + (back ? -3 : 2.5), ky = ly + 4.5, fx = kx + (back ? 1 : 3), fy = ky + 3.5;
-      ctx.strokeStyle = '#262617'; ctx.lineWidth = back ? 4.2 : 3.6; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-      ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(kx, ky); ctx.lineTo(fx, fy); ctx.stroke();
-      ctx.strokeStyle = '#1a1a10'; ctx.lineWidth = 0.9;
-      ctx.beginPath(); for (const k of [-1.3, 0, 1.3]) { ctx.moveTo(fx, fy); ctx.lineTo(fx + 1.8, fy + 1.4 + k); } ctx.stroke();
-    };
-    leg(-14, 4, true); leg(-8, 5.5, true); leg(9, 5, false); leg(14, 4, false);
-    // the hide: dark olive on the back fading to a dull cream belly, then the fire's own browning
-    const hide = ctx.createLinearGradient(0, -9, 0, 7);
-    hide.addColorStop(0, '#2c2f1c'); hide.addColorStop(0.45, '#4a4a2c'); hide.addColorStop(0.8, '#7d7048'); hide.addColorStop(1, '#8d7a4c');
-    ctx.fillStyle = hide; body(); ctx.fill();
-    ctx.save(); body(); ctx.clip();
-    // the armour: offset rows of small plates over the back and tail, belly scales as a grid below
-    ctx.fillStyle = 'rgba(12,12,6,0.55)';
-    for (let row = 0; row < 3; row++) {
-      for (let x = -46 + (row % 2) * 1.6; x < 17; x += 3.2) {
-        const top = x < -17 ? -3.5 + (x + 48) / 31 * -2.5 : -6 - Math.sin((x + 17) / 34 * Math.PI) * 2.6;
-        ctx.fillRect(x, top + 0.4 + row * 2.1, 2.2, 1.4);
-      }
-    }
-    ctx.strokeStyle = 'rgba(40,32,16,0.45)'; ctx.lineWidth = 0.5; ctx.beginPath();
-    for (let x = -30; x < 16; x += 2.4) { ctx.moveTo(x, 1); ctx.lineTo(x, 9); }
-    for (let y = 1.8; y < 9; y += 1.8) { ctx.moveTo(-30, y); ctx.lineTo(16, y); }
-    ctx.stroke();
-    // char: blackened patches where the flames reach, and a fat sheen on the belly while it is lit
-    ctx.fillStyle = 'rgba(10,6,4,0.6)';
-    for (const [cx, cy, rx, ry] of [[-6, 5, 9, 3.2], [8, 4, 5, 2.4], [-24, 2.6, 6, 2], [-38, 1, 4, 1.4], [32, 0.5, 5, 1.6]]) {
-      ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
-    }
-    ctx.globalAlpha = 0.35 * heat; ctx.fillStyle = '#d0741e';
-    ctx.beginPath(); ctx.ellipse(-4, 7, 20, 2.4, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.restore();
-    // the double crest along the tail, and the dark outline round the whole animal
-    ctx.fillStyle = '#1d1e12';
-    for (let x = -44; x < -18; x += 3) {
-      const y = -1.2 + (x + 48) / 31 * -4.6;
-      ctx.beginPath(); ctx.moveTo(x - 1.3, y + 0.8); ctx.lineTo(x, y - 1.6); ctx.lineTo(x + 1.3, y + 0.8); ctx.fill();
-    }
-    ctx.strokeStyle = '#141409'; ctx.lineWidth = 0.9; ctx.lineJoin = 'round'; body(); ctx.stroke();
-    // the jaw line, closed, with a few teeth showing the way a crocodile's always do
-    ctx.strokeStyle = '#151208'; ctx.lineWidth = 0.8;
-    ctx.beginPath(); ctx.moveTo(24.5, -1.2); ctx.quadraticCurveTo(33, -0.4, 43.5, -1.4); ctx.stroke();
-    ctx.fillStyle = '#cfc4a0';
-    for (const x of [30, 33.5, 37, 40]) { ctx.beginPath(); ctx.moveTo(x, -0.9); ctx.lineTo(x + 0.5, 0.7); ctx.lineTo(x + 1, -0.9); ctx.fill(); }
-    // the eye under its ridge, shut and filmed over, and the nostril on the end of the snout
-    ctx.fillStyle = '#3a3a24'; ctx.beginPath(); ctx.ellipse(22.3, -7.3, 2.2, 1.3, -0.2, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#9a9468'; ctx.beginPath(); ctx.ellipse(22.5, -7.1, 1.1, 0.6, -0.2, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = '#111108'; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(21.4, -7.3); ctx.lineTo(23.6, -6.9); ctx.stroke();
-    ctx.fillStyle = '#141409'; ctx.beginPath(); ctx.ellipse(42.2, -2.9, 0.9, 0.6, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-    stick(45, 1);
-    ctx.restore();
   }
 
 
@@ -3279,127 +3117,12 @@ class Renderer {
     ctx.rotate(p.angle);
     for (const dir of [0, Math.PI]) {
       ctx.save(); ctx.rotate(dir);
-      // The source beam is a fixed-proportion prop, so it is stretched to the tuned arm length
-      // rather than tiled; the extra level-one-only grain/stud detail below it is dropped in favour,
-      // since the art already carries its own grain and bands.
-      if (!(this.painted.ready && this.painted.millArm(ctx, M.innerR - 6, M.armLen - M.innerR + 10))) {
-        ctx.fillStyle = 'rgba(0,0,0,0.32)'; ctx.fillRect(M.innerR - 6, -7 + 6, M.armLen - M.innerR + 10, 16);
-        ctx.fillStyle = PALETTE.wood; ctx.fillRect(M.innerR - 6, -8, M.armLen - M.innerR + 10, 16);
-        ctx.fillStyle = PALETTE.woodHi; ctx.fillRect(M.innerR - 6, -8, M.armLen - M.innerR + 10, 4);
-        if (this.altar) {
-          const P = PALETTE.altar;
-          ctx.fillStyle = P.woodDark; ctx.fillRect(M.innerR - 6, 5, M.armLen - M.innerR + 10, 2);
-          for (let x = M.innerR; x < M.armLen - 18; x += 19) {
-            ctx.fillStyle = P.woodGrain; ctx.fillRect(x, -1, 12, 1);
-            ctx.fillStyle = P.iron; ctx.fillRect(x, -8, 3, 16);
-            ctx.fillStyle = P.ironHi; ctx.fillRect(x + 1, -6, 1, 2);
-          }
-        }
-      }
-      // The pixel arm (js/prop-pixels.js) carries its own iron head; only the old beams need one added.
-      if (!this.painted.pixelProps) {
-        ctx.fillStyle = '#6d6a66'; ctx.fillRect(M.armLen - 16, -12, 16, 24);        // iron cap
-        ctx.fillStyle = '#8d8a85'; ctx.fillRect(M.armLen - 16, -12, 16, 5);
-        ctx.fillStyle = PALETTE.bloodDark; ctx.fillRect(M.armLen - 16, 6, 16, 6);
-      }
+      // The pixel beam (js/prop-pixels.js) is stretched to the tuned arm length and carries its own iron head.
+      this.painted.millArm(ctx, M.innerR - 6, M.armLen - M.innerR + 10);
       ctx.restore();
     }
-    if (this.painted.pixelProps) this.painted.millHub(ctx, M.hubR, p.angle);
-    else if (this.altar) ctx.drawImage(this.altar.sprite('mill', M.hubR), -48, -64);
-    else if (!(this.painted.ready && this.painted.atlas(ctx, 'mill-hub', 0, 0, M.hubR * 2.2, undefined, 0.5))) {
-      ctx.fillStyle = '#4d4741'; ctx.beginPath(); ctx.arc(0, 0, M.hubR, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#6a635b'; ctx.beginPath(); ctx.arc(0, -3, M.hubR - 5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#2e2a26'; ctx.beginPath(); ctx.arc(0, -3, 7, 0, Math.PI * 2); ctx.fill();
-    }
+    this.painted.millHub(ctx, M.hubR, p.angle);
     ctx.restore();
-  }
-
-  // The cave's stone teeth: three spikes of rock standing up out of the floor at the foot of a wall,
-  // the tallest in the middle, wet at the tips. It is drawn in the room's own rock colours because it
-  // IS the room's rock, nothing about it is a warning sign painted on the ground, and what has to
-  // read from across the room is the shape: narrow, tall, pointed, and the light running along the
-  // edge of each point. The glint is the only thing here that moves, and it is on `cave.spikes.glint`.
-  drawSpire(p) {
-    const ctx = this.ctx, def = this.game && this.game.level ? this.game.level.def : null;
-    const face = (def && def.wall) || '#5a544c', top = (def && def.wallTop) || '#8d8a85';
-    const G = TUNING.cave.spikes.glint, r = p.r;
-    // Old blood round the foot of them. It is the one thing here that is not rock, and it is what
-    // says the rock kills before anybody has to find out: a stone spike drawn in the room's own
-    // stone colours is honest and very nearly invisible, and this is read across a room.
-    ctx.fillStyle = 'rgba(74,20,16,0.45)';
-    ctx.beginPath(); ctx.ellipse(p.x + 1, p.y + 3, r * 1.15, r * 0.5, 0.2, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(122,31,24,0.3)';
-    ctx.beginPath(); ctx.ellipse(p.x - r * 0.5, p.y + 5, r * 0.4, r * 0.2, -0.3, 0, Math.PI * 2); ctx.fill();
-    this.shadow(p.x, p.y + 2, r * 0.95, r * 0.42);
-    if (PIXEL_ENV.ready) { PIXEL_ENV.draw(ctx, 'stalagmites', p.x, p.y + 4, r * 2.4); return; }
-    // back two first, then the tall one in front of them, so the group reads as one thing
-    const teeth = [[-r * 0.55, r * 0.62, 0.72], [r * 0.58, r * 0.55, 0.66], [r * 0.04, r * 0.78, 1]];
-    for (let k = 0; k < teeth.length; k++) {
-      const [ox, w, hMul] = teeth[k], x = p.x + ox, base = p.y + (k === 2 ? 3 : 0), len = r * 2.15 * hMul;
-      ctx.fillStyle = face; ctx.beginPath();
-      ctx.moveTo(x - w / 2, base);
-      ctx.quadraticCurveTo(x - w * 0.22, base - len * 0.55, x, base - len);
-      ctx.quadraticCurveTo(x + w * 0.22, base - len * 0.55, x + w / 2, base);
-      ctx.closePath(); ctx.fill();
-      // the lit side, and the point in the rock's top colour so the tip is the brightest thing on it
-      ctx.fillStyle = 'rgba(255,240,210,0.16)'; ctx.beginPath();
-      ctx.moveTo(x - w / 2, base); ctx.quadraticCurveTo(x - w * 0.22, base - len * 0.55, x, base - len);
-      ctx.lineTo(x - w * 0.06, base); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = top; ctx.beginPath();
-      ctx.moveTo(x - w * 0.2, base - len * 0.74); ctx.lineTo(x, base - len); ctx.lineTo(x + w * 0.2, base - len * 0.74);
-      ctx.closePath(); ctx.fill();
-      const tw = Math.pow(Math.max(0, Math.sin(this.t * 1.6 + k * 2.1 + p.x * 0.05)), 8);
-      if (tw > 0.04) {
-        ctx.fillStyle = `rgba(255,255,255,${tw * G})`;
-        ctx.beginPath(); ctx.arc(x, base - len + 1, 1.5, 0, Math.PI * 2); ctx.fill();
-      }
-    }
-  }
-
-  // The mouse's pail, standing where she set it down: a bucket as tall as the goat, staved, hooped
-  // twice, brimming and slopping over the lip, with a pip on the band for every heart still in it.
-  // It is deliberately enormous. The offer used to be three bowls of milk with the words THREE BOWLS
-  // OF MILK written under them, and the 22 Sep 2026 note was that the caption should be a bucket
-  // instead, a thing that size, full of that, needs nothing said about it.
-  drawPail(p) {
-    const ctx = this.ctx, t = this.t, R = p.r * 1.7, H = R * 2.2;
-    const y0 = p.y + 4, wob = Math.sin(t * 1.4 + p.x * 0.03) * 0.8;
-    this.shadow(p.x, p.y + 4, R * 1.05, R * 0.45);
-    // the staves, narrower at the foot
-    ctx.fillStyle = '#6b4a2c'; ctx.beginPath();
-    ctx.moveTo(p.x - R * 0.72, y0); ctx.lineTo(p.x - R, y0 - H);
-    ctx.lineTo(p.x + R, y0 - H); ctx.lineTo(p.x + R * 0.72, y0); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = 'rgba(0,0,0,0.22)';
-    ctx.beginPath(); ctx.moveTo(p.x + R * 0.28, y0 - H); ctx.lineTo(p.x + R, y0 - H);
-    ctx.lineTo(p.x + R * 0.72, y0); ctx.lineTo(p.x + R * 0.2, y0); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = 'rgba(255,240,210,0.1)'; ctx.fillRect(p.x - R * 0.82, y0 - H * 0.9, R * 0.22, H * 0.8);
-    // two iron hoops, and a pip on the upper one for every drink left in it
-    for (const f of [0.28, 0.76]) {
-      ctx.fillStyle = '#8d8a85';
-      ctx.fillRect(p.x - R * (0.72 + 0.28 * f), y0 - H * f - 2, R * 2 * (0.72 + 0.28 * f), 3.4);
-      ctx.fillStyle = 'rgba(255,255,255,0.22)';
-      ctx.fillRect(p.x - R * (0.72 + 0.28 * f), y0 - H * f - 2, R * 2 * (0.72 + 0.28 * f), 1.2);
-    }
-    // the milk, brimming and slopping with the wobble
-    const top = y0 - H;
-    ctx.fillStyle = '#efe6d0'; ctx.beginPath(); ctx.ellipse(p.x, top + wob, R * 0.96, R * 0.34, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.beginPath(); ctx.ellipse(p.x - R * 0.3, top - R * 0.06 + wob, R * 0.28, R * 0.1, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(239,230,208,0.85)';
-    ctx.beginPath(); ctx.moveTo(p.x + R * 0.5, top + wob); ctx.quadraticCurveTo(p.x + R * 0.92, top + H * 0.3, p.x + R * 0.66, top + H * 0.34);
-    ctx.quadraticCurveTo(p.x + R * 0.62, top + H * 0.1, p.x + R * 0.5, top + wob); ctx.fill();
-    ctx.save(); ctx.scale(1, 1 / TILT);
-    ctx.fillStyle = PALETTE.bone;
-    for (let k = 0; k < p.pail; k++) {
-      const px = p.x - (p.pail * 5 - 2) / 2 + k * 5;
-      ctx.beginPath(); ctx.arc(px, (y0 - H * 0.76) * TILT, 1.7, 0, Math.PI * 2); ctx.fill();
-    }
-    ctx.restore();
-    if (p.graze > 0) {
-      const frac = this.grazeOf(p);
-      ctx.strokeStyle = 'rgba(239,230,208,0.85)'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.arc(p.x, p.y, R * 1.05, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2); ctx.stroke();
-    }
   }
 
   drawPropBody(p) {
@@ -4748,7 +4471,6 @@ class Renderer {
   // red robes and on red blood. Cells are counted off the man, unrotated, so they stay square on screen.
   drawTelegraphCells(e, cfg) {
     const ctx = this.ctx, px = TUNING.effects.pixel * 2, f = e.facing;
-    const ux = Math.cos(f), uy = Math.sin(f);
     // `span(y)`, where given, is the stretch of x a row at world y can hold (or two, as a flat list), so
     // a long charge strip tests the cells along it and not a square as wide as it is long (30 Sep 2026:
     // 120 thousand tests a frame, 12 ms, while a butcher wound up a charge). `walk`, for a shape with
@@ -5924,7 +5646,7 @@ class Renderer {
   // generic advice. A tick is a mark for whoever is doing the pass this session only, `dev.artChecked`
   // is never saved, on purpose: this is a working checklist, not a record of who did what.
   drawArtTab(game, pad, top) {
-    const ctx = this.ctx, s = this.ts, d = game.dev, W = this.w, H = this.h;
+    const ctx = this.ctx, s = this.ts, d = game.dev, W = this.w;
     const ART_CHECKLIST = [
       { section: 'PALETTE', items: [
         { id: 'pal-src', text: 'Every colour in a sprite comes off a ramp, PALETTE, a sprite file\'s own ramps (`P` in prop-pixels.js, `RAMP` in pixel-art.js) or a canon multiply, never a one-off hex picked by eye.' },
@@ -6234,7 +5956,7 @@ class Renderer {
   // one level at a time and took half the screen doing it, but a rule is a promise about the whole
   // generator, and what you want to see is the row: six levels keeping it and one not.
   drawRuleTab(game, pad, top) {
-    const ctx = this.ctx, s = this.ts, W = this.w, H = this.h, d = game.dev;
+    const ctx = this.ctx, s = this.ts, W = this.w, d = game.dev;
     const m = game.ruleMatrix();
     ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre;
     ctx.fillText('WHAT THE GENERATOR PROMISES', pad, top);
@@ -6615,7 +6337,7 @@ class Renderer {
   }
 
   drawEnemiesTab(game, pad, top) {
-    const ctx = this.ctx, s = this.ts, d = game.dev, W = this.w, H = this.h;
+    const ctx = this.ctx, s = this.ts, d = game.dev, W = this.w;
     const cycle = (tag, cfg) => tag === 'hunter' ? cfg.aimTime + cfg.reload
       : tag === 'seer' ? cfg.castWind + cfg.castCooldown
       : tag === 'wraith' ? TUNING.wraith.manifest + TUNING.wraith.solidAfter + TUNING.wraith.fadeCd
@@ -7465,29 +7187,6 @@ class Renderer {
   // one bead of an eye and a tail curling out behind her, a trader, not a threat, until she has
   // been hit twice, when the eye goes red and she shakes. What she says is a bubble over her head
   // in the same plate the cult's barks use, so a line from her reads as a line from anybody.
-  // The burrow itself: a low, dirt-rimmed hole cut into the base of the wall, flush with the floor
-  // and squashed to it the way a spike plate or a crack is (this is a hole, not a doorway a body
-  // stands in). `p.gap` is the wall tile it opens through, one row from where she actually sits.
-  drawBurrow(p) {
-    const ctx = this.ctx, gx = p.gap.x, gy = p.gap.y, w = 13, h = 8 * TILT;
-    ctx.fillStyle = PALETTE.dirt;
-    ctx.beginPath(); ctx.ellipse(gx, gy, w + 5, h + 4, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = PALETTE.dirtHi;
-    for (let i = 0; i < 6; i++) {
-      const a = i / 6 * Math.PI * 2;
-      ctx.beginPath(); ctx.ellipse(gx + Math.cos(a) * (w + 2), gy + Math.sin(a) * (h + 1.5), 3, 2, a, 0, Math.PI * 2); ctx.fill();
-    }
-    ctx.fillStyle = '#0b0810';
-    ctx.beginPath(); ctx.ellipse(gx, gy, w, h, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = 'rgba(70,53,36,0.7)'; ctx.lineWidth = 1.4;
-    ctx.beginPath(); ctx.ellipse(gx, gy, w, h, 0, 0, Math.PI * 2); ctx.stroke();
-    // a claw-scratch at the rim, and a wisp of straw dragged in for bedding
-    ctx.strokeStyle = 'rgba(20,15,12,0.5)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(gx - w * 0.6, gy - h * 0.5); ctx.lineTo(gx - w * 0.3, gy - h * 0.9); ctx.stroke();
-    ctx.strokeStyle = PALETTE.hayDark; ctx.lineWidth = 1.4;
-    ctx.beginPath(); ctx.moveTo(gx + w * 0.5, gy + h * 0.6); ctx.lineTo(gx + w * 0.9, gy + h * 0.3); ctx.stroke();
-  }
-
   drawMouse(p) {
     const ctx = this.ctx, M = TUNING.prop.mouse, t = this.t;
     // `p.still`: her portrait on the offer card holds quite still (9 Oct 2026 playtest: "the mouse here goes up and down")
@@ -7604,7 +7303,6 @@ class Renderer {
     const ctx = this.ctx, t = this.t, w = p.ware; if (!w) return;
     const milk = w.id === 'milk', info = milk ? null : Shop.info(w);
     const def = milk ? MILK_OFFER : info && info.def; if (!def) return;
-    const game = this.game;
     // A cape lying in a niche (`Cape.lay`): no stool, the cape folded on the boards, and TAKE.
     if (p.floorCape) { this.drawFloorCape(p, info); return; }
     const bob = Math.sin(t * 2.6 + p.phase) * 1.4;
@@ -7615,11 +7313,7 @@ class Renderer {
     if (milk) { this.drawMilkOffer(p, ctx); return; }
     this.shadow(p.x, p.y + 3, 9, 4);
     // the stool
-    if (!this.painted.pixelProps) {
-      ctx.fillStyle = '#4a3420'; ctx.fillRect(p.x - 7, p.y - 2, 14, 7);
-      ctx.fillStyle = PALETTE.woodHi; ctx.fillRect(p.x - 7, p.y - 2, 14, 2);
-      ctx.fillStyle = '#3a2a1a'; ctx.fillRect(p.x - 6, p.y + 5, 2.4, 4); ctx.fillRect(p.x + 3.6, p.y + 5, 2.4, 4);
-    } else this.painted.stool(ctx, p);
+    this.painted.stool(ctx, p);
     const locked = p.locked, dim = locked ? 0.35 : 1;
     // the talisman, hung a little above and breathing
     ctx.save(); ctx.globalAlpha = dim;
@@ -7717,36 +7411,14 @@ class Renderer {
   // in a sentence, it is the same literal line every ware carries now, it is just short enough to
   // live under the TAKE.
   drawMilkOffer(p, ctx) {
-    const t = this.t, R = 12, H = 28, y0 = p.y + 5, top = y0 - H;
-    const wob = Math.sin(t * 1.5 + p.x * 0.03) * 0.9;
+    const R = 12, H = 28, y0 = p.y + 5, top = y0 - H;
     this.shadow(p.x, p.y + 4, R * 1.1, R * 0.5);
     ctx.save(); ctx.globalAlpha = p.locked ? 0.35 : 1;
     const gl = ctx.createRadialGradient(p.x, top, 0, p.x, top, 20);
     gl.addColorStop(0, 'rgba(239,230,208,0.22)'); gl.addColorStop(1, 'rgba(0,0,0,0)');
     if (!p.locked) { ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(p.x, top, 20, 0, Math.PI * 2); ctx.fill(); }
     // grass on her stool now, not a pail (8 Oct 2026): the sprout's pixels
-    if (PROP_PIXELS.sprites['grass-small']) { const g = PROP_PIXELS.sprites['grass-small'], k = 1.6; PROP_PIXELS.draw(ctx, 'grass-small', p.x - g.w * k / 2, y0 - g.h * k, k); ctx.restore(); }
-    else if (this.painted.pixelProps) { this.painted.pail(ctx, p.x, y0, R); ctx.restore(); }
-    else {
-    ctx.fillStyle = '#6b4a2c'; ctx.beginPath();
-    ctx.moveTo(p.x - R * 0.72, y0); ctx.lineTo(p.x - R, top); ctx.lineTo(p.x + R, top); ctx.lineTo(p.x + R * 0.72, y0);
-    ctx.closePath(); ctx.fill();
-    ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.beginPath();
-    ctx.moveTo(p.x + R * 0.28, top); ctx.lineTo(p.x + R, top); ctx.lineTo(p.x + R * 0.72, y0); ctx.lineTo(p.x + R * 0.2, y0);
-    ctx.closePath(); ctx.fill();
-    for (const f of [0.3, 0.8]) {
-      const w = R * (0.72 + 0.28 * f);
-      ctx.fillStyle = '#8d8a85'; ctx.fillRect(p.x - w, y0 - H * f - 2, w * 2, 3.2);
-      ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(p.x - w, y0 - H * f - 2, w * 2, 1.2);
-    }
-    ctx.fillStyle = '#efe6d0'; ctx.beginPath(); ctx.ellipse(p.x, top + wob, R * 0.96, R * 0.34, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.beginPath(); ctx.ellipse(p.x - R * 0.3, top - 1 + wob, R * 0.28, R * 0.1, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(239,230,208,0.85)'; ctx.beginPath();
-    ctx.moveTo(p.x + R * 0.5, top + wob); ctx.quadraticCurveTo(p.x + R * 0.95, top + H * 0.34, p.x + R * 0.66, top + H * 0.38);
-    ctx.quadraticCurveTo(p.x + R * 0.6, top + H * 0.12, p.x + R * 0.5, top + wob); ctx.fill();
-    ctx.restore();
-    }
+    { const g = PROP_PIXELS.sprites['grass-small'], k = 1.6; PROP_PIXELS.draw(ctx, 'grass-small', p.x - g.w * k / 2, y0 - g.h * k, k); ctx.restore(); }
     ctx.save(); ctx.scale(1, 1 / TILT);
     const ty = (p.y + 15) * TILT;
     ctx.font = `700 10px ${FONT_SC}`; ctx.textAlign = 'center';
@@ -8607,7 +8279,6 @@ class Renderer {
       const fl = clamp((game.purseFlash || 0) / 0.35, 0, 1);
       ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillText(heap, x + 1 * s, top + 17 * s);
       ctx.fillStyle = fl > 0 ? '#ffffff' : '#fff4c2'; ctx.fillText(heap, x, top + 16 * s - fl * 2 * s);
-      const hx = x;
       x -= textW(ctx, heap) + 6 * s;
       Heaven.skull(ctx, x - sk.w * c, top + 8.5 * s - sk.h * c / 2, c);
       left = x - sk.w * c;
@@ -8654,22 +8325,7 @@ class Renderer {
     halo.addColorStop(0.55, `rgba(125,92,255,${0.12 * flick})`);
     halo.addColorStop(1, 'rgba(125,92,255,0)');
     ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(0, 0, 34 * k, 0, Math.PI * 2); ctx.fill();
-    if (!(this.painted.ready && this.painted.soulWispBody(ctx, 26 * k * flick))) {
-      // the body of it: a teardrop of flame, wider at the bottom, drawn upward
-      ctx.fillStyle = PALETTE.witch; ctx.beginPath();
-      ctx.moveTo(0, -15 * k * flick);
-      ctx.bezierCurveTo(7.5 * k, -5 * k, 8.5 * k, 6 * k, 0, 10 * k);
-      ctx.bezierCurveTo(-8.5 * k, 6 * k, -7.5 * k, -5 * k, 0, -15 * k * flick);
-      ctx.fill();
-      ctx.fillStyle = PALETTE.witchHi; ctx.beginPath();
-      ctx.moveTo(0, -8 * k * flick);
-      ctx.bezierCurveTo(4 * k, -2 * k, 4.4 * k, 4 * k, 0, 6.4 * k);
-      ctx.bezierCurveTo(-4.4 * k, 4 * k, -4 * k, -2 * k, 0, -8 * k * flick);
-      ctx.fill();
-      // and the two cold points in it, which is the only part of the man that is left
-      ctx.fillStyle = PALETTE.blood;
-      ctx.fillRect(-3 * k, -1.4 * k, 1.8 * k, 2.6 * k); ctx.fillRect(1.2 * k, -1.4 * k, 1.8 * k, 2.6 * k);
-    }
+    this.painted.soulWispBody(ctx, 26 * k * flick);
     // sparks, going round it against the turn of everything else in the game
     for (let i = 0; i < 5; i++) {
       const a = -this.t * 1.7 + phase + i * (Math.PI * 2 / 5);
@@ -8681,7 +8337,6 @@ class Renderer {
   }
 
   drawSouls(game) {
-    const ctx = this.ctx;
     for (const tm of game.souls) {
       if (game.hidden(tm.x, tm.y)) continue;
       const bob = Math.sin(this.t * 2.6 + tm.phase) * 2.5;
@@ -9647,7 +9302,7 @@ class Renderer {
     this.hornRowW = 0; this.hornHov = null;
     if (HG) {
       const c = Math.max(2, Math.round(2.2 * s)), w = HG[0].length * c, h = HG.length * c;
-      const chips = (game.artifacts || []).length, top0 = 3 * s + (this.portrait ? 12 * s : 0) + 6 * s;
+      const top0 = 3 * s + (this.portrait ? 12 * s : 0) + 6 * s;
       // First in the row (9 Oct 2026 playtest: "first the horns, then the modifier, then the medallions").
       const bx = Math.round(low ? 10 * s : hx + (g.maxHp + (g.light || 0) + (g.armour || 0) + lives) * HGAP + 8 * s);
       const by = Math.round(low ? top0 + 2 * s + Math.max(0, 24 * s - h) / 2 : hy - 8 * s);
@@ -9673,7 +9328,7 @@ class Renderer {
     // is worth is a number buried in `mods`, and a row of the animals themselves is the way to see
     // that the run is carrying them.
     // (46 until 30 Sep 2026: "a little more room under the hearts for the animals")
-    const saved = this.drawSaved(game, 14 * s, top + (!hornInfo ? (low ? 64 : 56) : (low ? 92 : 72)) * s, s);   // lower while the horn test's two lines are up
+    this.drawSaved(game, 14 * s, top + (!hornInfo ? (low ? 64 : 56) : (low ? 92 : 72)) * s, s);   // lower while the horn test's two lines are up
     // (The "xN IN A ROW" line that stood here is gone, 9 Oct 2026 playtest: "the number of kills in a row need not be written";
     // `game.combo` still runs, the score and the music read it.)
     this.drawSneakStatus(game, g, hx + (g.maxHp + (g.light || 0) + (g.armour || 0)) * HGAP + 10 * s, hy, HEART.length * px, s);

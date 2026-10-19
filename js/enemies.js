@@ -13,7 +13,7 @@ class Enemy {
     this.aware = false; this.target = null; this.lastSeen = null;
     this.flung = false; this.thrown = false; this.held = false; this.dead = false;
     this.burning = 0; this.burnDir = 0; this.burnTick = 0; this.hookCd = 0; this.reload = 0; this.flash = 0;
-    this.litByMan = false; this.passedFire = false;   // who may hand fire on, and who has already
+    this.passedFire = false;   // has already handed his fire on (`Game.passFire`)
     this.lastLunge = -1; this.shieldHits = 0; this.wander = Math.random() * 3; this.lostTimer = 0;
     this.bombFuse = 0; this.exploded = false;
     // 0 for everybody: only the Mill lesson's two men are ever given a beat to plant and face the
@@ -25,7 +25,6 @@ class Enemy {
     this.dazed = 0;                                             // seconds of hearing nothing but the scream
     this.poison = 0;                                            // seconds of being blind and slow (js/status.js)
     this.scald = false;                                         // stunned when the fire caught: it hits twice
-    this.gotUpFrom = null;
     this.scripted = false;   // moved by hand: the opening scene's two, and the mage at the first gate
     this.champion = false;                                      // the butcher (the brute until 1.72): a hook on a rope, too heavy to carry
     this.watchful = false;                                      // posted to watch a door: no blind side, and he sees further
@@ -222,7 +221,6 @@ class Enemy {
     // bosses do not catch from their own magic fire"): the keeper's club lights it and he walks in it.
     // Ordinary flame, a brazier, a burning man still take him like anybody.
     if (witch && this.soul && TUNING.soulBearer.witchProof) return;
-    this.litByMan = !!fromMan;
     // How far down a line of men this fire has been handed (the FIRE AMULET reads it): a man lit by
     // the ground is the head of a fresh line.
     if (!fromMan) this.fireDepth = 0;
@@ -706,7 +704,7 @@ class Enemy {
   // and stood there pushing (a man in one route in seven on the cave, measured). He walks the field
   // `path.ahead` tiles forward and makes for the furthest point of it he can reach in a straight line.
   pathDir(game, dt) {
-    const w = game.world, g = game.goat, P = TUNING.ai.path;
+    const g = game.goat, P = TUNING.ai.path;
     this.pathT -= dt;
     const wp = this.wp;
     if (this.pathT <= 0 || !wp || len(wp.x - this.x, wp.y - this.y) < P.reach * TILE) {
@@ -1513,7 +1511,7 @@ class Enemy {
   }
 
   updateBearer(dt, game, sees) {
-    const g = game.goat, cfg = this.cfg, reach = this.atk('reach');
+    const g = game.goat, reach = this.atk('reach');
     // THE FACTORY's machines (js/factory.js) take every step of theirs, idle included: the welder patrols his line, the
     // automaton keeps his legs under him.
     if (this.welder && Welder.step(this, dt, game, sees)) return;
@@ -2889,7 +2887,6 @@ class Enemy {
       target = e; td = d;
     }
     if (td === Infinity) target = null;
-    this.prey = target;
     // He does not walk. Out of reach he crouches, bounds `hop.dist` tiles and comes down on
     // everything under him; in reach he swings. The crouch is his windup and the ring on the floor
     // is where he will land, so a leap is read and stepped out of like any other blow.

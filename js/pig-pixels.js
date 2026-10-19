@@ -25,7 +25,6 @@ const PIG_PIXELS = (() => {
   // The ears a step darker than the hide round them, so a flap reads against the face it hangs over.
   const EAR = [P.k0, P.k1, P.k2, P.k3, P.k3];
   // A flap seen face on is thin: fewer steps across it, or the light stripes it.
-  const FLAP = [P.k1, P.k1, P.k2, P.k3, P.k3];
   const SNOUT = [P.k1, P.s0, P.s1, P.s2, P.s2], HOOF = [P.f0, P.f0, P.f1, P.f2, P.f2];
 
   // A big round eye, two by two with a glint where the light is, and a blush under it: what makes a
@@ -52,18 +51,6 @@ const PIG_PIXELS = (() => {
       if (n <= 1) g.set(x, y, lit(T, dx, dy, n));
     }
   };
-  // An ear seen from the front: the flap, inked dark where it lies over the face and the flank (its
-  // sides and underside, never the crown it hangs from), so it reads as a thing lying over the cheek
-  // and not as shading on it.
-  function flap(g, x0, y0, x1, y1, r0, r1) {
-    const was = g.p.slice(); cap(g, x0, y0, x1, y1, r0, r1, FLAP);
-    const mine = (x, y) => x >= 0 && y >= 0 && x < W && y < H && g.p[y * W + x] !== was[y * W + x];
-    const ink = [];                                                  // gathered first: inked pixels are not the flap
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (mine(x, y)) for (const [i, j] of [[1, 0], [-1, 0], [0, 1]]) {
-      if (!mine(x + i, y + j) && was[(y + j) * W + x + i]) ink.push([x + i, y + j]);
-    }
-    for (const [x, y] of ink) g.set(x, y, P.k0);
-  }
   // The tail's curl as whole pixels off its root, pale, ringed dark where it lies over the body so
   // it reads as a spring on the rump and not a pink blot in pink: the shadow falls only down and right
   // of it, away from the light (a full ring read as a keyhole). The outline rings the rest.

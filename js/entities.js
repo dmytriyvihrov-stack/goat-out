@@ -1556,7 +1556,6 @@ class Prop {
     // `Game.startLevel`; while that is still on its tile and the teeth are down, it is not drawn.
     this.hidden = !!(opts && opts.hidden); this.cover = null;
     this.graze = 0;   // heal only: seconds the goat has stood in it, still and near, unbroken
-    this.fullTold = false;   // heal only: said FULL once this visit, so standing there does not spam it
     // heal only: the rarer patch of grass a secret sometimes gives up instead of the rack alone,
     // worth two hearts and painted as grass rather than the ordinary milk bowl.
     this.big = !!(opts && opts.big);
@@ -1851,7 +1850,7 @@ class Prop {
   // lid goes over a moment later, so what it takes is the ground he has just left, which is the one
   // piece of floor whoever is chasing him is looking at least.
   updateSpike(dt, game) {
-    const S = TUNING.prop.spike, g = game.goat;
+    const S = TUNING.prop.spike;
     this.spikeT -= dt;
     if (this.spikeState === 'armed') {
       if (this.spikeT <= 0) {
@@ -2453,9 +2452,8 @@ class Prop {
     game.world.emitNoise(this.x, this.y, TUNING.noise.steel);
   }
   // The cult's paper on the floor (6 Oct 2026, his redesign: "a little scrap of paper on the floor; found, it
-  // unfolds into a drawing, and one of the things you can do is butt it and tear it up"). Folded small until he
-  // comes within `readR` tiles with nothing standing on it (the ritual altar over the first one: butted off, it
-  // shows), then it opens out over `unfold` s, says what it is, and is the book's for good (`Unlocks` OBJECTS),
+  // unfolds into a drawing, and one of the things you can do is butt it and tear it up"). Folded small until it is
+  // found with nothing standing on it (the ritual altar over the first one: butted off, it shows), then it opens out over `unfold` s, says what it is, and is the book's for good (`Unlocks` OBJECTS),
   // so it never lies on a floor again (`Game.layScraps`). It hurts nobody, and nothing kills for it (pillar 3).
   // 7 Oct 2026 playtest ("you have to find it first, press the right button and only then does it open"): it no
   // longer opens by itself when he walks by. It lies folded until a GRAB lands on it (`Goat.tryGrab` → `openScrap`).
@@ -2882,7 +2880,7 @@ class Prop {
   // it). The bomb, BOMB CHARGE's man, a barrel going up and the poison blast all call it, so a bomb by a
   // row of barrels is a chain, which is what a barrel standing by a bomb is for (Enter the Gungeon's).
   static blastRoom(game, x, y, r, witch) {
-    const w = game.world, BR = TUNING.prop.barrel;
+    const BR = TUNING.prop.barrel;
     // THE AUTOMATON's legs and fallen body (js/factory.js): every blast reaches him here and only here (the loops skip him)
     if (typeof Automaton !== 'undefined') Automaton.blast(game, x, y, r);
     for (const p of game.props.slice()) {
@@ -2930,7 +2928,6 @@ class Prop {
     if (game.scatter) game.scatter.burst(this.x, this.y, B.blastR * 2);
     // Stone stops a blast the way it stops `Status.blast`: a bomb against one side of a wall took a
     // heart off the goat on the other side of it.
-    const w = game.world;
     for (const e of game.enemies) {
       if (e.dead || e.held || e.ghosted) continue;
       const dx = e.x - this.x, dy = e.y - this.y, d = hyp(dx, dy);

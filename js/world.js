@@ -53,7 +53,6 @@ class World {
     this.dctx = this.decal.getContext('2d');
     this.dctx.scale(DECAL_SCALE, DECAL_SCALE);
     this.stains = new Map();
-    this.fireSfxTimer = 0;
     // What the goat can see from where he is standing. One byte a tile, rebuilt every step by
     // `computeVis`, and the box it last filled so the clear costs the same as the cast.
     this.vis = new Uint8Array(n);

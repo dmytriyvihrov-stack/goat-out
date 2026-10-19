@@ -56,8 +56,6 @@ const PrologueArt = {
     ctx.drawImage(c, sx, sy, sw, sh, X, Y, sw * cell, sh * cell);
     ctx.imageSmoothingEnabled = smooth;
   },
-  // one cell on the screen, snapped to the grid
-  cellRect(ctx, X, Y, c, w = 1, h = 1) { ctx.fillRect(Math.floor(X / c) * c, Math.floor(Y / c) * c, w * c, h * c); },
 
   // Steps between the bands of a sky: band `i` of `n` over row `y` of `rows`, dithered on a checker across the
   // seam so the sky grades without a gradient, which is one thing a pixel picture never has.

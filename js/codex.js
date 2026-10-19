@@ -436,7 +436,7 @@ const Codex = {
     this.drawTabs(R, game, x0, y0, s, P);
     if (B.tab === 'unlocks') { this.drawCloseX(R, game, x0, y0, pw, s); Unlocks.draw(R, game, { x0, y0, pw, ph, s, P, stack, cut, q }); ctx.restore(); return; }
     const half = q(pw / 2), LY = y0, LH = stack ? cut : ph, RY = y0 + cut, RH = ph - cut, RX = stack ? x0 : x0 + half;
-    const lx = x0 + 30 * s, lw = (stack ? pw : half) - 60 * s, rx = RX + 30 * s, rw = (stack ? pw : pw - half) - 60 * s, lc = x0 + (stack ? pw : half) / 2;
+    const lw = (stack ? pw : half) - 60 * s, rx = RX + 30 * s, rw = (stack ? pw : pw - half) - 60 * s, lc = x0 + (stack ? pw : half) / 2;
     const head = (txt, x, y, w, align) => {
       ctx.textAlign = align; ctx.font = `700 ${Math.max(18 * R.s, 22 * s)}px ${FONT_SC}`; ctx.fillStyle = PALETTE.bone; ctx.fillText(txt, x, y);
       ctx.fillStyle = 'rgba(185,135,58,0.55)'; const yy = Math.round(y + 10 * s), x1 = align === 'center' ? x - w / 2 : x;
@@ -933,7 +933,6 @@ const Unlocks = {
           for (const h of F.hurt || []) foe(h.by);
           for (const k of Object.keys(F.blows || {})) foe(k.split('|')[0]);
         }
-        this.data.nov.backfill = true;
       } catch (e) { /* a report it cannot read only means more counts as new */ }
     }
     return this.data;

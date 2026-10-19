@@ -748,7 +748,7 @@ const PIXEL_ART = {
       });
       const blob = [];
       for (const [i, o] of near) {
-        const px = i % w, py = (i / w) | 0;
+        const px = i % w;
         const edge = !near.has(i - 1) || !near.has(i + 1) || !near.has(i - w) || !near.has(i + w) || px === 0 || px === w - 1;
         const along = o.q * M.len, ridge = o.q > 0.12 && o.q < 0.85 && (along % M.ridge) < 1;
         const col = edge ? P.line : ridge ? P.ridge : o.t > 0.15 && o.t < 0.65 ? (o.q < 0.55 && o.t > 0.3 && o.t < 0.5 ? P.glint : P.band) : P.body;
@@ -1284,7 +1284,7 @@ const PIXEL_ART = {
       return;
     }
     for (const hn of all) {
-      const [bx, by] = hn.base;
+      const [bx] = hn.base;
       if (look) { ctx.shadowColor = H[look].glow; ctx.shadowBlur = H[look].blur * (0.75 + 0.25 * Math.sin(t * 7 + bx)); }
       // BIG and LONG keep their own shape (the moose's, the gazelle's); LONG HORNS the soul grows the SHORT into an antler
       if (shape || antler) {

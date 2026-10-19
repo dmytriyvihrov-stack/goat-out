@@ -434,7 +434,7 @@ const Painting = {
   },
   drawDeath(r, game, card) {
     const pic = game.deathPainting, P = TUNING.painting, D = P.death, ctx = r.ctx, s = r.ts, W = r.w, H = r.h;
-    const a = this.deathFade(game), m = pic.meta;
+    const a = this.deathFade(game);
     ctx.save();
     ctx.fillStyle = `rgba(13,10,12,${0.35 + 0.6 * a})`; ctx.fillRect(0, 0, W, H);
     ctx.textAlign = 'center';
@@ -506,8 +506,7 @@ const Painting = {
     // The run code only with the dev drawer open (2 Oct 2026 playtest: "not sure the death screen needs
     // this"); leaving the card still copies it (`copyCode`) for whoever is asked to paste it.
     if (card.code && game.dev && game.dev.open) { ctx.font = `${Math.max(12 * r.s, 11 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.42)'; ctx.fillText(`RUN CODE  ${card.code}`, W / 2, H - 18 * s); }
-    // ASCEND, and beside it RESTART, the floor again at once, past heaven (3 Oct 2026). RESTART is
-    // offered first, `death.quick` s after the blow, before the pull-back is done; ASCEND waits for it.
+    // ASCEND, and beside it RESTART, the floor again at once, past heaven (3 Oct 2026); both come up together.
     // While heaven has something new (`game.deathNews`, `Heaven.freshNews`: the first death, a new word
     // from the god, a rank he can now afford, a bell woken...) there is no RESTART, only ASCEND.
     this.quickRect = null;

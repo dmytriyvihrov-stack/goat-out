@@ -3,7 +3,7 @@ const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else, bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on. Counted 0.001, 0.002,
 // ... since 9 Oct 2026 (his word: "big numbers confuse me"); the line before it ended at 2.07.
-const BUILD = '0.039';
+const BUILD = '0.040';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -293,9 +293,9 @@ const TUNING = {
     // waits while he steers where he lands, clumsily (a mark on the floor pushed by the stick at `accel` tiles/s², never past
     // `speed` tiles/s, its way lost at `drag` a second, no further than `reach` tiles from where he fell, never onto stone, a
     // drop or behind a shut door), then `fall` s down. Landing: every man within `hurt[r]` tiles of the mark loses a heart and
-    // is thrown out at `fling` tiles/s; every man within `stun[r]` tiles (the whole room on rank two, `room` true) is dazed
+    // is thrown out at `second.fling` tiles/s; every man within `stun[r]` tiles (the whole room on rank two, `room` true) is dazed
     // `daze` s. `height` px over him is where he goes out of the picture.
-    dive: { up: 0.7, aim: 1.9, fall: 0.32, height: 420, accel: 16, speed: 5.2, drag: 1.4, reach: 7, hurt: [0.75, 2], stun: [3, 3], room: [false, true], fling: 7, daze: 2.2, cell: 3 },
+    dive: { up: 0.7, aim: 1.9, fall: 0.32, height: 420, accel: 16, speed: 5.2, drag: 1.4, reach: 7, hurt: [0.75, 2], stun: [3, 3], room: [false, true], daze: 2.2, cell: 3 },
     // ONE MORE LIFE (7 Oct 2026, "like Hades: you come back to life at once, where you fell; given after the first visit
     // up here, to be taken away later"; for one playtest the god's gift for the repaired mirror; 9 Oct 2026 evening back to the
     // first visit, given in the god's first talk "as faith"): a run begun by a goat who has been up here carries `lives` of them
@@ -317,7 +317,7 @@ const TUNING = {
     talkR: 2.3, hearR: 7, answer: 0.6, callAfter: 1.5, type: 44, talkArm: 0.3, talkOut: 0.28, plate: 3.2, holdGap: 2.4, hornsEdge: 1.6,
     // The question mark over a thing never tried up here (`Heaven.drawMarks`, 3 Oct 2026): `cell` world
     // px a texel, `lift` px over each thing's feet, a slow bob.
-    marks: { cell: 2.5, lift: { god: 128, shepherd: 66, mirror: 84, seat: 64, horse: 84, table: 34, bells: 56, tower: 150 }, bob: { rate: 2.6, amp: 2 },
+    marks: { cell: 2.5, lift: { god: 128, shepherd: 66, mirror: 84, seat: 64, horse: 84, bells: 56, tower: 150 }, bob: { rate: 2.6, amp: 2 },
       glyph: ['.###.', '#...#', '....#', '...#.', '..#..', '.....', '..#..'], rim: '#3a2c4e', fill: '#f7d774', lit: '#fff4c2',
       // a dare won, until its animal has thanked him up there (9 Oct 2026)
       smile: ['.....', '.#.#.', '.#.#.', '.....', '#...#', '.###.', '.....'], glad: '#9fd84a',
@@ -583,7 +583,7 @@ const TUNING = {
     // radius"). BOON_BASE.screamRadius is the same number and must stay equal to it.
     // `balk` 2 → 1.25 tiles (5 Oct 2026, "the bare baa that breaks a swing, a much smaller radius"):
     // the man whose club is over the goat's head, not the one a step behind him.
-    scream: { duration: 0.3, cooldown: 4.0 * GOAT_CD, radius: 3.4, stun: 0.9, call: 13, callCooldown: 3.0 * GOAT_CD,
+    scream: { duration: 0.3, cooldown: 4.0 * GOAT_CD, radius: 3.4, stun: 0.9, call: 13,
       balk: 1.25, balkStun: 0.3,
       // However much bends the voice's cooldown, RAW THROAT, four geese brought out, it never comes back
       // faster than this: at 0.82 s it outlasted its own daze and three men stood dazed 98% of a fight.
@@ -1405,11 +1405,11 @@ const TUNING = {
     // room"). Two drawings, the goat-breeds chart and the butcher's diagram (`looks`). A scrap lies folded on the
     // floor (gen.js, its own stream; `underTable` of them under one of the room's tables), at most `perLevel` a
     // floor, `chance` of the rooms that may take one, from room `from`; the first (`first`) under THE ALTAR's
-    // ritual table. Within `readR` tiles of him with nothing standing on it, it opens out over `unfold` s and is
+    // ritual table. A GRAB on it with nothing standing on it opens it out over `unfold` s, and it is
     // found for good (`Unlocks`, THE CULT'S PAPERS; `Game.layScraps` lays only drawings not yet found). A headbutt, a body
     // landing within `near` px or a blast tears it (`Prop.tear`), open only; it hurts nobody. `texel` world px a
     // texel of the scrap and the shreds, × `flat` for the drawing (0.75 since the 46 x 36 redraw, 8 Oct 2026); `bits` paper flying.
-    poster: { r: 8, chance: 0.5, perLevel: 1, from: 1, near: 12, bits: 9, texel: 1.35, flat: 0.75, readR: 2, unfold: 0.45,
+    poster: { r: 8, chance: 0.5, perLevel: 1, from: 1, near: 12, bits: 9, texel: 1.35, flat: 0.75, unfold: 0.45,
       underTable: 0.5, first: 'breeds', looks: ['breeds', 'cuts'] },
     table: { r: 21, drag: 4.5, killSpeed: 5 * TILE, pushSpeed: 2.2 * TILE, squeeze: 8,
       // `push`: px/s a table on its side creeps off the goat leaning on it, and so the pace he is held
@@ -1564,7 +1564,6 @@ const TUNING = {
       // sword snaps there; a shield rings off and keeps going, which is the whole of why it is worth
       // throwing at a room rather than at one man, it can still reach a second wall, or a second man.
       shieldBounce: 0.6,
-      swordStun: 1.6,        // what a sword does to a Butcher, who does not go down to one
       shieldStun: 2.8,       // how long a man the shield bowls over stays down, dazed the same way a
                               // scream leaves him
       // What one is worth before it is scrap, so neither can be dragged through a level. A blade is
@@ -1661,8 +1660,7 @@ const TUNING = {
     // rudeness costs: `lines` are what she says on the first two blows, and the third is the rat
     // ogre; `thanks` is what she says when a talisman is taken and her gate lifts. `r` is small
     // because she is; she blocks nothing and nothing thrown breaks on her. `bob` is her idle.
-    mouse: { r: 9, lines: ['PLEASE. NOT THAT.', 'ONCE MORE AND YOU WILL SEE.'], thanks: 'GO ON, THEN. THE DOOR IS OPEN.', squeakPitch: 1400,
-      offer: 'THREE THINGS ON MY SHELF, AND NONE OF THEM COSTS. TAKE ONE. ONLY ONE.', free: 'HE IS DOWN. THE SHELF IS YOURS. ALL OF IT, AND BETTER THAN IT WAS.',
+    mouse: { r: 9, lines: ['PLEASE. NOT THAT.', 'ONCE MORE AND YOU WILL SEE.'], thanks: 'GO ON, THEN. THE DOOR IS OPEN.',
       lookUp: 0.34 },   // radians she leans back to look at a goat standing above her
     // A ware on her shelf: an artifact on a stool, one of two, taken for nothing. It is reached for the way
     // a crate is (`Goat.tryGrab`), and reaching for it is the whole of buying it.
@@ -1745,7 +1743,7 @@ const TUNING = {
     // The crow follows corpses, not you. Every room with nothing dead in it, it falls behind, which
     // is the one escort that argues with *run, don't fight*, and it is meant to: it is the price of
     // what it carries out. `markFor` is how long a body still draws it, `perch` how close it settles.
-    crow: { r: 11, speed: 230 * SLOW, slack: 0.55, followAt: 2.6, perch: 1.1, markFor: 14, markR: 13, hopGap: 1.4,
+    crow: { r: 11, speed: 230 * SLOW, perch: 1.1, markFor: 14, markR: 13,
       // A body it can SEE it flies to at `flySpeed`, the moment it sees it, and of two in sight it
       // takes the one nearer the stairs, the crow pulls you on into the next room rather than back.
       // Landing on one it says so, once a body.
@@ -2198,11 +2196,11 @@ const TUNING = {
   // flinches. SPARED: the goat walks `leave` rooms on past his with him alive and never thrown, butted, carried, lit or
   // hurt (`e.wronged`); the run keeps it (`game.spared`). `gift`: from floor `from` of the same run, at `chance` + `per`
   // for each one spared past the first (at most `max`), one of them waits in a quiet corner with a tuft of grass laid
-  // before him, and says so within `r` tiles. Wronged then, he is no longer counted. `corner`: tiles off a doorway, clear
+  // before him. Wronged then, he is no longer counted. `corner`: tiles off a doorway, clear
   // of props, and of men (`men`, the gift's `giftMen`). `speed` × his kind's walk back to his corner after a shove.
   coward: { levels: [0, 1, 2], chance: [0.45, 0.6, 0.6], minRoom: 2, speed: 0.55, home: 6, tremble: 0.7, crouch: 0.92,
     plea: { r: 5, gap: 3.4, close: 1.8 }, leave: 1,
-    gift: { chance: 0.4, per: 0.15, max: 0.85, from: 1, r: 4.5 },
+    gift: { chance: 0.4, per: 0.15, max: 0.85, from: 1 },
     corner: { door: 3, props: 1.3, men: 2.5, giftMen: 2.5 } },
   // THANK YOU FOR PLAYING (13 Oct 2026, the user's, Cult of the Lamb's last card): the black card a won run opens on,
   // before its own (`Renderer.drawThanks`, `game.thanks`). The sign `THANKS_SIGIL` is `cell` of the screen's short side
@@ -2217,7 +2215,7 @@ const TUNING = {
   // 13 Oct 2026 playtest: fire does not burn it, it heats it (`heat`): red-hot for `time` s after the last flame touched
   // it, and while hot anything of it that touches the goat but his horns costs `hurt` hearts, once every `cd` s. Poison
   // does not sicken it, it soaks it (`soak` s): soaked and hot at once, it goes off like a puddle (`Sawbot.burst`).
-  sawbot: { hp: 2, speedMul: 1.05, flingMul: 1.1, scale: 1, shrug: 2.5,
+  sawbot: { hp: 2, speedMul: 1.05, flingMul: 1.1, shrug: 2.5,
     heat: { time: 3.5, hurt: 1, cd: 0.9, touch: 3 }, soak: 6,
     // the chainsaw on its arm (js/factory-pixels.js, "the saw arm bigger"): `len` texels of bar, `w` thick, the chain at `run`
     saw: { len: 15, w: 4, run: 30 },
@@ -2312,7 +2310,7 @@ const TUNING = {
   // 15 Oct 2026 playtest ("the flamethrower men should spot you sooner and open up sooner"): `sightMul` on his sight,
   // `notice` on his beat of doubt, the aim from further (`aim` 3.4 → 4.0), a shorter windup (`wind` 0.7 → 0.5), the
   // first burst sooner after he wakes (`wake` 1.2 → 0.5).
-  welder: { hp: 2, speedMul: 0.8, r: 14, flingMul: 0.5, scale: 1, immune: { blunder: true }, sightMul: 1.4, notice: 0.35,
+  welder: { hp: 2, speedMul: 0.8, r: 14, flingMul: 0.5, immune: { blunder: true }, sightMul: 1.4, notice: 0.35,
     // `aim` 2.6 → 2.0 (13 Oct 2026 playtest: "they aim from too far"); the jet hurts only where its own fire lies (it
     // reached a tile past it). Second playtest the same day: a longer, wider jet (`range` 3.2 → 4.3, `half` 0.62 → 0.66,
     // "a bigger radius of damage"), fired from further off (`aim` 3.4, `hold` 2.9, `back` 2.1: "he need not come so
@@ -2494,7 +2492,7 @@ const TUNING = {
     // says so; `footstep` came up a tile so the warning is not only heard once you are already close
     // enough to touch him.
     footstep: 3, footstepGap: 0.16,
-    chase: 6, headbutt: 5, splat: 8, smash: 8, gunshot: 14, scream: 12, bell: 30, swing: 4, door: 10, table: 9, breath: 10, boom: 16, cast: 7, rune: 11, cage: 13, steel: 9, embers: 6,
+    chase: 6, headbutt: 5, splat: 8, smash: 8, gunshot: 14, bell: 30, swing: 4, door: 10, table: 9, breath: 10, boom: 16, cast: 7, rune: 11, cage: 13, steel: 9, embers: 6,
   },
   // STEALTH (3 Oct 2026, a test then, part of every floor since; `Game.stealthLive`, nothing changes
   // with it off). ALT held is a sneak (`game.sneak`): `speed` of his stride, no run-up, no footsteps,
@@ -2532,7 +2530,7 @@ const TUNING = {
     idle: { tries: 12, far: 6, keep: 0.75, wall: 1, wake: 0.4 },
     crouch: { wide: 0.07, low: 0.12 },
     look: { px: 4, ray: 0.03, keep: 0.25, turn: 0.06, budget: 3, cone: 'rgba(196,48,36,0.2)', rim: 'rgba(226,70,50,0.6)',
-      seen: 'rgba(238,64,42,0.34)', ear: 'rgba(214,160,72,0.4)', status: '#9fc7e8', statusDeny: '#e0a040', refuse: 1 } },
+      seen: 'rgba(238,64,42,0.34)', ear: 'rgba(214,160,72,0.4)', status: '#9fc7e8', statusDeny: '#e0a040' } },
   juice: {
     // The master dials, over every call site at once: `screen` multiplies every shake, kick, lens
     // punch and flash, `stop` every hitstop. 1.37 stacked a hit flash, a ring, sparks, dust and a
@@ -3012,11 +3010,10 @@ const TUNING = {
   // out goes back to stone under a veil of dark and the room goes black (`game.updateClamps`). The
   // room he has just come out of stays open, that is the one you can still step back into. `slam`
   // is a third of how long the dark takes to come down, `hear` how many tiles off it is heard.
-  // `say`: s the first clamp's NO WAY BACK rides over him (once a browser; unused since 7 Oct 2026, the words are on
-  // the floor by the shut door now: `readR` tiles and `readFor` s of standing near them and they are read, gone for
-  // good). `cell`: world px a texel of the veil in the mouth (`Renderer.drawVeil`, pixels since 6 Oct 2026).
+  // The first clamp's NO WAY BACK lies on the floor by the shut door (7 Oct 2026): `readR` tiles and `readFor` s of
+  // standing near it and it is read, gone for good. `cell`: world px a texel of the veil in the mouth (`Renderer.drawVeil`, pixels since 6 Oct 2026).
   // `showR`: the words by the shut door stay unseen until he is this many tiles from them, full by `readR` (9 Oct 2026).
-  clamp: { slam: 0.35, hear: 14, say: 4.5, cell: 3, readR: 5, readFor: 2.2, showR: 8 },
+  clamp: { slam: 0.35, hear: 14, cell: 3, readR: 5, readFor: 2.2, showR: 8 },
   // PERMADEATH (7 Oct 2026, "if you die, you die; what is in heaven and what you unlocked stay"): a death ends the run,
   // heaven's edge (and the death card's RUN AGAIN) starts a new one from THE ALTAR (`Game.beginRun`, `Game.permadeath`).
   // Never a LEVELS practice or THE SHOWROOM. False brings back the old way: the same floor, built again.
@@ -3380,7 +3377,6 @@ const TUNING = {
   // Now a clear at par with every body in it scores 1500, the fastest pacifist 2000, and the fastest
   // run with bodies in it 3000, which is the best run the concept asks for.
   score: { perRoom: 9, timePoints: 1000, fastCap: 2, killMul: 0.02, killCap: 1.5 },
-  held: { bulletsAbsorbed: 2 },
   // A corrupted soul: what a boss leaves, and what the goat swallows to get stronger. It was a tome,
   // which asked the player to believe that a goat reads.
   // `bossChance` and `roomChance` are the two surprises a level with `surprises: true` rolls on top of
@@ -3423,7 +3419,7 @@ const TUNING = {
   keys: { drop: 0.35, r: 12, pickR: 24, start: 0, spare: 1,
     // `animal`: since 5 Oct 2026 a floor stands ONE iron cage, never the pair; this share of them is the
     // animal's coop in iron, the rest the cage of big grass (its coop stays slats).
-    iron: { from: 1, chance: 1, pair: [2.2, 5.5], readR: 7, sayR: 2.4, sayGap: 3.2, r: 26, apart: 1 } },
+    iron: { from: 1, chance: 1, pair: [2.2, 5.5], readR: 7, sayR: 2.4, sayGap: 3.2, r: 26 } },
   soul: {
     doorOff: 1.6,   // tiles a dropped soul is moved off a door into the room (`Game.dropSoul`), so the grab's line is never through the door
  r: 13, pickupR: 22, bossChance: 0.4, roomChance: 0, apart: 3,
@@ -3480,12 +3476,11 @@ const TUNING = {
   // The death screen's pull-back. `delay` holds the camera where it died for a beat, the shake and
   // the toll are still landing, before `zoomTime` seconds of easing out to the whole level, margin
   // clear on every side. `sampleGap` is how often a dot goes on the trail `game.pathTrail` draws as
-  // a line once the pull-back gets there; `lineWidth` is in screen pixels, not world ones, so the
-  // line reads the same thickness at any zoom. `fogAlpha` is how dark a room nobody opened stays
+  // a line once the pull-back gets there. `fogAlpha` is how dark a room nobody opened stays
   // once the pull-back reaches it: `Renderer.drawUnseen` reads it in place of full black, so a room
   // that was never walked into still reads as a room on the recap rather than as a hole in the map.
   // `skull` is the screen-pixel size of the mark left on the map where each man went down.
-  deathCam: { delay: 1.9, zoomTime: 2.2, margin: 0.88, sampleGap: 0.2, lineWidth: 2.4, fogAlpha: 0.16, skull: 9, smooth: 3, tellFade: 0.25 },   // `smooth`: corner-cutting passes over the line he ran (8 Oct 2026)
+  deathCam: { delay: 1.9, zoomTime: 2.2, margin: 0.88, sampleGap: 0.2, fogAlpha: 0.16, skull: 9, tellFade: 0.25 },
   // The picture of a cleared floor (`js/painting.js`). `px` is painting pixels a tile, the decal's
   // own 10.9, rounded, so the paint lands a texel for a texel. The level is cut into up to `maxRows`
   // rows (at a column no room stands across, looked for within `cutLook` of a row's width of the
@@ -3512,11 +3507,10 @@ const TUNING = {
     route: { w: 0.74, max: 780, cell: 2, move: 1.3, after: 0.9 },
     // The death card's picture of the floor (`Painting.drawDeath`) comes in over the pull-back:
     // `fade` s long, starting `at` s into the zoom. RESTART (3 Oct 2026, "a quick start after a death,
-    // one button on the screen"): the floor again at once, past heaven, offered `quick` s after the blow,
-    // beside ASCEND; Backspace (the pad's BACK) presses it. RESTART comes first (`quick`), ASCEND once the
-    // pull-back is done; and only ASCEND while heaven has something new (`Heaven.news`, 5 Oct 2026).
+    // one button on the screen"): the floor again at once, past heaven, beside ASCEND; Backspace (the pad's
+    // BACK) presses it; only ASCEND while heaven has something new (`Heaven.news`, 5 Oct 2026).
     // `oneRow` 7 Oct 2026 ("at death show it in one line too"): the floor he died on is one strip up to this wide against its height.
-    death: { at: 0.6, fade: 0.9, h: 0.56, top: 0.07, quick: 0.5, late: 1.4, lateRuns: 4, oneRow: 14 },   // RUN AGAIN with ASCEND, `late` s after it on the first `lateRuns` runs (9 Oct 2026)   // top 0.2 until DIED left the top (30 Sep 2026)
+    death: { at: 0.6, fade: 0.9, h: 0.56, top: 0.07, late: 1.4, lateRuns: 4, oneRow: 14 },   // RUN AGAIN with ASCEND, `late` s after it on the first `lateRuns` runs (9 Oct 2026)   // top 0.2 until DIED left the top (30 Sep 2026)
   },
 };
 

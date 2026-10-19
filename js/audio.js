@@ -1170,7 +1170,7 @@ class GameAudio {
       for (const p of game.props) {
         if (p.kind !== 'heal' || p.broken || p.dead) continue;
         const d = hyp(p.x - g.x, p.y - g.y);
-        if (d < bd) { bd = d; amb.grassNear = p; amb.grassD = d; }
+        if (d < bd) { bd = d; amb.grassNear = p; }
       }
     }
     const best = g.hp < g.maxHp && amb.grassNear && !amb.grassNear.broken && !amb.grassNear.dead ? amb.grassNear : null;

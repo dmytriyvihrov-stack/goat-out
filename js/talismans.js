@@ -26,7 +26,7 @@ const Talisman = {
   heavy(e) { return e.kind === 'ratogre' || (e.unliftable === true); },
 
   update(game, dt) {
-    const S = Talisman.st(game), R = Talisman.run(game), m = game.mods, g = game.goat, w = game.world;
+    const S = Talisman.st(game), R = Talisman.run(game), m = game.mods, g = game.goat;
     // A room entered for the first time this level. Tallow counts it; the sandal asks who was behind.
     const here = game.goatRoom || 0;
     if (here !== S.room) {
@@ -438,7 +438,7 @@ const Talisman = {
       e.corpsed = true;
       const p = new Prop(e.x, e.y, 'crate');
       p.corpse = true; p.noGrab = true; p.r = SP.r; p.life = SP.life; p.sprite = game.fx.snapshot(e);
-      p.angle = (e.facing || 0) + Math.PI / 2; p.fromKind = e.kind;
+      p.angle = (e.facing || 0) + Math.PI / 2;
       // The blow that killed him is not a blow on his body (9 Oct 2026 playtest: "the spade does not work"): the prop pass of
       // the very headbutt that did it found the new crate in front of him, sent it down the wall at the blow's speed and broke it.
       p.lastLunge = game.goat.lungeId;
@@ -728,7 +728,7 @@ const Talisman = {
   // params as chips. A chip is the same editor the BOONS tab uses: a number opens a prompt, a
   // yes/no flips, and both are written back into tuning.js through `persistTuningEdit`.
   drawToolTab(r, game, pad, top) {
-    const ctx = r.ctx, s = r.ts, d = game.dev, W = r.w, H = r.h;
+    const ctx = r.ctx, s = r.ts, d = game.dev, W = r.w;
     ctx.font = `700 ${11 * s}px ${FONT_SC}`; ctx.fillStyle = PALETTE.ochre; ctx.textAlign = 'left';
     ctx.fillText('THE TALISMANS', pad, top);
     ctx.font = `400 ${8.5 * s}px ${FONT}`; ctx.fillStyle = PALETTE.ash;
@@ -796,7 +796,6 @@ const Talisman = {
   },
   // The tab's clicks. Returns whether `id` was one of them.
   devAction(game, id) {
-    const d = game.dev;
     if (id === 'tal-end') return true;
     if (id.startsWith('tal-off=')) { const aid = id.slice(8); game.artifacts = (game.artifacts || []).filter((a) => a.id !== aid); game.applyBoons(); game.devToast(`${(Shop.def(aid) || {}).name} OFF`); return true; }
     if (id === 'cape-off') { game.cape = null; game.applyBoons(); game.devToast('NO CAPE'); return true; }
@@ -861,7 +860,6 @@ const Talisman = {
   icon(ctx, id, h) {
     const edge = 'rgba(26,16,22,0.75)';
     const line = (c, w) => { ctx.strokeStyle = c; ctx.lineWidth = h * w; };
-    const disc = (c) => { ctx.fillStyle = c; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.12; ctx.beginPath(); ctx.arc(0, 0, h * 0.85, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); };
     if (id === 'mason') { ctx.fillStyle = '#8d8a85'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.12; ctx.fillRect(-h * 0.8, -h * 0.8, h * 1.6, h * 1.6); ctx.strokeRect(-h * 0.8, -h * 0.8, h * 1.6, h * 1.6); line('#2a2020', 0.12); ctx.beginPath(); ctx.moveTo(-h * 0.2, -h * 0.8); ctx.lineTo(h * 0.1, -h * 0.1); ctx.lineTo(-h * 0.1, h * 0.3); ctx.lineTo(h * 0.2, h * 0.8); ctx.stroke(); }
     else if (id === 'domino') { ctx.fillStyle = PALETTE.bone; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.12; ctx.fillRect(-h * 0.5, -h * 0.9, h, h * 1.8); ctx.strokeRect(-h * 0.5, -h * 0.9, h, h * 1.8); ctx.fillStyle = PALETTE.ink; ctx.fillRect(-h * 0.5, -h * 0.04, h, h * 0.08); for (const [px, py] of [[0, -h * 0.45], [-h * 0.22, h * 0.3], [h * 0.22, h * 0.6]]) { ctx.beginPath(); ctx.arc(px, py, h * 0.12, 0, Math.PI * 2); ctx.fill(); } }
     else if (id === 'echo') { line(PALETTE.bone, 0.2); ctx.beginPath(); ctx.arc(-h * 0.3, 0, h * 0.6, -1.2, 1.2); ctx.stroke(); line('rgba(239,230,208,0.55)', 0.16); ctx.beginPath(); ctx.arc(h * 0.1, 0, h * 0.6, -1.2, 1.2); ctx.stroke(); line('rgba(239,230,208,0.3)', 0.12); ctx.beginPath(); ctx.arc(h * 0.5, 0, h * 0.6, -1.2, 1.2); ctx.stroke(); }

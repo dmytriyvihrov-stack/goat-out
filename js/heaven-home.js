@@ -418,7 +418,7 @@ Object.assign(Heaven, {
   // A stand's own state over its plinth (`drawSeat` calls it): the padlock on a locked one, cracks and rubble on a broken
   // one with what it still asks.
   drawStandState(R, game, p, top) {
-    const ctx = R.ctx, st = this.standState(p.seat), c = 2;
+    const ctx = R.ctx, st = this.standState(p.seat);
     // A locked stand is a ruin under a padlock (9 Oct 2026, "padlocks on every broken one"; the plinth is the broken one,
     // `drawSeat`): nothing is asked of it until the horns are open (`standCost`).
     if (st === 'locked') { this.drawPadlock(ctx, -7, top - 22, 2); return true; }

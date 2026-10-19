@@ -65,7 +65,7 @@ const Beast = {
     p.lastBy = src;   // what the plate and its body say killed it
     const own = TUNING.prop[p.kind] && TUNING.prop[p.kind].hp;   // the horse and the hen are sturdier than the rest
     p.beastHp = (p.beastHp === undefined ? own || B.hp : p.beastHp) - 1;
-    p.hurtCd = src === 'fire' ? B.hurtFire : B.hurtCd; p.hurtMax = p.hurtCd; p.wobble = 0.3; p.hurtFlash = 0.25;
+    p.hurtCd = src === 'fire' ? B.hurtFire : B.hurtCd; p.wobble = 0.3; p.hurtFlash = 0.25;
     game.particles(p.x, p.y, 7, src === 'fire' ? PALETTE.fire : PALETTE.blood, 150);
     if (p.beastHp > 0) {
       game.audio.sfxAnimal(p.kind, true);

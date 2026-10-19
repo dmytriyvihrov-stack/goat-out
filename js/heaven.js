@@ -583,8 +583,8 @@ const Heaven = {
     H.plates.push({ x: post.x, y: post.y - 56, text: on.map((k) => QUESTS[k].off).join(' '), life: TUNING.heaven.plate * 1.4 });
     game.particles(post.x, post.y - 30, 14, PALETTE.bone, 120); game.audio.sfxSwing(); game.audio.sfxClatter('wood', 0.4);
   },
-  // A floor climbed out of (`floorCleared`): the horse counts the ones the red was after him on, the rabbit
-  // wins on one where nobody but the last room saw him (`game.floorSeen`, `questStep`).
+  // A floor climbed out of (`floorCleared`): the horse counts the ones the red was after him on, the tortoise
+  // and the goose win theirs on a floor of their own (`questHere`; the goose's spoiling is `questStep`).
   questFloor(game) {
     const M = this.meta, Q = TUNING.heaven.quests, g = game.goat, at = g || { x: 0, y: 0 };
     // Won: the animal is FREE (`meta.freed`, js/heaven-home.js: off its stand, living up here), its talisman is on the
@@ -817,7 +817,7 @@ const Heaven = {
     return { W, H, tiles, rooms, spawns: [], props, start, tufts, exit: { x: px(E.x + 12), y: px(22) }, exitTile: { x0: E.x + 12, y0: 22 },
       forkTile: null, entry: null, seed: 1, def: HEAVEN_LEVEL, hints: [], controls: [], cagePrompt: null, vault: null,
       windows: new Set(), plan: null, gates: [], sealedArenas: [], shop: null, grass: [],
-      god: { x: px(15.5) + TILE / 2, y: 9 * TILE }, pool: start, edgeY: 20 * TILE };
+      god: { x: px(15.5) + TILE / 2, y: 9 * TILE }, pool: start };
   },
 
   // A death's card is clicked: up he goes. The floor he died on waits, exactly as a death leaves it
@@ -892,7 +892,6 @@ const Heaven = {
     if (!M.told.intro || (this.mendReady() && !this.mended() && !M.told.mend)) game.heaven.callAt = TUNING.heaven.callAfter;
     this.seeNews(game);   // what this visit shows is no longer news to the next death card
     this.save();
-    Renderer.heavenBake = null;
   },
 
   // Off the edge: a new run from THE ALTAR (PERMADEATH, `Game.restartLevel` → `beginRun`), or for a LEVELS practice
@@ -2329,7 +2328,7 @@ Object.assign(Heaven, {
 
   // On the floor: the pool of light he came up in, the words by the edge, the seats' names.
   drawFloor(R, game) {
-    const ctx = R.ctx, L = game.level, H = game.heaven, t = R.t, P = L.pool;
+    const ctx = R.ctx, L = game.level, t = R.t, P = L.pool;
     // the pool: rings of cells in gold and white, turning
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     const gl = ctx.createRadialGradient(P.x, P.y, 0, P.x, P.y, 60);
@@ -2652,7 +2651,7 @@ Object.assign(Heaven, {
     if (!bells.length) return;
     // A taller beam (`beam`'s 52 texels, the old one 30) stands on the same ground: its top, and the
     // bells with it, go up by the difference.
-    const b0 = bells[0], x0 = b0.x - 7 * k, y0 = b0.y - 26 - (S.h - 30) * k * TILT, open = this.bellsOpen();
+    const b0 = bells[0], x0 = b0.x - 7 * k, y0 = b0.y - 26 - (S.h - 30) * k * TILT;
     game.heaven.chimeAt = { x0, y0, k };   // the old man's lights fall in this frame (`drawSongLights`)
     ctx.save(); ctx.translate(x0, y0); ctx.scale(1, 1 / TILT);
     R.shadow(S.w * k / 2, S.h * TILT, S.w * k * 0.5, 5);
@@ -2805,7 +2804,7 @@ Object.assign(Heaven, {
     }
     // the sacrifices of the last life, counted into the heap
     if (H.tally > 0 && H.tallyT < A.tallyAfter + A.tallyTime + 1.2 && H.tallyT > A.tallyAfter) {
-      const k = clamp((H.tallyT - A.tallyAfter) / A.tallyTime, 0, 1), fade = clamp(A.tallyAfter + A.tallyTime + 1.2 - H.tallyT, 0, 1);
+      const fade = clamp(A.tallyAfter + A.tallyTime + 1.2 - H.tallyT, 0, 1);
       ctx.save(); ctx.globalAlpha = fade; ctx.textAlign = 'center'; ctx.font = `700 ${18 * s}px ${FONT_SC}`;
       ctx.fillStyle = '#b07a22'; ctx.fillText(`+${H.tally} ${H.tally === 1 ? 'SACRIFICE' : 'SACRIFICES'} FOR THE GOD`, W / 2, Hh * 0.2 + 60 * s);
       ctx.restore();

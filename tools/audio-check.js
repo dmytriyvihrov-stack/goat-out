@@ -221,7 +221,7 @@ console.log('PASS: kill on the next eighth, cleared, spotted sting, hurt dip, la
 // ---- the rooms' own sound ----
 {
   const beds=TUNING.audio.ambience.beds;
-  for(const def of LEVELS){const b=ambienceBed(def);assert(b&&['air','cave','wind'].includes(b.loop),def.name+' has a bed');assert.equal(b,beds[def.canon.id],def.name);}
+  for(const def of LEVELS){const b=ambienceBed(def);assert(b&&['air','cave','wind'].includes(b.loop),def.name+' has a bed');assert.equal(b,beds[def.canon.id]||beds.stone,def.name);}
   assert.equal(ambienceBed({shroom:true,canon:{id:'hollow'}}),beds.trip);assert.equal(ambienceBed(null),beds.stone);
   // Fire near him: nothing, a bowl beside him, a room alight; from the side it is on.
   const a=new GameAudio(),game=world();game.goat.x=6*TILE;game.goat.y=6*TILE;

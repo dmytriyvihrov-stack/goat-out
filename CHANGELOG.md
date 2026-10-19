@@ -5,6 +5,33 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 0.040, 19 Oct 2026: a cleanup, nothing to see
+
+His ask: "clean and optimise the code, delete what is not used". Nothing a player sees changes; every removal was found
+by a parse of every script (acorn, the scope of every name, every `TUNING` path through its aliases) and then read by hand.
+
+- **The painted pack's leftovers** (gone since 1.74, `PROP_PIXELS.on` was always true): the five `Renderer` draws the
+  pixel hook replaced (`drawStairs`, `drawRoast`, `drawSpire`, `drawPail`, `drawBurrow`), `PaintedArt.stamp` / `atlas` /
+  `fire` / `drawFrame` / `millArm` / `brokenDoor` and `ATLAS_CELL`, the switch itself, `pixelProps`, and the primitive
+  fallbacks behind it in render.js (the mill's beams, cap and hub, the ware's stool, the shelf's pail, the soul's flame).
+  js/prop-pixels.js lays those methods itself now. About 16 KB of render.js.
+- **24 `TUNING` numbers nothing read**: `heaven.dive.fling` (the dive throws at `second.fling`), `heaven.marks.lift.table`,
+  `goat.scream.callCooldown`, `prop.poster.readR`, `prop.weapon.swordStun`, the mouse's `squeakPitch` / `offer` / `free`,
+  the crow's `slack` / `followAt` / `hopGap`, `coward.gift.r`, `sawbot.scale` and `welder.scale` (no size knob reads
+  them), `noise.scream`, `stealth.look.refuse`, `clamp.say`, `held`, `keys.iron.apart`, `deathCam.lineWidth` / `smooth`,
+  `painting.death.quick`; and the comments that still named them.
+- **State written and never read**: `litByMan` (the hand-off is `passedFire` and `fireDepth` since the FIRE AMULET),
+  `gotUpFrom`, the rat ogre's `prey`, the grass's `fullTold`, `vaultMan`, `sneakRefusedAt`, `milkFullUsed`, `floorSeen`
+  (the rabbit's dare went with its stand), `ironRoom`, heaven's `edgeY` and `heavenBake`, `bossBarBottom`, `fromKind`,
+  `fireSfxTimer`, `hurtMax`, `grassD`, `nov.backfill`.
+- **Dead code**: the pig's `flap` and `FLAP`, `PrologueArt.cellRect`, the talisman icons' `disc`, the unused `A.pail`, and
+  35 locals declared and never read.
+- **Docs**: CLAUDE.md's file map had `js/waves.js`, `js/endboss.js` and `js/sacrifice.js` in twice (the fuller row of each
+  kept, the endboss row with the rifleman's four hearts); the sweep command loads js/factory.js (without it the machine
+  floors failed every seed); `tools/audio-check.js` accepts a floor that takes the stone bed (THE FOUNDRY, THE ENGINE).
+- Checked: every script parses, the sweep 0 fails over 60 seeds a floor, `balance.js` all rules hold, `doc-numbers` 57 of
+  57, `audio-check` passes, THE SHOWROOM and a floor drawn with no frame errors.
+
 ## 0.039, 19 Oct 2026: his marks in THE TEST LAB
 
 - **The vent is in the wall** (Deus Ex's): a grille low on a far wall's face; two blows open a duct up through the rock and

@@ -1618,7 +1618,7 @@ function tryGenerate(levelDef, seed, opts) {
         if (room.enter && len(room.enter.x - px, room.enter.y - py) < 2.5 * TILE) continue;
         if (room.exitMouth && len(room.exitMouth.x - px, room.exitMouth.y - py) < 2.5 * TILE) continue;
         if (!discKeepsRoomOpen(tiles, W, room, px, py, ironReach(), [[coop.x, coop.y]])) continue;
-        laid = { x: px, y: py, kind: 'ironcage', holds: 'grass', ironRoom: room.index };
+        laid = { x: px, y: py, kind: 'ironcage', holds: 'grass' };
       }
       if (laid) { coop.ironCage = true; props.push(laid); }
     }

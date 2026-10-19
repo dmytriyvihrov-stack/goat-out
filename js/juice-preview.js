@@ -366,7 +366,7 @@ const JuicePreview = {
       goatRoom: 0, holdAt: -1, bonusRoom: -1, vaultTrap: null, bless: null, intro: null, heaven: null, dropIn: null, stairFx: null,
       card: null, deathCam: null, painting: null, deathPainting: null, guide: null, skyTables: null, breathFx: null, checkpoint: null,
       tripBanner: 0, tripBack: 0, tripAt: -1, darkAt: -1, climbDark: false, fromHeaven: false, heavenTables: 0, soulsHere: 0, boonChoice: null,
-      pathTimer: 99, milkFullUsed: false, toldGrab: false, firstKill: null, goatLit: true, henSaved: false,
+      pathTimer: 99, toldGrab: false, firstKill: null, goatLit: true, henSaved: false,
       // The run's last man and his scene (js/endboss.js) and the ogre's witchfire (js/waves.js): never the preview's.
       endBoss: null, endScene: null, waves: [], ogreMet: 0,
       // What `startLevel` lays and the title never has: named here, so a preview opened from the

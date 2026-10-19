@@ -1,13 +1,6 @@
 // The art layer over the primitive renderer: room floors and walls out of the pixel swatches, every
 // unit through `character()` (a pixel sprite in a frame of leans, collar and wounds), and the few
 // painted props no pixel sprite exists for yet. Collision radii never read any of it.
-// `ATLAS_CELL` is the old painted atlas's layout (four by four, 128px cells), kept because the pixel props are fitted to it.
-const ATLAS_CELL = {
-  'cage-bars': [0, 0], 'cage-broken': [128, 0], 'mill-hub': [256, 0], 'mill-arm': [384, 0],
-  'spikes-idle': [0, 128], 'spikes-arming': [128, 128], 'spikes-up': [256, 128], 'weapon-stand': [384, 128],
-  sword: [0, 256], shield: [128, 256], 'healing-grass': [256, 256], 'soul-wisp': [384, 256],
-  'secret-wall': [0, 384], 'crate-debris': [128, 384], 'brazier-unlit': [256, 384], worktable: [384, 384],
-};
 // The carpets' grain (`PaintedArt.carpet`): `CARPET_N` texels a tile (1.6 world px, the props' size),
 // baked at `CARPET_UP` canvas px a texel. Each weave is a palette: the edge, the border band and its
 // motif, the pale guard lines, the field and its lattice, the medallion and the head in it, the
@@ -55,55 +48,10 @@ const MEN_IDLE = new Set(['idle', 'wander', 'noticed', 'investigate', 'chase', '
 // (`status.look.tint` / `goatTint`), laid over the sprite the way the hit flash is, masked to its own pixels.
 const POISON_FILTER = 'brightness(0) invert(0.6) sepia(1) saturate(6) hue-rotate(35deg)';
 class PaintedArt extends AltarArt {
-  // Nothing to load since 1.74: every prop is a pixel sprite (`js/prop-pixels.js`), and the painted
-  // images these methods once drew are gone. `images` stays empty for the few that still ask it.
+  // Nothing to load since 1.74: every prop is a pixel sprite (`js/prop-pixels.js`, which also lays `stamp`,
+  // `atlas`, `fire`, `millArm`, `millHub` and `brokenDoor` on this class), and the painted images are gone.
   constructor() {
-    super(); this.images = {}; this.failed = []; this.ready = true;
-  }
-
-  stamp(ctx, key, x, y, w, h, anchor = 0.5) {
-    const image = this.images[key]; if (!image || !image.naturalWidth) return;
-    if (h === undefined) h = w * image.naturalHeight / image.naturalWidth;
-    const smooth = ctx.imageSmoothingEnabled;
-    ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(image, x - w / 2, y - h * anchor, w, h);
-    ctx.imageSmoothingEnabled = smooth;
-  }
-
-  // Crops one cell out of a sprite sheet, the shared primitive under every animated stamp below,
-  // used for the expansion pack's walk cycles, fire loops, door states and props atlas.
-  drawFrame(ctx, image, sx, sy, sw, sh, x, y, w, h, anchor = 0.5) {
-    if (!image || !image.naturalWidth) return false;
-    const smooth = ctx.imageSmoothingEnabled;
-    ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(image, sx, sy, sw, sh, x - w / 2, y - h * anchor, w, h);
-    ctx.imageSmoothingEnabled = smooth;
-    return true;
-  }
-
-  // objects/atlas.png: one 128px cell per named prop. `h` defaults to `w`, every cell is square.
-  atlas(ctx, name, x, y, w, h, anchor = 0.5) {
-    const cell = ATLAS_CELL[name]; if (!cell) return false;
-    return this.drawFrame(ctx, this.images.propsAtlas, cell[0], cell[1], 128, 128, x, y, w, h === undefined ? w : h, anchor);
-  }
-
-  // The three lit fixtures each get one 8-frame, 10fps loop: the whole fixture animates in the
-  // sheet, so nothing else is drawn under it.
-  fire(renderer, key, x, y, w, anchor = 0.875) {
-    const col = Math.floor(renderer.t * 10) % 8;
-    return this.drawFrame(renderer.ctx, this.images[key], col * 128, 0, 128, 128, x, y, w, w, anchor);
-  }
-
-  // The mill arm's source art is one fixed-proportion beam, not a tileable strip, so it is stretched
-  // to the tuned arm length rather than repeated. `x` is the inner edge (by the hub), `len` the span
-  // out to the iron tip; height is cosmetic only, collision stays on `TUNING.mill`, untouched.
-  millArm(ctx, x, len) {
-    const image = this.images.propsAtlas; if (!image || !image.naturalWidth) return false;
-    const cell = ATLAS_CELL['mill-arm'];
-    const smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(image, cell[0], cell[1], 128, 128, x, -15, len, 30);
-    ctx.imageSmoothingEnabled = smooth;
-    return true;
+    super(); this.ready = true;
   }
 
   // A pixel swatch multiplied by one of the level's colours, baked once into a canvas of its own:
@@ -682,13 +630,6 @@ class PaintedArt extends AltarArt {
   brokenPost(game,p) {
     const ctx=game.world.dctx;ctx.save();ctx.globalAlpha=0.8;
     this.stamp(ctx,'cageBrokenTight',p.x,p.y,22,7,0.5);ctx.restore();
-  }
-
-  brokenDoor(game,p) {
-    const type=p.gate?'Soul':p.vault&&!p.vaultEmpty?'Vault':p.iron?'Iron':'Wood',image=this.images['slab'+type];
-    if(!image?.naturalWidth)return;
-    const ctx=game.world.dctx;ctx.save();ctx.translate(p.x,p.y);if(!p.vertical)ctx.rotate(Math.PI/2);
-    ctx.globalAlpha=0.75;this.drawFrame(ctx,image,384,0,128,128,0,0,64,64);ctx.restore();
   }
 
   // The body of a man's blow, off how far through each state he is (`renderer.windP`): the windup a coil away from the

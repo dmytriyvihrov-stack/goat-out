@@ -329,7 +329,7 @@ const Oil = {
     }
     // fire: an oiled tile alight burns its oil, and the oiled tiles beside it catch `catch` s later
     if (O.burns) {
-      for (const [i, a] of game.oil) {
+      for (const [i] of game.oil) {
         if (!(w.fire[i] > 0)) continue;
         game.oil.delete(i);
         for (const d of [1, -1, W, -W]) if (game.oil.has(i + d) && !game.oilCatch.has(i + d)) game.oilCatch.set(i + d, O.catch);

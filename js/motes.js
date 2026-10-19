@@ -111,7 +111,7 @@ const Motes = {
   // dotted tail when it flies. Cells on the world grid, never a smooth dot (the game is pixels).
   draw(R, game) {
     const list = game.motes; if (!list || !list.length) return;
-    const ctx = R.ctx, C = TUNING.heaven.motes.cell, t = R.t;
+    const ctx = R.ctx, C = TUNING.heaven.motes.cell;
     // Dead, the ones in his room go out with him.
     const fade = game.state === 'dead' && game.deathCam ? clamp(1 - game.deathCam.t / 0.8, 0, 1) : 1;
     if (fade <= 0) return;

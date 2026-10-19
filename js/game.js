@@ -1007,7 +1007,7 @@ class Game {
     const men = [];
     chosen.forEach((s, k) => {
       const e = new Enemy(s.x, s.y, cfg.kind);
-      e.aware = true; e.woke = true; e.state = 'chase'; e.room = -1; e.vaultMan = true;
+      e.aware = true; e.woke = true; e.state = 'chase'; e.room = -1;
       e.facing = Math.atan2(g.y - s.y, g.x - s.x);
       this.enemies.push(e); men.push(e);
       if (s.edge && k % 2 === 0) {
@@ -2679,7 +2679,7 @@ class Game {
   toggleSneak() {
     if (this.state !== 'play' || !this.goat || this.goat.dead) return;
     // Shut while a fight is on him: the press is answered by the ring round his feet, not by a crouch.
-    if (!this.sneakOn && (this.sneakDenied() > 0 || this.fightOn())) { this.sneakRefusedAt = this.timer; return; }
+    if (!this.sneakOn && (this.sneakDenied() > 0 || this.fightOn())) return;
     this.sneakOn = !this.sneakOn;
     if (this.sneakOn) this.learn('sneak');
   }
@@ -2998,7 +2998,7 @@ class Game {
     if (this.levelHp != null && keepBoons && !this.showroomOn) this.goat.hp = clamp(Math.round(this.levelHp), 1, this.goat.maxHp);
     // THE MIRROR's HALO: hearts of light over his own at the head of every floor, and GOOD GRAZER's
     // first bowl, not yet drunk.
-    this.goat.light = this.mods.lightHearts || 0; this.milkFullUsed = false;
+    this.goat.light = this.mods.lightHearts || 0;
     // The tortoise's iron (js/beasts.js): put on again at the head of every floor, a restart included.
     this.goat.armour = this.mods.armour || 0;
     this.goat.wet = this.mods.wet || 0;   // THE FISH's: fire on him this floor that only steams (`Goat.damage`)
@@ -3046,7 +3046,6 @@ class Game {
     Sacrifice.start(this);   // THE SACRIFICE ALTAR on THE CAVE (js/sacrifice.js)
     // The rabbit's dare (`Heaven.QUESTS`): nobody outside the last room has seen him yet (`Heaven.questStep`), and
     // while it is worn the stealth test is on, whatever the dev drawer's switch says; off again once it is not.
-    this.floorSeen = false;
     this.questSpoiled = false; this.geese = null;   // the goose's dare: clean until the horns or the teeth are used (`Heaven.questStep`)
     // (the rabbit's dare went with its stand on 7 Oct 2026; one an old store still wears no longer turns the test on, `Heaven.load` drops it)
     // The level's souls, handed out before a blow is struck. `def.souls` is the whole count (see the
@@ -3098,7 +3097,7 @@ class Game {
         door.needHits = TUNING.vault.ogre.hits;
         const b = V.box, cx = (b.x + b.w / 2) * TILE, cy = (b.y + b.h / 2) * TILE, away = cy > door.y ? 1 : -1;
         const e = new Enemy(cx, cy + away * TILE * TUNING.vault.ogre.back, 'butcher');
-        e.boss = true; e.hp = e.maxHp = e.cfg.hp; e.room = -1; e.vaultMan = true; e.caged = door; e.sid = 'vault';
+        e.boss = true; e.hp = e.maxHp = e.cfg.hp; e.room = -1; e.caged = door; e.sid = 'vault';
         e.facing = Math.atan2(door.y - e.y, door.x - e.x);
         this.enemies.push(e);
         this.vaultOgre = { e, door, t: TUNING.vault.ogre.tellGap };
@@ -3139,7 +3138,7 @@ class Game {
     // coming up its stairs, into the pen, on the first floor.
     this.dropIn = this.fromHeaven ? { t: 0 } : null;   // held back below, until the card is nearly gone
     // Tables he butted off heaven's edge come down on this floor, and only this one (`updateSkyTables`).
-    { const C = TUNING.heaven.tables, n = this.fromHeaven ? this.heavenTables || 0 : 0;
+    { const n = this.fromHeaven ? this.heavenTables || 0 : 0;
       this.skyTables = n > 0 ? { n, t: 0, drops: [] } : null;
       this.heavenTables = 0; }
     this.intro = null; this.stairFx = this.level.entry && !this.fromHeaven ? { t: -0.45, dir: -1 } : null;
@@ -4519,14 +4518,12 @@ class Game {
       // THE LAST SUPPER's tuft (`p.supper`, js/endboss.js) is grazed at any hearts: sitting down to it is what it is for.
       if (this.goat.hp >= this.goat.maxHp && !p.supper) {
         // THE NOSEBAG: with every heart full the tuft goes in the bag instead (js/talismans.js).
-        if (Talisman.bagGraze(this, p, near, dt)) { p.fullTold = false; continue; }
+        if (Talisman.bagGraze(this, p, near, dt)) continue;
         p.graze = 0;
         // Standing in it with every heart already (10 Oct 2026 playtest: no FULL over the grass, "no need to write
         // whether the hearts are full or not"): nothing is said, his head simply does not go down.
-        p.fullTold = near;
         continue;
       }
-      p.fullTold = false;
       if (near) this.goat.grazeAt = this.timer;   // his head goes down (`PaintedArt.drawGoat`)
       // Standing in it is the whole cost: running through does nothing, and stepping off, or simply
       // moving, bleeds the count back down rather than snapping it to zero, so a stray jostle from
@@ -5327,7 +5324,7 @@ class Game {
   }
 
   collideEntities(dt) {
-    const g = this.goat, en = this.enemies, ph = TUNING.physics;
+    const g = this.goat, ph = TUNING.physics;
     // Only the men who actually ran this step (`liveEnemies`): a frozen man cannot have moved into
     // anybody, and nobody can have moved into him, so the pair loop is over ten bodies on a late
     // floor rather than over eighty. The squared compare before the root is the same saving again,
