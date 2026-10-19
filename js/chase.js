@@ -12,6 +12,8 @@
 //
 // Render only in `draw`: a hard field of square cells at the left of the screen in screen space, a
 // ragged flickering edge, embers off it; the HUD is drawn over it.
+// THE CHASE's flesh (18 Oct 2026), darkest to the rim's pale wet pink, and the veins' hot red: a sprite's own ramp.
+const FLESH = ['#3a0a14', '#6e1426', '#9a1f33', '#c7384b', '#e8707c', '#ff4a52'];
 const Chase = {
   // Whether this floor has it: its own `mods`, or the dev drawer's CHASE row over any floor but the trip,
   // heaven and THE SHOWROOM.
@@ -192,6 +194,29 @@ const Chase = {
     keepIf(c.motes, (m) => m.t < m.life && m.y > -0.05);
   },
 
+  // The membrane's flesh, baked once: `n` cells square, one canvas pixel a cell, tileable both ways. Voronoi cells of
+  // meat (lighter in the middle, mottled), dark veins where two cells meet; `veins` is the veins alone, bright, for the pulse.
+  flesh() {
+    if (this.baked) return this.baked;
+    const n = 64, pts = [], base = document.createElement('canvas'), veins = document.createElement('canvas');
+    base.width = base.height = veins.width = veins.height = n;
+    for (let i = 0; i < 26; i++) pts.push([farHash(i, 3) * n, farHash(i, 9) * n]);
+    const bx = base.getContext('2d'), vx = veins.getContext('2d');
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      let d1 = 1e9, d2 = 1e9;
+      for (const [px, py] of pts) {
+        let dx = Math.abs(x - px), dy = Math.abs(y - py); dx = Math.min(dx, n - dx); dy = Math.min(dy, n - dy);
+        const d = Math.sqrt(dx * dx + dy * dy); if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d;
+      }
+      const edge = d2 - d1, mot = farHash(x * 7 + 1, y * 13 + 5);
+      let k = edge < 1.1 ? 0 : edge < 2.2 ? 1 : d1 < 2.5 ? 3 : 2;
+      if (k >= 2 && mot < 0.12) k--; else if (k === 2 && mot > 0.93) k = 3;
+      bx.fillStyle = FLESH[k]; bx.fillRect(x, y, 1, 1);
+      if (edge < 1.1) { vx.fillStyle = mot < 0.5 ? FLESH[5] : FLESH[3]; vx.fillRect(x, y, 1, 1); }
+    }
+    return (this.baked = { base, veins, n });
+  },
+
   // Screen space, over the world and under the HUD (`Renderer.drawUI`).
   draw(R, game) {
     const c = game.chase; if (!c || !game.level) return;
@@ -209,22 +234,46 @@ const Chase = {
     // The whole frame reddens a little once it is most of the way full.
     if (c.show > L.tintFrom) { ctx.fillStyle = PALETTE.blood; ctx.globalAlpha = L.tint * (c.show - L.tintFrom) / (1 - L.tintFrom); ctx.fillRect(0, 0, R.vw, H); ctx.globalAlpha = 1; }
     if (W < cell) return;
-    const rows = Math.ceil(H / cell), cols = Math.floor(W / cell), step = Math.floor(game.timer * L.rate);
+    const rows = Math.ceil(H / cell), cols = Math.floor(W / cell), step = Math.floor(game.timer * L.rate), t = game.timer || 0;
     // Under the row of hearts the field is near black: red hearts on red did not read.
     const hud = (L.hud * R.hs + (R.portrait ? 12 * R.hs : 0)) / cell;
-    // Each row of cells ends at its own ragged depth, re-cut `rate` times a second: a hard field, a rim of
-    // brighter cells at the edge, and a cell of fire here and there along it.
+    // the hearts stand in the bottom-left corner off touch (`R.hudLow`): the rows under them go dark there instead
+    const low = R.hudLow ? rows - (L.hudLow * R.hs) / cell : rows + 1;
+    // 18 Oct 2026, his ask (the red wall of a game he sent: "prettier"): a living membrane, not a slab. Each row of cells ends
+    // at its own lumpy depth (two slow waves and a quick ragged one), the field inside is flesh in cells (`Chase.flesh`: veined
+    // cells baked once, scrolled slowly up, its veins pulsing on a second layer that drifts the other way), a pale rim at the
+    // edge and spores of it dithered out past it.
+    const ends = this.ends || (this.ends = []); ends.length = rows;
+    ctx.save(); ctx.beginPath();
     for (let r = 0; r < rows; r++) {
-      const n = Game.shakeNoise(r * 0.45 + step * 0.13, 7) * 0.5 + 0.5, flick = Math.floor(farHash(r * 31 + step, step * 7 + r) * 3);
-      const end = Math.max(0, cols - Math.round(n * L.ragged) - (flick === 0 ? 1 : 0)), y = r * cell;
-      ctx.globalAlpha = L.alpha; ctx.fillStyle = r < hud ? PALETTE.ink : PALETTE.bloodDark; ctx.fillRect(0, y, Math.max(0, end - 2) * cell, cell);
-      ctx.fillStyle = PALETTE.blood; ctx.globalAlpha = 0.75; ctx.fillRect(Math.max(0, end - 2) * cell, y, Math.min(2, end) * cell, cell);
-      ctx.globalAlpha = 0.9; ctx.fillStyle = PALETTE.blood; ctx.fillRect(end * cell, y, cell, cell);
-      if (flick === 1 && farHash(r, step) < 0.125) { ctx.fillStyle = PALETTE.fire; ctx.fillRect((end + 1) * cell, y, cell, cell); }
+      const lump = Game.shakeNoise(r * 0.09 + t * 0.35, 3) * 0.5 + 0.5, rag = Game.shakeNoise(r * 0.45 + step * 0.13, 7) * 0.5 + 0.5;
+      const end = Math.max(0, cols - Math.round(lump * L.lumps + rag * L.ragged)); ends[r] = end;
+      if (end > 0) ctx.rect(0, r * cell, end * cell, cell);
     }
-    // A slow pulse of darker cells through the field, so it reads as something alive rather than a wall.
-    ctx.fillStyle = PALETTE.ink; ctx.globalAlpha = 0.3;
-    for (let r = 0; r < rows; r += 2) for (let q = (r + step) % 5; q < cols - 4; q += 5) if (farHash(q * 13 + r, (step >> 2) + q) < 0.25) ctx.fillRect(q * cell, r * cell, cell, cell);
+    ctx.clip();
+    const F = this.flesh(), T = F.n, sw = T * cell, smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+    const tile = (img, oy, a) => {
+      ctx.globalAlpha = a; const y0 = -(((Math.floor(oy) % T) + T) % T) * cell;
+      for (let y = y0; y < H; y += sw) for (let x = 0; x < W; x += sw) ctx.drawImage(img, x, y, sw, sw);
+    };
+    tile(F.base, t * L.drift, L.alpha);
+    tile(F.veins, -t * L.drift * 0.6, L.alpha * (0.35 + 0.35 * Math.sin(t * L.pulse)));
+    ctx.globalAlpha = 1; ctx.imageSmoothingEnabled = smooth;
+    ctx.restore();
+    for (let r = 0; r < rows; r++) {
+      const end = ends[r], y = r * cell;
+      if ((!R.hudLow && r < hud) || r >= low) { ctx.globalAlpha = 0.85; ctx.fillStyle = PALETTE.ink; ctx.fillRect(0, y, end * cell, cell); }
+      if (end <= 0) continue;
+      // a haze of red cells past the edge, dithered thinner the further out (the reference's soft glow, in cells)
+      ctx.fillStyle = PALETTE.blood;
+      for (let k = 0; k < L.haze; k++) if ((r + k) % 2 === 0 || k < 2) { ctx.globalAlpha = 0.28 * (1 - k / L.haze); ctx.fillRect((end + L.spores + k) * cell, y, cell, cell); }
+      // the rim: a pale wet edge two cells deep, and past it spores of flesh thinning out
+      ctx.globalAlpha = 0.9; ctx.fillStyle = FLESH[3]; ctx.fillRect((end - 1) * cell, y, cell, cell);
+      ctx.fillStyle = FLESH[4]; ctx.globalAlpha = 0.55; ctx.fillRect((end - 2) * cell, y, cell, cell);
+      for (let k = 0; k < L.spores; k++) if (farHash(r * 17 + k, step + k * 3) < 0.5 - k * 0.14) {
+        ctx.globalAlpha = 0.75 - k * 0.2; ctx.fillStyle = k ? FLESH[1] : FLESH[2]; ctx.fillRect((end + k) * cell, y, cell, cell);
+      }
+    }
     ctx.globalAlpha = 1;
     for (const m of c.motes) {
       const a = clamp(1 - m.t / m.life, 0, 1), x = Math.floor(m.x * W / cell) * cell, y = Math.floor(m.y * H / cell) * cell;

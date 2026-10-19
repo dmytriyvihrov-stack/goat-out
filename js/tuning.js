@@ -3,7 +3,7 @@ const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else, bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on. Counted 0.001, 0.002,
 // ... since 9 Oct 2026 (his word: "big numbers confuse me"); the line before it ended at 2.07.
-const BUILD = '0.034';
+const BUILD = '0.038';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -121,7 +121,10 @@ const TUNING = {
     // dark hole with points in it (Gungeon's pits are black) and the amber of a tell over it stands clear.
     pit: { lip: 4, face: 12, rim: 4, edge: 'rgba(236,214,170,0.55)', sheet: 144, spikeGap: 24, spikeSkip: 0.4, spikeH: 13,
       stakeW: 4, stakeTaper: 1.7, stakeTip: '#d8cbae', veil: 0.38,
-      dirt: '#120f0d', stake: '#9a8b70', stakeShade: '#4a3f33', blood: '#5a1212', sky: '#1d3160', cloud: 'rgba(150,170,214,0.3)' },
+      dirt: '#120f0d', stake: '#9a8b70', stakeShade: '#4a3f33', blood: '#5a1212', sky: '#1d3160', cloud: 'rgba(150,170,214,0.3)',
+      // on snow (`Renderer.snowPitEdges`): a lip `lip` + up to `rag` px of white over each open side in `cell` px steps,
+      // inked `ink` on its inside edge; the far face `faceH` px in three steps
+      snow: { cell: 2, lip: 3, rag: 3, ink: '#1c1f2a', faceH: 12, face: ['#8fa3b8', '#4d5d70', '#232a36'] } },
     // A sawbot or a welder coming apart (`CombatFX.scrap`): `pieces` and `head` are crops [x, y, w, h] of the 96 px
     // snapshot of its front view, feet at (48, 74); the head flies `headScale` its size, thrown `headLift` × `lift` up and
     // `headSpeed` px/s along the blow (drag slows it more), turning at most `headSpin` rad/s, and lands upright.
@@ -153,6 +156,8 @@ const TUNING = {
     // lit `light` × the radius for the first `lightFor`, and the shock ring runs out to `ringOut` ×
     // the radius over the first `ringFor`.
     pixel: 1,
+    // a landing ring on snow (`Renderer.drawLandCells`): a dark band of `ink` either side, the disc `fill[0] + fill[1] × p`
+    snowTell: { ink: 0.55, fill: [0.18, 0.3] },
     flame: { scale: 1, wide: 1.5, tall: 2.3, frames: 8, sparks: 3 },
     // A rifle's spent case: `w` × `h` world px of brass thrown `speed` px/s out of the side of the
     // breech and `back` of that behind it, `lift` px/s up; it bounces once and stays on the floor.
@@ -329,6 +334,9 @@ const TUNING = {
     // 7 Oct 2026 playtest: "too early, give the person a chance to find it out themselves": 25 s became 75.
     // 8 Oct 2026 playtest: the god says it first ("well? jump, go on"), `say` s in, and only a goat still dawdling
     // `after` s past his word gets the arrows.
+    // the bars over the lip while the edge is shut (`Heaven.drawEdgeGate`): `cell` px cells, `h` px tall, a bar every `gap`
+    // px, a gate `gateW` px wide; at `alpha`, `hot` for a beat after the god puts him back; `fade` s in and out
+    edgeGate: { cell: 3, h: 54, gap: 15, gateW: 60, alpha: 0.16, hot: 0.55, fade: 0.6, iron: '#3a2c4e', lock: '#b07a1e' },
     arrows: { say: 50, after: 25, n: 4, cell: 4, bob: { rate: 3.2, amp: 5 }, fade: 0.8, glyph: ['.###.', '.###.', '.###.', '#####', '.###.', '..#..'], fill: '#f7d774', lit: '#fff4c2', rim: '#3a2c4e' },
     mirrorFlash: 0.35, mirrorBack: 7, mirrorDaze: 0.7, panelArm: 0.25,
     // A rank is bought by holding (5 Oct 2026, "like Hades"): click, SPACE or A held `hold` s fills the
@@ -822,6 +830,9 @@ const TUNING = {
   },
   hunter: {
     radius: 11, speed: 0.8 * CULT_PACE, sight: 10, cone: Math.PI / 2,
+    // `calmSight` (19 Oct 2026 playtest: "riflemen not on alert see too far, it is overpowered"): × his sight
+    // (the post's extra not counted) until he has seen the goat (`Enemy.sightRange`)
+    calmSight: 0.6,
     // `gapReach`: × his sight down a clear line when a drop parts him from the goat (9 Oct 2026, `cutOffByGap`).
     keepMin: 5, keepMax: 8, backoffDist: 4, aimTime: 0.88, reload: 1.35, gapReach: 1.5,
     // What he has left once you have him by the collar. He empties it into the room and then he is
@@ -1063,7 +1074,8 @@ const TUNING = {
     // goes off in `ring.n` rings over the whole room, a beat apart, gaps to slip through or a roll.
     // Since 10 Oct 2026 (the user's) the mage runs to THE WARDEN waiting at the way out and hands her over (`hand` s, his `wardenLine`),
     // and it is the Warden who goes out through the gate with her: THE CAVE's mage comes without her from then on.
-    mage: { see: 1.1, run: 4.6 * TILE, runCap: 4, hand: 1.5, wardenLine: 'MINE NOW, GOAT. COME AND TAKE HER.', witchFrom: 2, witch: 1.2, ringsFrom: 3,
+    // `first`: the Warden's first showing (the first meeting): `hand` s holding her, `walk` Г— the pace out (19 Oct 2026).
+    mage: { see: 1.1, run: 4.6 * TILE, runCap: 4, hand: 1.5, first: { hand: 2.8, walk: 0.55 }, wardenLine: 'MINE NOW, GOAT. COME AND TAKE HER.', witchFrom: 2, witch: 1.2, ringsFrom: 3,
       // 9 Oct 2026 playtest: "the mage's rings slower, a bit like fire, so I can roll through it": `speed` 6.5 → 3.5 tiles/s, and
       // `flames` puts the game's own witchfire every that many tiles round the ring (`flameSize`, `CombatFX.flame`'s size).
       // A volley costs one heart at most (js/waves.js `volley`).
@@ -1284,7 +1296,9 @@ const TUNING = {
     // held where he stands `hold` s (× `bigMul` for a man too heavy to lift; he still swings at what is in reach) and the
     // tile is spent; a blow that throws him tears him out. Fire on a web tile burns it away and lights the web beside it
     // (`burn` s of flame), and a man held in it catches. `immune`: kinds it never holds.
-    web: { speed: 12 * TILE, range: 7.5, tiles: 6, time: 14, hold: 3.2, bigMul: 0.5, burn: 1.4, immune: ['butcher', 'ratogre', 'wraith'] },
+    web: { speed: 12 * TILE, range: 7.5, tiles: 6, time: 14, hold: 3.2, bigMul: 0.5, burn: 1.4, immune: ['butcher', 'ratogre', 'wraith'],
+      // a caught man wears it (`Status.drawWebbed`): the strands `w` x `h` tiles over him at `alpha`
+      look: { w: 1.15, h: 1.5, alpha: 0.7 } },
     // FIREBRAND (it was CHARGED, a bomb where the throw stopped, until 1.65): the floor it has
     // flown over burns for `burn` s, a straight line and nothing else, not where it lands, not
     // who it hits. Nothing within `gap` tiles of the mouth it left, so the goat is not standing in it.
@@ -1328,7 +1342,7 @@ const TUNING = {
     // bare reach, so the blow landed or missed on float rounding.
     // `clockReach`: the longest walk, in tiles, from a room's way in to its clock door. Flat out the goat
     // covers about 43 tiles before the door blocks; the Great Hall's was 45–65, a race nobody could win.
-    door: { r: 29, thick: 16, reachSlack: 12, openPressure: 0.9, smashSpeed: 6 * TILE, hits: 1, ironHits: 3, vaultHits: 4, stairHits: 3,
+    door: { r: 29, thick: 16, reachSlack: 12, openPressure: 0.9, smashSpeed: 6 * TILE, clockHold: 0.92, clockBack: 1.6, hits: 1, ironHits: 3, vaultHits: 4, stairHits: 3,
       clockFor: 12, clockEase: 0.5, clockReach: 30 },
     // `squeeze`: px either side of a goat's width that the floor between a table and a brazier may
     // not be, narrower they are one lump, wider it is a way through that never brushes the coals;
@@ -1520,7 +1534,8 @@ const TUNING = {
     // THE FACTORY's gas cylinder (16 Oct 2026, his: "a throwable; after the throw it pushes the enemies apart"; a crate
     // with `gas`, `FACTORY_PROPS.gasBurst`): where it breaks, every man within `r` tiles is thrown away from it at `fling`
     // tiles/s (`edge` of that at the rim), dazed `daze` s; the shove's ring takes `ringFor` s to reach `r`. First guesses.
-    gas: { r: 2.6, fling: 13, edge: 0.45, daze: 0.8, ringFor: 0.35 },
+    // `burst` px of cold cloud where it goes off, the goat shoved `goat` tiles/s (no heart; 19 Oct 2026)
+    gas: { r: 2.8, fling: 15, edge: 0.45, daze: 0.8, ringFor: 0.35, burst: 30, goat: 9 },
     // THE FACTORY's oil is in `TUNING.oil` (top level).
     // THE FACTORY's floor junk is dressing (his mark: "less visible, clearer that it is decoration"): drawn at this alpha.
     junkAlpha: 0.55,
@@ -1693,7 +1708,7 @@ const TUNING = {
     // - solid, and rounds stop on it, so a thrown tortoise is also the cover you did not have.
     // `cool`: a shell that has taken a round or a blow is on its back for that long, no cover,
     // and nothing to pick up, before it rights itself. One block, then a wait (js/beasts.js).
-    tortoise: { r: 13, speed: 42 * SLOW, followAt: 1.4, throwSpeed: 520, drag: 2.6, tuck: 4.0, cool: 6, guardR: 6,
+    tortoise: { r: 13, speed: 42 * SLOW, followAt: 1.4, throwSpeed: 520, drag: 2.6, tuck: 4.0, cool: 4, guardR: 6,
       // What it is worth at the stairs (3 Oct 2026, "once a level it lets you wear armour, if you brought it";
       // it was a use on every shield): every floor after, he starts in iron that takes `saveArmour` blows
       // whole, the way a halo heart does, then comes off him in pieces (`Goat.damage`). `look`: plates painted
@@ -1950,6 +1965,8 @@ const TUNING = {
   // same floor with a smaller danger in the middle of it, so MILL_TEMPLATE shrank to match.
   mill: {
     hubR: 26, armLen: 2.05 * TILE, armHalfWidth: 0.2, innerR: 20,
+    // a tuft under the sweep, `at` of the arm out, `chance` of the wheels, nothing within `clear` tiles (gen.js, THE WHEEL'S GRASS)
+    grass: { chance: 0.5, at: 0.8, clear: 0.9 },
     speed: 0.82, impulse: 30 * TILE, damage: 1, hitCooldown: 1.15, goatKnock: 0.3,
     // Nothing stands in its sweep (5 Oct 2026 playtest: a stand of arms by the hub). The generator keeps
     // every crate, stand, barrel, bomb, table and suit `clear` tiles past the arm's end (`GEN_RULES.millclear`);
@@ -1970,7 +1987,8 @@ const TUNING = {
   // whose soul lifts the stairs' gate) is in `soul` over `soulBack`, and only he gets `hp` (or his
   // own plus one where that is more) before the soul's heart goes on top. `downFor`: how long any man with
   // a heart to spare lies after a killing blow he absorbed (`Enemy.die`; the rat ogre staggers instead).
-  boss: { hp: 3, champHp: 1, scale: 1.14, downFor: 0.75, outline: { px: 1, color: '#ffd23f', back: '#2a1a08', soul: '#b98cff', soulBack: '#2a1244', alpha: 0.95 } },
+  // `champFromRun`: the run (counted per browser, `best.runs`) from which a boss with no soul is a champion (`startLevel`).
+  boss: { hp: 3, champHp: 1, champFromRun: 4, scale: 1.14, downFor: 0.75, outline: { px: 1, color: '#ffd23f', back: '#2a1a08', soul: '#b98cff', soulBack: '#2a1244', alpha: 0.95 } },
   // The BUTCHER (the brute until 1.72; the code's flag is still `champion`): a clubman with a
   // cleaver, a hook on a rope (a charge until 30 Sep 2026) and too much weight to carry. Out of a ring he takes three killing blows, unlike
   // anybody without the outline; in one he is a boss by the rule above. Since 1.66 he wears what
@@ -2012,7 +2030,8 @@ const TUNING = {
     // third is a quarter, every one after a half, and a shove starts the count again from nothing.
     // 9 Oct 2026 ("show it more clearly, and he must not spam it"): never again inside `cd` s, a `ring` tiles
     // amber ring off him, a deeper lean (`lean` px over a longer `lunge`), `stop` s of hitstop.
-    shove: { window: 1.8, odds: [0, 0, 0.25, 0.5], speed: 13 * TILE, daze: 0.28, lunge: 0.32, lean: 10, cd: 4, ring: 1.6, stop: 0.07 },
+    // `after`: a windup the shove cut short leaves him `after` s in his recover (`Enemy.shoveBack`)
+    shove: { window: 1.8, odds: [0, 0, 0.25, 0.5], speed: 13 * TILE, daze: 0.28, lunge: 0.32, lean: 10, cd: 4, ring: 1.6, stop: 0.07, after: 0.45 },
     immune: { blunder: true } },
   // The SHIELDMAN (1 Oct 2026): a clubman behind a door-plank shield (the code's flag is `shield`, a
   // pseudo-kind in THREAT and the encounter tables, as `champion` is). Pillar 2 asked of the angle: a
@@ -2079,7 +2098,8 @@ const TUNING = {
     // strip laid amber), then goes `speed` px/s for up to `time` s. The goat within `reach` px of him loses
     // `damage` hearts, thrown `knock` px/s; a man of his own is bowled at `bowl`. Stone sits him down dazed
     // `wallDaze` s; after it, landed or not, he is planted `recover` s, unable to turn.
-    bash: { min: 1.4, max: 3.4, aim: 0.6, cd: 3, wind: 0.55, speed: 13 * TILE * SLOW, time: 0.3, reach: 4,
+    // 19 Oct 2026 playtest: "the shieldman leaps a bit slower": 13 tiles/s over 0.3 s went to 10.5 over 0.37, the same length
+    bash: { min: 1.4, max: 3.4, aim: 0.6, cd: 3, wind: 0.55, speed: 10.5 * TILE * SLOW, time: 0.37, reach: 4,
       damage: 1, knock: 7 * TILE, bowl: 9 * TILE, wallDaze: 1.2, recover: 0.9 },
     // Up or down at a glance (8 Oct 2026, the user's: "make it clear when the shield is up and turns your blows
     // and when it is down"): while `shieldUp` an arc of steel cells lies on the floor in front of him, `r` × his
@@ -2121,7 +2141,8 @@ const TUNING = {
   // `scale` over `boss.scale`; `pant` the breather after every throw (`time` s bent double, open to blows, `cd` s before he looks
   // for the next thing, chasing and punching meanwhile; `word` over him); `witch` the ring of witchfire round where a thrown
   // thing comes down (`Thrower.flights`: `r` tiles, `dur` s, watched `min`..`max` s, still under `still` px/s).
-  thrower: { hp: 3, carryMax: 6, pulse: { rest: 3, tell: 9 }, flingMul: 0.55, speedMul: 0.95, scale: 1.18, seek: 9, ammo: 3, give: 3.5, forget: 6,
+  // `bossMan`: as BANE a man of his is weighed that many tiles (negative: nearer) against a crate's distance (`Thrower.find`)
+  thrower: { hp: 3, carryMax: 6, pulse: { rest: 3, tell: 9 }, flingMul: 0.55, speedMul: 0.95, scale: 1.18, seek: 9, ammo: 3, give: 3.5, forget: 6, bossMan: -4,
     pant: { time: 1.8, cd: 3.2, word: 'HUFF... HUFF' }, witch: { r: 1, dur: 4, min: 0.12, max: 2.2, still: 30 },
     lift: 0.7, drop: 1.1, carry: 0.7, near: 1.6, far: 6.5, aim: 0.42, recover: 0.75, cd: 0.5, hit: 1,
     thing: 13 * TILE, man: 18 * TILE, beast: 12 * TILE, beastDrag: 2.6,
@@ -2158,7 +2179,10 @@ const TUNING = {
   shaman: { hp: 2, speedMul: 0.9, r: 11, keep: { min: 3.5, max: 6.5 }, wake: 1.2, near: 4.5,
     spirit: { cd: 7, wind: 0.9, reach: 7, max: 3, speed: 1.3, hurt: 1, hp: 1, time: 14, recover: 0.5 },
     // `wind` 1.2 since the same day: the status over the goat fills round in it, and it must be readable.
-    call: { cd: 6, wind: 1.2, min: 2.5, max: 8, time: 2.6, recover: 0.6, guard: 3 },
+    // `gapR`: a drop within that many tiles of the goat in his room is where the call pulls him (`Shaman.dropNear`)
+    call: { cd: 6, wind: 1.2, min: 2.5, max: 8, time: 2.6, recover: 0.6, guard: 3, gapR: 5 },
+    // `sightMul`: he sees further than a clubman (19 Oct 2026 playtest: "he notices you sooner"), `Enemy.sightRange`
+    sightMul: 1.4,
     // (the user's, same day) While he casts either, a big green ring of cells round him, `r` tiles, filling in
     // as the windup runs; when the cast goes off it flashes out to `burst` tiles.
     // `runes` signs round it, turning at `turn` rad/s, each blinking on its own beat (Enter the Gungeon's wizards).
@@ -2267,7 +2291,11 @@ const TUNING = {
   // `slamR` (15 Oct 2026): the slam's own ring, tiles round where the claw lands, every living one of flesh in it hit.
   // `recharge` (15 Oct 2026, second playtest: "after it has grabbed you it needs time to recharge"): its wait after it
   // let the goat go, slammed or escaped; `cd` is after a man. The horns cost it a heart since that playtest (`Arm.horns`).
-  arm: { hp: 2, r: 15, reach: 4.2, slamR: 1.1, lift: 0.75, slam: 0.14, recover: 0.8, cd: 1.3, recharge: 3.5, hurt: 1, throw: 7, daze: 0.45, stunBy: 1.6,
+  // `wreck` (`Arm.wreck`): a burst of `burst` px at the joint, `bits` thrown `fly` × wide, the claw flung `throw` × its reach
+  // within `spread` rad of where it pointed
+  arm: { wreck: { burst: 30, fly: 1.5, throw: [0.7, 1.1], spread: 0.9,
+      bits: ['fac-bit-plate', 'fac-bit-plate', 'fac-bit-gear', 'fac-bit-gear', 'fac-bit-bolt', 'fac-bit-bolt', 'fac-bit-bolt', 'fac-bit-pipe'] },
+    hp: 2, r: 15, reach: 4.2, slamR: 1.1, lift: 0.75, slam: 0.14, recover: 0.8, cd: 1.3, recharge: 3.5, hurt: 1, throw: 7, daze: 0.45, stunBy: 1.6,
     immune: { fire: true, witch: true, poison: true, blunder: true },
     look: { lift: 60, w: 7, bend: 30, turret: 14, watch: 1.8, sweep: 0.7, turn: 7, rest: 0.5, out: 0.88 } },
   // THE WELDER: a torso on tracks that drives forward and back along one axis only (`waxis`, set where he is laid) and
@@ -2301,7 +2329,8 @@ const TUNING = {
   // stands `hold` s and waits `cd` s (× `angry` with a leg out). (8 Oct playtest of the first cut: two legs out before his
   // first stomp, four butts, dead in five seconds, no heart lost; the run, the stuck foot and the hearts a fall answer it.)
   // `look` is the picture: how high the body stands (`lift` px), the two bones of a leg in texels, the bob on the walk.
-  automaton: { hp: 5, speed: 55, r: 12, bodyR: 42, limp: 0.3, immune: { fire: true, witch: true, poison: true, stun: true, blunder: true },
+  // `bombBody`: a thrown bomb within that share of `bodyR` of his middle goes off under him (`Automaton.bombMeets`)
+  automaton: { bombBody: 0.85, hp: 5, speed: 55, r: 12, bodyR: 42, limp: 0.3, immune: { fire: true, witch: true, poison: true, stun: true, blunder: true },
     // spread wider and the shins longer (13 Oct 2026 playtest: "a bit more room under its legs")
     // 13 Oct 2026, second playtest ("the legs a bit better"): a foot is found from further (`hitR` 0.7 → 0.85, `hitZ` 14 →
     // 22, a foot just lifting still counts), the second blow may come later (`heal` 2.5 → 4), and a foot that took a blow
@@ -2332,7 +2361,8 @@ const TUNING = {
   // s to `max`; whoever walks through it smears `trail` tiles behind him at `trailAmt`. `burns` (my addition, a trail as a
   // fuse): fire on an oiled tile burns it and the oiled tiles beside it catch `catch` s later, `burn` s of flame each.
   // First guesses.
-  oil: { start: 3, max: 9, grow: 2.5, trail: 2, trailAmt: 0.7, burns: true, catch: 0.18, burn: 2 },
+  // `valveReach`: a far wall that many tiles north of a spill's spot leaks it from a valve on its face (`Oil.start`)
+  oil: { start: 3, max: 9, grow: 2.5, trail: 2, trailAmt: 0.7, burns: true, catch: 0.18, burn: 2, valveReach: 4 },
   // THE FACTORY's traps (13 Oct 2026, js/machines.js, art in output/factory-art-2026-10-12), laid by hand (`level.machines`):
   // none is dealt by the generator yet. First guesses, his to tune.
   // THE PRESS: two jaws on rods closing on the line between them. Open `open` s, then `warn` s shaking `shake` px with the
@@ -2371,7 +2401,9 @@ const TUNING = {
   // floor flickers, too much visual noise"): lighter than the mean kept at `hi` of its contrast, darker at `lo`.
   // `miss` (15 Oct 2026 playtest): a man after the goat reads a press, a ram or a glowing burner as a trap, but once every
   // `gap` s it is in his way he misses it at `chance`, blind to the machines for `blind` s (`Enemy.hazardAt`).
-  machine: { tape: { cell: 4, rows: 2, alpha: 0.3 }, lamp: { cell: 4 }, steam: 4, sparks: 7, blood: { max: 3 }, stop: true, gasGap: 0.35,
+  // `stop` false since 19 Oct 2026 (playtest: "the machines stopped as I came up"; "traps and machines keep working after the
+  // robots in their rooms are dead"): a room's traps run on whoever is left in it.
+  machine: { tape: { cell: 4, rows: 2, alpha: 0.3 }, lamp: { cell: 4 }, steam: 4, sparks: 7, blood: { max: 3 }, stop: false, gasGap: 0.35,
     floor: { hi: 0.25, lo: 0.5 }, miss: { chance: 0.2, gap: 4, blind: 0.9 } },
   // THE SNOW (16 Oct 2026, js/snow.js): a look, never a number of the fight. `cell` world px a cell of a print or a flake.
   // `track`: a print every `stride` px a body covers, `side` px off its line, left and right in turn, laid at `alpha` (so a way
@@ -2393,11 +2425,17 @@ const TUNING = {
     // on a man (`Snow.dust`), `texel` world px a cell, `deep[lv - 1]` cells at each of its three steps;
     // `settle`: full in `time` s standing, shaken off past `move` px/s (flakes falling from `z` px, `bits` at full, `cap` alive)
     dust: { texel: 1.6, run: 2, slope: 2, under: 1, deep: [1, 2, 3], drip: 0.2 },
-    settle: { time: 9, move: 25, shake: 0.2, bits: 14, z: 30, cap: 160 },
-    wall: { alpha: 0.92, icicles: 2 },
+    // `goat`: the goat standing still is full in that many s, `body`: a body lying on snow (19 Oct 2026)
+    settle: { time: 9, goat: 7, body: 6, move: 25, shake: 0.2, bits: 14, z: 30, cap: 160 },
+    // `over` (18 Oct 2026, his: "on the edges a bit more overhang"): snow spilling past a wall's cap, `Snow.overhang`:
+    // in cells of `cell` world px, a lip `lip` cells down over the face with drops `droop` of the columns `drop` cells
+    // longer, a bank `side` cells out onto the floor beside a side wall, `top` cells up over its top edge, each `cover` cells over the wall's own dark edge.
+    wall: { alpha: 0.92, icicles: 4, over: { cell: 2, lip: [2, 4], droop: 0.4, drop: [1, 3], side: [1, 5], top: [1, 3], cover: 2 } },
     // thawed to the wet ground: `brazier` tiles round a lit bowl from the start, `fire` tiles round a burning tile once it
     // catches, the fire looked over every `every` s
     melt: { brazier: 1.15, fire: 0.75, every: 0.15 },
+    // a grate in snow (`Snow.dustGrate`): a blanket of `cell` px cells, `cover` of its rim cells kept, the slots dented `dent`
+    grate: { cell: 2, cover: 0.55, dent: 0.45 },
   },
   // A man's club (`Game.meleeHit`): the goat is knocked `knockMul` × the kind's `knock`; a man of his own
   // in the arc goes down `floorChance` of the time for `floorFor` s (the clumsiness pillar 4 asks of both
@@ -2556,7 +2594,9 @@ const TUNING = {
     // `stars`: BAAH's three, each a plus of `px` world px turning `spin` round an ellipse `rx` × `ry`, the one nearest
     // the camera the biggest. `shock` (POISON + STUN): two arms of cells wound `turns` round, `cells` a turn, turning
     // at `shockSpin`, green and gold for the pair.
-    marks: { px: 2, stars: 3, rx: 11, ry: 4.5, spin: 6.5, grow: 0.5, shock: 7, turns: 1.5, shockSpin: 2.4, shockR: 0.95 },
+    marks: { px: 2, stars: 3, rx: 11, ry: 4.5, spin: 6.5, grow: 0.5, shock: 7, turns: 1.5, shockSpin: 2.4, shockR: 0.95,
+      // a buff's mark over the goat (`drawBuffMarks`): its colour, the bob's rate, blinking its last `warn` s
+      buff: { note: '#f7d774', glass: '#e0b25a', bob: 4, warn: 2 } },
     // `windupTint`: a man winding up a blow goes lighter as it comes (Cult of the Lamb, 24 Sep 2026):
     // his own sprite again over itself as a warm pale silhouette, at `max` alpha by the end of the
     // windup, eased in by `curve` (above 1 = holds back early, flares at the last), so the moment to
@@ -2605,6 +2645,8 @@ const TUNING = {
   // but for `show` s after either changes, fading over the last `fade` s; always in heaven and the book.
   // `life`: ONE MORE LIFE's portrait, px a side Г— `hs` (9 Oct 2026: 28 в†’ 15, "much smaller").
   hud: { scale: 1.05, rail: 1.25, minText: 12, heart: { px: 2.8, gap: 24 }, life: 15, cape: { box: 44, lift: 82 }, purse: { show: 3.5, fade: 0.8, violet: 1.2 }, keyScale: 1.25,
+    // THE MINIMAP (a test, `Renderer.drawMinimap`): `w` x `h` tiles round him at `cell` px a tile, rebaked at most every `every` s
+    minimap: { w: 56, h: 30, cell: 2.6, every: 0.3, alpha: 0.9, floor: [150, 138, 112], wall: [58, 48, 52], pit: [8, 6, 8], exit: [247, 215, 116], goat: '#f4f8ff' },
     // THE BOSS BAR (10 Oct 2026, "the boss fights: clarity, readability"; `Renderer.drawBossBar`, `BOSS_HINTS`): a man who takes more
     // than one blow, awake in the goat's room or after him within `near` tiles, gets his name, what he is and his hearts at the top
     // of the screen. `show` s to come up (the name slams in over `slam` s), `hide` s to go once he is out of the picture, `hold` s
@@ -2759,7 +2801,8 @@ const TUNING = {
   // `hop`: an animal over it, `time` s in the air, `h` px up, landing `land` tiles from the band's middle, only
   // walking at it within `square` of straight across.
   // `shaman`: how many drops the room that meets the shaman tries to cut (9 Oct 2026 playtest), him across them all.
-  chasm: { minRoom: 2, from: 3, chance: 0.45, margin: 3, lane: 2, clear: 1.2, farKinds: ['hunter', 'champion'], shaman: 2,
+  // `shamanLip`: the shaman's meeting stands him that many tiles off the last drop he is across (gen.js)
+  chasm: { minRoom: 2, from: 3, chance: 0.45, margin: 3, lane: 2, clear: 1.2, farKinds: ['hunter', 'champion'], shaman: 2, shamanLip: 2.5,
     hop: { time: 0.42, h: 14, land: 1.25, square: 0.45 } },
   // The vault (26 Sep 2026): never a soul any more ("a soul twice a level, in the middle and at the
   // end"); always big grass. What kind of vault a floor has is rolled off its own seed (`vaultKindOf`,
@@ -2903,11 +2946,16 @@ const TUNING = {
     // second, the field at `alpha` (men inside it read as shapes), `motes` embers off the edge, and past
     // `tintFrom` a red over the whole frame up to `tint`; the top `hud` px (× the HUD scale) of it near black, under the hearts; never nearer the goat than `clear` tiles.
     // `clear` 1.5 → 4 and `back` (how fast it eases away, a share a second) on the 9 Oct 2026 playtest: it read as not moving.
-    look: { cell: 5, ragged: 3, rate: 7, alpha: 0.8, motes: 26, tint: 0.1, tintFrom: 0.6, hud: 38, clear: 4, back: 9 },
+    // 18 Oct 2026, the membrane (`Chase.flesh`): `lumps` cells of slow bulge on the edge, the flesh scrolled `drift` cells a
+    // second, its veins pulsing at `pulse` rad/s, `spores` cells dithered out past the rim and `haze` of faint red past
+    // those; the bottom `hudLow` px dark under the hearts when they stand there (`R.hudLow`).
+    look: { cell: 5, ragged: 2, lumps: 6, drift: 1.2, pulse: 3, spores: 3, haze: 6, hudLow: 70, rate: 7, alpha: 0.92, motes: 26, tint: 0.1, tintFrom: 0.6, hud: 38, clear: 4, back: 9 },
   },
   // 9 Oct 2026 playtest: "after the third run on the 4th level you can show the mushrooms". Only on floors `from`..`upTo`
   // (THE ROAD), and only once this browser has walked onto that floor in `runs` runs (`Heaven.arrived`, `meta.arrived`).
-  shroom: { chance: 0.45, from: 3, upTo: 3, runs: 3, eatR: 0.75, eatTime: 1.6, threatMul: 1, men: 1, kinds: ['bearer', 'seer'],
+  // 19 Oct 2026, his: "bring the mushroom level back, show the mushrooms from the very start": `runs` 3 → 0 and
+  // `chance` 0.45 → 1, a tuft on THE ROAD on every run, the first included.
+  shroom: { chance: 1, from: 3, upTo: 3, runs: 0, eatR: 0.75, eatTime: 1.6, threatMul: 1, men: 1, kinds: ['bearer', 'seer'],
     // The lens on the trip, on top of `drawTrip`'s own warp: how far the picture breathes in and out
     // (`zoom`, a share of the zoom) and how fast, and how far it leans (`sway` px). It is the camera
     // and not the screen, nothing here is a shake, which the goat only ever gets for a lost heart.
@@ -3297,7 +3345,12 @@ const TUNING = {
     // ARENA VARIANTS (10 Oct 2026, `ARENA_VARIANTS` in rooms.js, dealt in gen.js): `vary` of a boss's rings past a kind's first
     // meeting are one of the shapes that fit him, from floor index `from` (THE YARD), the well from `fromOf.well` (THE ROAD,
     // where the drop is taught) and the feast from `fromOf.feast` (a mage's first meeting is THE YARD's, so in play from THE THRESHING FLOOR); THE ALTAR, THE TRIP, THE DARK and the ogre's ring are never varied.
-    arena: { vary: 0.7, from: 1, fromOf: { well: 3, colonnade: 1, feast: 1 } } },
+    arena: { vary: 0.7, from: 1, fromOf: { well: 3, colonnade: 1, feast: 1 } },
+    // PILLARS IN THE MIDDLE (19 Oct 2026 playtest: "even in a very big room, sometimes a few columns in the middle, so there is
+    // something to kill against"): a drawn room of `minFloor` floor tiles or more whose middle `clear` x `clear` is bare floor
+    // takes, `chance` of the time, one of `shapes` (offsets from the middle) as pillars (`midPillars` in gen.js, its own stream),
+    // a room of `ground` openness or more, the shape's spot within `near` of the room's size of its middle, a tile clear round it
+    midPillars: { chance: 0.5, minFloor: 110, ground: 0.4, near: 0.35, shapes: [[[-2, 0], [2, 0]], [[0, -2], [0, 2]], [[-2, -2], [2, -2], [-2, 2], [2, 2]], [[-2, -1], [2, 1]], [[-3, 0], [0, 0], [3, 0]]] } },
   // `godSpeed`: GOD MODE also runs him this many times faster (5 Oct 2026, "in god mode speed x3"),
   // for crossing a floor to the thing under test.
   dev: { burstGap: 1.5, uiScale: 1.3, minText: 12, godSpeed: 3 },
@@ -3356,7 +3409,8 @@ const TUNING = {
     { id: 'ogre-seer', name: 'THE SMALL RING', men: ['seer'], room: { arena: 'butcher' }, from: 2,
       why: 'the ogre leaps where he stands, the mage burns where he runs' },
   ] },
-  keys: { drop: 0.35, r: 12, pickR: 24, start: 0,
+  // `spare`: keys held and lying about never run past the floor's shut iron plus this many (`Game.keyWanted`).
+  keys: { drop: 0.35, r: 12, pickR: 24, start: 0, spare: 1,
     // `animal`: since 5 Oct 2026 a floor stands ONE iron cage, never the pair; this share of them is the
     // animal's coop in iron, the rest the cage of big grass (its coop stays slats).
     iron: { from: 1, chance: 1, pair: [2.2, 5.5], readR: 7, sayR: 2.4, sayGap: 3.2, r: 26, apart: 1 } },
@@ -3397,6 +3451,16 @@ const TUNING = {
   // by `soulOut` of the way, `cells` violet cells are pulled in from `reach` × his height, he comes in
   // from `goatIn` (a violet shape first, his own colours by `clear`), springing up from `pop` of his
   // height, and a ring of cells goes out from him at `ring` of the way. Never turns back.
+  // THE CHEER (18 Oct 2026, js/cheer.js): a soul taken holds the floor `time` s, the two scenes in turn (`only` one of
+  // 'banner' / 'gulp' to keep one), a press after `skip` s ends it. Sizes are shares of the screen's height, cells CSS px.
+  // `only`: one scene every time (`rear` since 19 Oct 2026, his: "on the same screen, the goat rears"); null takes turns
+  // between the banner and the gulp. `rear`: up in `up` s, down in `down`, turned `tilt` rad about the hind hooves (`heel` px
+  // behind his middle), lifted `lift` px, `tall` stretch on a front or back view, the forelegs pawing at `paw` Hz.
+  cheer: { on: true, only: 'rear', skip: 0.45,
+    rear: { time: 1.15, up: 0.22, down: 0.25, tilt: 0.72, heel: 7, lift: 3, tall: 0.18, paw: 9, sparks: 18 },
+    banner: { time: 1.9, out: 0.3, slide: 0.22, rise: 0.4, band: 0.24, goat: 0.42, rear: 0.18, cell: 4, sparks: 26 },
+    // `mouth` where the soul goes in, a share of his height right of and over his feet; `tilt` his head thrown back, `snap` forward
+    gulp: { time: 2.0, out: 0.3, swallow: 0.85, goat: 0.55, tilt: 0.3, snap: 0.12, mouth: [0.2, 0.185], cell: 4, sparks: 40 } },
   fanfare: { intro: 0.45, stagger: 0.09, pop: 0.24, rays: 14, spin: 0.06, sparks: 46, px: 4, flash: 0.22, settle: 0.45,
     morph: { time: 0.85, bob: 4, soulOut: 0.45, cells: 30, reach: 1.1, goatIn: 0.3, clear: 0.95, pop: 0.82, ring: 0.42, flare: 0.7 } },
   // The death screen's pull-back. `delay` holds the camera where it died for a beat, the shake and
@@ -3446,7 +3510,9 @@ const TUNING = {
 // the order of the menu lives here and in one place. LEVELS is a way onto any floor of the game
 // without playing up to it: it is a prototype, and the fifth level is worth looking at on a Tuesday.
 // UNLOCKS (6 Oct 2026): the book's second tab, from the title (`Codex.openUnlocks`).
-const MENU = ['new', 'continue', 'levels', 'best', 'unlocks', 'settings', 'discord'];
+// CODEX and EXIT (18 Oct 2026, his ask): the book's UNLOCKS page for everyone (it took the dev-only UNLOCKS row's place),
+// and a way out of the game; a page can only close a tab it opened, so EXIT says the run is saved when it cannot.
+const MENU = ['new', 'continue', 'levels', 'best', 'codex', 'settings', 'discord', 'exit'];
 // Where the players gather (28 Sep 2026): the DISCORD row opens it. The invite never expires.
 const DISCORD_URL = 'https://discord.gg/BAFCR32mF7';
 // The LEVELS sheet's switches above its floors: THE TRIP, THE DARK (`Game.menuPick`, `drawLevelPick`).
@@ -3487,6 +3553,8 @@ const PAUSE_MENU = [
 // drawer's ROOMS tab (`drawRoomsTab`); read by `roomAllowed` in gen.js for every pool.
 const ROOM_LEVELS = {
   armory: '0111001100',
+  // THE PARAPET (19 Oct 2026, js/rooms.js): its one-tile drop wants the roll known, so never THE ALTAR; never THE DARK or THE TRIP.
+  parapet: '0111001100',
   // THE FLANK (7 Oct 2026): a trench with a squad on its far lip, from THE CAVE on (where the roll across a chasm is
   // taught), never THE DARK (its lamps need the walls) or THE TRIP.
   ditchcut: '0001001100', ditchtee: '0001001100', ditchisland: '0001001100',   // from THE ROAD (8 Oct 2026: not on THE CAVE)
@@ -3731,7 +3799,7 @@ const BOON_BASE = {
   // default because the fog is the game reading a room to you at the pace you cross it, this soul
   // is the one that reads it for you all at once.
   oracle: false,
-  headbuttReach: 1, headbuttImpulse: 1, headbuttRecovery: 1, antlers: false,
+  headbuttReach: 1, headbuttImpulse: 1, headbuttRecovery: 1, ironSkull: false, antlers: false,
   // BULL NECK: how much more a headbutt throws out of a whole run-up (0 is off); SPRING HOCKS: what share
   // of the tumble's speed he lands with, the run-up kept (0 is the ordinary landing); BIG LUNGS: how far
   // the voice carries, every form of it, as one multiplier.
@@ -3777,7 +3845,7 @@ const BOON_BASE = {
   // behind a button: `luck` is read by the generator for the NEXT floor. The cape on his back
   // (`game.cape`, `CAPES`) puts its Q verb here: `blink`, `sprout`, `ruin`, `boomerang`, `effigy`
   // (`Cape.use`). Null until one is worn.
-  luck: null, boomerang: null, blink: null, effigy: null, sprout: null, ruin: null,
+  crooked: null, luck: null, boomerang: null, blink: null, effigy: null, sprout: null, ruin: null,
   // The poison actives, one per button, and the fire in the mouth. `venomHold` / `brandHold` are
   // seconds a thing has to be in his mouth before the throw carries it; 0 is off.
   splash: false, venomHold: 0, brandHold: 0, venomRoll: false, spit: false,
@@ -4009,7 +4077,7 @@ const BOONS = [
   { id: 'skull', addition: ['bomb', 'splash'], skill: 'butt', emoji: '💀', minLevel: 0, name: 'IRON SKULL', get desc() { const p = this.params; return `Headbutt recovery is ${sayPct(1 - p.recoveryMul)} faster.`; },
     stat: (p) => { const r = TUNING.goat.headbutt.recovery; return `RECOVERY ${sayN(r)}s → ${sayN(r * p.recoveryMul)}s`; },
     params: { recoveryMul: 0.6 },   // 0.5 until 9 Oct 2026 playtest ("only 40%")
-    apply: (m, p) => { m.headbuttRecovery *= p.recoveryMul; } },
+    apply: (m, p) => { m.headbuttRecovery *= p.recoveryMul; m.ironSkull = true; } },
   // The headbutt's second passive (1 Oct 2026: every button had room for two and three had one). Pillar
   // 1 as a number: the run-up he has when the head goes down (`goat.buttRun`, 0..1 of `momentum`) is
   // thrown into the man too, so a goat who never stopped hits harder than one who stood and swung.
@@ -4027,6 +4095,14 @@ const BOONS = [
     stat: (p) => `EVERY HEADBUTT ALSO KICKS BACK: A MAN WITHIN ${sayN(p.reach)} TILES BEHIND IS THROWN AT ${sayPct(p.share)} OF THE SHORT HORNS' SHOVE`,
     params: { share: 0.5, reach: 1, cone: 0.35 },
     apply: (m, p) => { m.hoofKick = p; } },
+  // 18 Oct 2026, his ask ("crooked horns: a bigger reach, but only on one side"): his right horn grew bent outward. On
+  // that side of his aim the arc opens `widen` further (a cosine off the horn's own `cone`) and reaches `reachMul` as
+  // far; LONG's right strip is `rowW` tiles wider. The left side is the horn he has. `Goat.hornHit` asks `HN.crook`.
+  { id: 'crook', addition: ['horns', 'neck'], skill: 'butt', emoji: '🪝', minLevel: 0, name: 'CROOKED HORNS',
+    desc: 'Your right horn grew crooked: your headbutt reaches wider and further on that side.',
+    stat: (p) => `RIGHT OF YOUR AIM: THE ARC ${sayN(p.widen)} WIDER (COS), REACH ×${sayN(p.reachMul)} · LONG: RIGHT STRIP +${sayN(p.rowW)} TILES · LEFT AS IT WAS`,
+    params: { side: -1, widen: 0.75, reachMul: 1.35, rowW: 0.3 },
+    apply: (m, p) => { m.crooked = p; } },
   // 6 Oct 2026: things, not men. A crate, a blade, a bomb leaves the mouth `throwMul` as hard (it flies
   // that much further against the same drag, `Goat.throwHeld`); a man is thrown as he was, so where a
   // wall kills him (`physics.thrownKill`) is BY THE COLLAR's number and nobody else's. It needs no
@@ -4157,7 +4233,7 @@ const MIRROR = [
   // QUICK (9 Oct 2026, was QUICK TUMBLE, the roll alone; the id stays): each rank one more button readied sooner,
   // the roll, then BAAH, then the headbutt's recovery (it has no cooldown of its own). LONG MERCY went the same day.
   { id: 'tumble', name: 'QUICK', costs: [20, 50, 100], params: { roll: 0.85, scream: 0.9, butt: 0.9 }, glyph: 'quick', opens: 2,
-    hint: 'How many of your buttons come back sooner: the roll, then BAAH, then the headbutt.', value: (p, r) => `${r} / 3`,
+    hint: 'SPEED: your buttons are ready again sooner. Each rank speeds up one more: the roll, then BAAH, then the headbutt.', value: (p, r) => `${r} / 3`,
     tell: (p, r) => [`Your roll is ready ${sayPct(1 - p.roll)} sooner.`, `Your roll is ready ${sayPct(1 - p.roll)} sooner, BAAH ${sayPct(1 - p.scream)} sooner.`,
       `Roll ${sayPct(1 - p.roll)}, BAAH ${sayPct(1 - p.scream)} and headbutt ${sayPct(1 - p.butt)} quicker.`][r - 1],
     apply: (m, p, r) => { m.rollCooldown *= p.roll; if (r > 1) m.screamCooldown *= p.scream; if (r > 2) m.headbuttRecovery *= p.butt; } },
@@ -4323,7 +4399,26 @@ const ARTIFACTS = [
     say: (p) => `A HEART LOST: GRAB, ROLL, VOICE AND THE CAPE READY AT ONCE, AND THE NEXT ${p.free} ${p.free === 1 ? 'VERB' : 'VERBS'} USED SET NO COOLDOWN.`,
     tiers: [{ params: { free: 1 } }],
     apply: (m, p) => { m.hourglass = p; } },
+  // 19 Oct 2026, his: "unlocked by dropping three tables off heaven: the table amulet: when a table goes over, it stuns the
+  // men". Any table turned over (`Prop.flipTable`) dazes every man within `r` tiles of it. `lock`: what opens it, read by
+  // `Heaven.talismanLocked` (off every shelf, the crow's gift and the book's tile until then) and the book's padlock.
+  { id: 'tablecharm', tag: 'table', name: 'THE TABLE AMULET', rarity: 2, color: '#a8794a',
+    tell: (p) => 'A table going over stuns the men round it.',
+    say: (p) => `A TABLE TURNED OVER, BY ANYONE OR ANYTHING, DAZES EVERY MAN WITHIN ${sayN(p.r)} TILES ${sayN(p.stun)}s.`,
+    tiers: [{ params: { r: 1.8, stun: 1.6 } }],
+    lock: { need: () => (Heaven.meta && Heaven.meta.skyTablesN | 0) >= 3, text: 'DROP THREE TABLES OFF HEAVEN\'S EDGE ONTO THE CULT, AND IT IS ON THE MOUSE\'S SHELVES.' },
+    apply: (m, p) => { m.tableCharm = p; } },
+  // 19 Oct 2026, his: "the comb of fate: after a rebirth (death) get two halo hearts; opened once the saint has combed you
+  // five times". Every revive (SECOND CHANCE, ONE MORE LIFE, REBORN FOR SOULS) stands him up with `halo` light hearts too
+  // (`Motes.stand`).
+  { id: 'fatecomb', tag: 'revive', name: 'THE COMB OF FATE', rarity: 2, color: '#f2e2b0',
+    tell: (p) => `Come back from death with ${sayWord(p.halo)} halo hearts.`,
+    say: (p) => `EVERY REVIVE (SECOND CHANCE, ONE MORE LIFE, REBORN) STANDS YOU UP WITH ${p.halo} LIGHT HEARTS ON TOP.`,
+    tiers: [{ params: { halo: 2 } }],
+    lock: { need: () => (Heaven.meta && Heaven.meta.combed | 0) >= 5, text: 'LET THE BLIND SHEPHERD COMB YOU FIVE TIMES UP IN HEAVEN.' },
+    apply: (m, p) => { m.fateComb = p; } },
 ];
+
 // A tier's `desc` (the player's line) is its talisman's `tell`, and `detail` (the TALISMANS tab's
 // numbers) its `say`, both over the tier's own params and read when drawn.
 for (const a of ARTIFACTS) for (const tier of a.tiers) {
@@ -4394,9 +4489,9 @@ const crowGiftName = () => { const n = RARITY[Math.min(RARITY.length, Math.max(1
 // `tell` / `say` as a talisman's: the player's line, and the numbers for the dev drawer.
 const CAPES = [
   { id: 'symbols', name: 'CLOAK OF SIGNS', color: '#7d5cff',
-    tell: (p) => `${sayQ()}: vanish and stand ${sayWord(Math.round(p.dist))} tiles ahead, through men, not walls${p.stun ? '. Men where you were are stunned' : ''}.`,
-    say: (p) => `${sayQ()}: BLINK ${sayN(p.dist)} TILES AHEAD, THROUGH MEN BUT NOT WALLS.${p.stun ? ` WHOEVER STOOD WHERE YOU LEFT IS DAZED ${sayN(p.stun)}s.` : ''} ${sayN(p.cooldown)}s COOLDOWN.`,
-    params: { dist: 5, cooldown: 10 * GOAT_CD, stun: 0.9 },
+    tell: (p) => `${sayQ()}: vanish and stand somewhere safe in the room${p.stun ? '. Men where you were are stunned' : ''}.`,
+    say: (p) => `${sayQ()}: BLINK TO A RANDOM SAFE TILE OF THIS ROOM, ${sayN(p.min)}+ TILES AWAY, NO MAN WITHIN ${sayN(p.clear)}.${p.stun ? ` WHOEVER STOOD WHERE YOU LEFT IS DAZED ${sayN(p.stun)}s.` : ''} ${sayN(p.cooldown)}s COOLDOWN.`,
+    params: { min: 3, clear: 2.5, cooldown: 10 * GOAT_CD, stun: 0.9 },
     apply: (m, p) => { m.blink = p; } },
   // Grass that still has to be grazed: a heart bought with standing still, never in the middle of a
   // blow. It grows `ahead` tiles in front of him on open floor (`Cape.sprout`), not in heaven.
@@ -4422,7 +4517,16 @@ const CAPES = [
     say: (p) => `${sayQ()}: A STRAW GOAT STANDS ${sayN(p.life)}s. MEN WITHIN ${sayN(p.r)} TILES GO FOR IT INSTEAD OF YOU${p.shots ? ', AND RIFLES WASTE A ROUND ON IT' : ''}${p.oops ? '. A MAN WHO CLUBS IT HITS HIS NEIGHBOUR' : ''}. ${sayN(p.cooldown)}s COOLDOWN.`,
     params: { life: 6, r: 7, cooldown: 15 * GOAT_CD, shots: true, oops: true },
     apply: (m, p) => { m.effigy = p; } },
+  // THE MANTLE OF CHANGES (19 Oct 2026, his: "a metamorphosis cape: changes the kind of horns and one active skill at
+  // random"): Q turns his horns to another of the three (`game.morphHorn`, for the run, BIG and LONG too) and one active
+  // soul he carries into another for the same button (`Cape.morph`). A gamble on a long wait.
+  { id: 'morph', name: 'MANTLE OF CHANGES', color: '#4fd1c5',
+    tell: (p) => `${sayQ()}: your horns change to another kind, and one of your skills to another.`,
+    say: (p) => `${sayQ()}: THE HORNS TURN TO ANOTHER OF SHORT, BIG, LONG FOR THE RUN; ONE ACTIVE SOUL YOU CARRY BECOMES ANOTHER FOR THE SAME BUTTON. ${sayN(p.cooldown)}s COOLDOWN.`,
+    params: { cooldown: 30 * GOAT_CD },
+    apply: (m, p) => { m.morph = p; } },
 ];
+
 for (const c of CAPES) {
   Object.defineProperty(c, 'desc', { get() { return c.tell(c.params); }, enumerable: true });
   Object.defineProperty(c, 'detail', { get() { return c.say(c.params); }, enumerable: true });
@@ -4881,7 +4985,8 @@ const LEVELS = [
     decor: 'Colonnades, long naves, stub cover, a killbox, grating underfoot, the Great Hall.',
     // 8 Oct 2026: the last man was the butcher, the soul in him, a crowd of lesser men and two mages round him.
     // 16 Oct 2026 (his): BANE, the thrower made a boss, is the last man, alone the first time (js/thrower.js).
-    arenas: [{ at: 5, boss: 'butcher' }, { at: 14, boss: 'thrower', escorts: 2 }],
+    // BANE's ring is his own yard (`BANE_ARENA_TEMPLATE`), four of his men in it (19 Oct 2026 playtest: "more men, more things")
+    arenas: [{ at: 5, boss: 'butcher' }, { at: 14, boss: 'thrower', escorts: 4 }],
     gates: [7], rests: [13], gateKeeper: true,
     // THE CHASE (`LEVEL_MODS`, js/chase.js) is no longer laid here by itself (9 Oct 2026 playtest: "the chase started at
     // random on the fourth"): it comes only as the horse's dare (`Chase.quest`) or off the dev drawer. `mods: ['chase']` brings it back.

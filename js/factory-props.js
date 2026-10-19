@@ -155,8 +155,16 @@ const FACTORY_PROPS = (() => {
       else { e.fling(ux * k, uy * k, false); e.dazed = Math.max(e.dazed || 0, G.daze); }
       e.aware = true;
     }
+    // it goes off (19 Oct 2026 playtest: "thrown, the cylinder explodes and throws everyone round it"): a burst of cold gas
+    // that hurts nobody, and the goat inside it is shoved out too, his legs his own again at once
+    game.fx.explosion(p.x, p.y - 4, G.burst, false, true);
+    const g = game.goat;
+    if (g && !g.dead && g.state !== 'carried' && g.state !== 'tossed') {
+      const dx = g.x - p.x, dy = g.y - p.y, d = hyp(dx, dy);
+      if (d < R + g.r) { const k = G.goat * TILE * Math.max(G.edge, 1 - d / R); g.vx += (d > 1 ? dx / d : 1) * k; g.vy += (d > 1 ? dy / d : 0) * k; }
+    }
     game.world.emitNoise(p.x, p.y, TUNING.noise.smash * 1.4);
-    game.audio.sfxThud(); if (game.audio.sfxVent) game.audio.sfxVent(); game.shake(4); game.hitstop(0.04); game.vibe(18);
+    game.audio.sfxThud(); if (game.audio.sfxVent) game.audio.sfxVent(); game.audio.sfxBoom(); game.shake(5); game.hitstop(0.05); game.vibe(18);
     game.particles(p.x, p.y - 8, 18, '#dfe4e8', 260);
     game.gasRings = game.gasRings || []; game.gasRings.push({ x: p.x, y: p.y, at: game.timer || 0 });
     if (game.scatter) game.scatter.breakUp(['fac-bit-gas', 'fac-bit-gas', 'fac-bit-bolt'], p.x, p.y, 10, p.vx || 0, p.vy || 0, 0.7);
@@ -262,8 +270,15 @@ const Oil = {
     game.oil = new Map(); game.oilSpills = []; game.oilCatch = new Map();
     if (!L || !L.oil || !L.oil.length) return;
     for (const s of L.oil) {
-      const i = s.ty * w.W + s.tx; if (!this.floor(game, i)) continue;
-      const sp = { tiles: [i], max: s.max || O.max, t: 0 }; game.oilSpills.push(sp); game.oil.set(i, 1);
+      // where it comes from (19 Oct 2026 playtest: "oil is not clear yet; it could leak out of a valve in the wall"): a
+      // far wall within `valveReach` tiles north of the spot gets a leaking valve on its face, and the spill starts at its foot
+      let tx = s.tx, ty = s.ty, valve = null;
+      for (let k = 1; k <= O.valveReach; k++) {
+        if (w.tileAt(tx, ty - k) === T.WALL) { if (k > 1) ty = ty - k + 1; valve = { tx, ty: ty - 1 }; break; }
+        if (w.tileAt(tx, ty - k) !== T.FLOOR) break;
+      }
+      const i = ty * w.W + tx; if (!this.floor(game, i)) continue;
+      const sp = { tiles: [i], max: s.max || O.max, t: 0, valve }; game.oilSpills.push(sp); game.oil.set(i, 1);
       for (let k = 0; k < O.start; k++) this.flow(game, sp);
     }
   },
@@ -331,8 +346,10 @@ const Oil = {
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
       if (!inside(i, j)) continue;
       if (thin && ((i + j) & 1)) continue;
+      // a rim with the slick's colours in it and a glint up on the left of every pool, so it is a liquid and not a hole
       const rim = !inside(i - 1, j) || !inside(i + 1, j) || !inside(i, j - 1) || !inside(i, j + 1);
-      g.fillStyle = rim ? '#2a2420' : '#120f0e'; g.fillRect(i * C, j * C, C, C);
+      const glint = !thin && !rim && inside(i - 1, j - 1) && !inside(i - 2, j - 2);
+      g.fillStyle = rim ? (((i + j) % 3) ? '#3a3348' : '#2f4046') : glint ? '#4d4660' : '#120f0e'; g.fillRect(i * C, j * C, C, C);
     }
     this.baked.set(key, c); return c;
   },
@@ -356,6 +373,22 @@ const Oil = {
       ctx.rect(tx * TILE + sx, ty * TILE + sy, C * 2, C);
     }
     ctx.fill();
+    // the valves it leaks from: a stub of pipe out of the wall's face, a red wheel on it, and a run of drops down to the pool
+    ctx.globalAlpha = 1;
+    for (const sp of game.oilSpills) {
+      const vl = sp.valve; if (!vl || vl.tx < v.x0 || vl.tx > v.x1 || vl.ty < v.y0 - 1 || vl.ty > v.y1) continue;
+      if (game.hidden((vl.tx + 0.5) * TILE, (vl.ty + 1.5) * TILE)) continue;
+      const x = vl.tx * TILE + TILE / 2, y = (vl.ty + 1) * TILE - 12, px = 2;
+      ctx.fillStyle = '#17151b'; ctx.fillRect(x - 5 * px, y - 3 * px, 10 * px, 6 * px);
+      ctx.fillStyle = '#5b5a64'; ctx.fillRect(x - 4 * px, y - 2 * px, 8 * px, 4 * px);
+      ctx.fillStyle = '#7d7c86'; ctx.fillRect(x - 4 * px, y - 2 * px, 8 * px, px);
+      ctx.fillStyle = '#17151b'; ctx.fillRect(x - px, y + 2 * px, 3 * px, 3 * px);
+      ctx.fillStyle = '#8e2a22'; ctx.fillRect(x - 3 * px, y - 5 * px, 6 * px, 2 * px); ctx.fillRect(x - px, y - 6 * px, 2 * px, 4 * px);
+      // the drops: two at a time sliding down the face to the pool's edge
+      ctx.fillStyle = '#120f0e';
+      for (let k = 0; k < 2; k++) { const f = (t * 0.9 + k * 0.5) % 1; ctx.fillRect(x, Math.round(y + 5 * px + f * 14), px, px * 2); }
+      ctx.fillStyle = '#3a3348'; ctx.fillRect(x, y + 5 * px, px, px);
+    }
     ctx.imageSmoothingEnabled = smooth; ctx.restore();
   },
 };

@@ -71,7 +71,10 @@ const Thrower = {
       else if (Thrower.BEASTS.has(p.kind)) look(p, 'beast', 1);
     }
     // All of them, not `liveEnemies`: that list is built as the step goes, and a man after him in it is not in it yet.
-    for (const m of game.enemies) if (Math.abs(m.x - e.x) < R && Math.abs(m.y - e.y) < R) look(m, 'man', 1.5);
+    // BANE (a boss) reaches for his own men first (19 Oct 2026 playtest: "Bane throws his own lads at you"): `bossMan` tiles
+    // nearer than they stand, a crate only when no man of his is to hand.
+    const manX = e.boss ? T.bossMan : 1.5;
+    for (const m of game.enemies) if (Math.abs(m.x - e.x) < R && Math.abs(m.y - e.y) < R) look(m, 'man', manX);
     // The dead of his own room (5 Oct 2026, the user's): a body on the floor is a thing to throw.
     if (game.fx && game.fx.ground) for (const b of game.fx.ground) if (Math.abs(b.x - e.x) < R && Math.abs(b.y - e.y) < R) look(b, 'body', T.body.extra);
     return best;

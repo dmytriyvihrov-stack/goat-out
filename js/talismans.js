@@ -297,20 +297,37 @@ const Talisman = {
     // A sword going round him cuts whoever it passes through (9 Oct 2026 playtest: "if the circling sword hits an enemy,
     // it damages him"), as a thrown one does (`Prop.hitMan`): a man once every `cutCd` s, a use spent each time, the
     // last breaking it. A board in front of it takes the cut instead.
+    // 19 Oct 2026 playtest ("a thing on the magnet touching a man does what that thing does"): the rest do their own blow
+    // too, as when thrown (`Prop.hitMan`, the crate's flight): a shield floors him and is worn a use, the shieldman's
+    // skulls gore him, a crate floors him seeing stars and breaks. The ogre only staggers.
     for (const o of orb.slice()) {
-      const p = o.p; if (o.t < 1 || p.weapon !== 'sword' || g.dead) continue;
+      const p = o.p; if (o.t < 1 || g.dead) continue;
       o.cut = o.cut || new Map();
       for (const e of game.liveEnemies || game.enemies) {
-        if (e.dead || e.held || e.ghosted || e.state === 'hidden' || e.scripted) continue;
+        if (e.dead || e.held || e.ghosted || e.state === 'hidden' || e.scripted || e.barrier || e.statue) continue;
         if (hyp(e.x - p.x, e.y - p.y) > e.r + C.cutR || game.timer - (o.cut.get(e) ?? -99) < C.cutCd) continue;
+        if (typeof Arm !== 'undefined' && Arm.iron(e) && p.weapon !== 'sword') continue;   // a crate or a board does nothing to iron
         o.cut.set(e, game.timer);
         const d = hyp(e.x - g.x, e.y - g.y) || 1, nx = (e.x - g.x) / d, ny = (e.y - g.y) / d;
         if (e.shield && e.shieldCovers(p.x, p.y)) e.shieldTakes(game, nx, ny);
-        else { e.die(game, 'splat', nx, ny, 'sword'); game.gore(e.x, e.y, 5, nx, ny); game.audio.sfxSplat(); game.hitstop(0.04); game.kick(nx, ny, TUNING.juice.kick); }
+        else if (p.weapon === 'sword' || p.skulls) {
+          e.die(game, 'splat', nx, ny, p.skulls ? 'horns' : 'sword'); game.gore(e.x, e.y, 5, nx, ny); game.audio.sfxSplat(); game.hitstop(0.04); game.kick(nx, ny, TUNING.juice.kick);
+          if (p.skulls) game.floatText(e.x, e.y - 28, 'GORED', PALETTE.fireHi);
+        } else if (e.kind === 'butcher') { if (e.state !== 'hop') { e.state = 'stagger'; e.timer = TUNING.butcher.rocked.shield; } e.aware = true; }
+        else {
+          const stun = p.kind === 'crate' ? TUNING.prop.crate.stun : TUNING.prop.weapon.shieldStun;
+          if (e.dropHook) e.dropHook(game);
+          e.state = 'floored'; e.timer = stun; e.dazed = Math.max(e.dazed, stun); e.aware = true;
+          e.vx = nx * 4 * TILE; e.vy = ny * 4 * TILE;
+          if (p.kind === 'crate') Status.stunned(game, e);
+          game.floatText(e.x, e.y - 28, 'FLATTENED', PALETTE.fireHi); game.hitstop(0.04); game.kick(nx, ny, TUNING.juice.kick * 0.5);
+        }
+        if (p.kind === 'crate') { game.audio.sfxThud(); Talisman.breakOrbit(game, o, e.x, e.y); break; }
         game.audio.sfxSteel();
         if (--p.uses <= 0) { Talisman.breakOrbit(game, o, e.x, e.y); break; }
       }
     }
+
     if (!M || g.dead || orb.length >= M.count || !game.level) return;
     // Once a room: the first time he stands in it with a free place in the orbit and something to take.
     const room = roomAt(game.level, g.x, g.y);
@@ -851,6 +868,14 @@ const Talisman = {
     else if (id === 'spade') { line('#6b4a2c', 0.18); ctx.beginPath(); ctx.moveTo(0, -h); ctx.lineTo(0, h * 0.2); ctx.stroke(); ctx.fillStyle = '#8d8a85'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.1; ctx.beginPath(); ctx.moveTo(-h * 0.45, h * 0.15); ctx.lineTo(h * 0.45, h * 0.15); ctx.lineTo(h * 0.35, h * 0.75); ctx.lineTo(0, h); ctx.lineTo(-h * 0.35, h * 0.75); ctx.closePath(); ctx.fill(); ctx.stroke(); }
     else if (id === 'mask') { ctx.fillStyle = PALETTE.bone; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.12; ctx.beginPath(); ctx.ellipse(0, h * 0.1, h * 0.6, h * 0.75, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); line(PALETTE.bone, 0.18); ctx.beginPath(); ctx.moveTo(-h * 0.4, -h * 0.45); ctx.quadraticCurveTo(-h * 0.95, -h * 0.8, -h * 0.7, -h * 1.05); ctx.moveTo(h * 0.4, -h * 0.45); ctx.quadraticCurveTo(h * 0.95, -h * 0.8, h * 0.7, -h * 1.05); ctx.stroke(); ctx.fillStyle = PALETTE.ink; ctx.beginPath(); ctx.ellipse(-h * 0.22, 0, h * 0.13, h * 0.18, 0, 0, Math.PI * 2); ctx.ellipse(h * 0.22, 0, h * 0.13, h * 0.18, 0, 0, Math.PI * 2); ctx.fill(); }
     else if (id === 'effigy') { ctx.fillStyle = '#c9a24e'; ctx.strokeStyle = '#7a5a26'; ctx.lineWidth = h * 0.1; ctx.beginPath(); ctx.ellipse(-h * 0.1, 0, h * 0.65, h * 0.4, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.arc(h * 0.6, -h * 0.4, h * 0.28, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); line('#6b4a2c', 0.12); for (const lx of [-0.5, -0.1, 0.3]) { ctx.beginPath(); ctx.moveTo(lx * h, h * 0.35); ctx.lineTo(lx * h, h * 0.85); ctx.stroke(); } }
+    // THE TABLE AMULET (19 Oct 2026): a little table on its side, legs out, a gold nail through its top
+    else if (id === 'tablecharm') { ctx.fillStyle = '#a8794a'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.1; ctx.fillRect(-h * 0.85, -h * 0.35, h * 1.7, h * 0.5); ctx.strokeRect(-h * 0.85, -h * 0.35, h * 1.7, h * 0.5);
+      line('#6b4a2c', 0.2); ctx.beginPath(); ctx.moveTo(-h * 0.6, h * 0.15); ctx.lineTo(-h * 0.6, h * 0.9); ctx.moveTo(h * 0.6, h * 0.15); ctx.lineTo(h * 0.6, h * 0.9); ctx.stroke();
+      ctx.fillStyle = '#ffd27a'; ctx.beginPath(); ctx.arc(0, -h * 0.1, h * 0.14, 0, Math.PI * 2); ctx.fill(); }
+    // THE COMB OF FATE (19 Oct 2026): the shepherd's bone comb, a gold halo over its back
+    else if (id === 'fatecomb') { ctx.strokeStyle = '#ffd27a'; ctx.lineWidth = h * 0.12; ctx.beginPath(); ctx.ellipse(0, -h * 0.82, h * 0.5, h * 0.14, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = '#e8dcc0'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.1; ctx.fillRect(-h * 0.8, -h * 0.45, h * 1.6, h * 0.35); ctx.strokeRect(-h * 0.8, -h * 0.45, h * 1.6, h * 0.35);
+      for (let k = 0; k < 6; k++) { const x = -h * 0.7 + k * h * 0.28; ctx.fillRect(x, -h * 0.1, h * 0.14, h * 0.85); ctx.strokeRect(x, -h * 0.1, h * 0.14, h * 0.85); } }
     // THE HOURGLASS (15 Oct 2026): two gold caps, the glass between, the sand run half down
     else if (id === 'hourglass') { ctx.fillStyle = '#d8b46a'; ctx.strokeStyle = edge; ctx.lineWidth = h * 0.1; ctx.fillRect(-h * 0.7, -h * 0.95, h * 1.4, h * 0.25); ctx.strokeRect(-h * 0.7, -h * 0.95, h * 1.4, h * 0.25); ctx.fillRect(-h * 0.7, h * 0.7, h * 1.4, h * 0.25); ctx.strokeRect(-h * 0.7, h * 0.7, h * 1.4, h * 0.25);
       ctx.fillStyle = 'rgba(191,230,255,0.75)'; ctx.beginPath(); ctx.moveTo(-h * 0.55, -h * 0.7); ctx.lineTo(h * 0.55, -h * 0.7); ctx.lineTo(h * 0.08, 0); ctx.lineTo(h * 0.55, h * 0.7); ctx.lineTo(-h * 0.55, h * 0.7); ctx.lineTo(-h * 0.08, 0); ctx.closePath(); ctx.fill(); ctx.stroke();

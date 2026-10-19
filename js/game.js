@@ -29,7 +29,9 @@ const TUNE_KEY = 'goatout.devtune.v1';
 const RULE_HIDE_KEY = 'goatout.rulehide.v1';
 // The horn test's two lines under the hearts, off unless asked for (8 Oct 2026 playtest: "overwhelming a bit").
 const HORN_INFO_KEY = 'goatout.hornInfo.v1';
-const HORN_KEY = 'goatout.horns.v1';   // the dev test's horn size (`TUNING.goat.horns`), this browser only
+const MINIMAP_KEY = 'goatout.minimap.v1';   // the dev drawer's MINIMAP switch (`Game.minimapOn`), this browser only
+const HORN_KEY = 'goatout.horns.v1';
+   // the dev test's horn size (`TUNING.goat.horns`), this browser only
 const DEV_TUNE = [
   ['enemySpeed', 'ENEMY SPEED', 'every gait'], ['enemyAttack', 'ENEMY ATTACK', '×2 = twice as fast'],
   ['enemyCd', 'ENEMY COOLDOWN', '×2 = twice as long'], ['goatSpeed', 'GOAT SPEED', 'walk, run-up, roll'],
@@ -290,9 +292,11 @@ class Game {
     if (this.world) this.world.burnMul = this.mods.burnMul;
     // HORN SIZES (`TUNING.goat.horns`): under the souls, so LONG HORNS bends the size he has instead of replacing it.
     // BIG and LONG are the god's to give (`Heaven.hornsOpen`, his fifty souls): until then the SHORT, outside a dev build.
-    const shut = RELEASE.on && this.hornKind !== 'short' && !Heaven.hornsOpen();
-    const HN = (!shut && TUNING.goat.horns[this.hornKind]) || TUNING.goat.horns.short;
-    this.mods.horn = HN;
+    // THE MANTLE OF CHANGES (`Cape.morph`) lays its own pick over his (`morphHorn`, the run's), the god's lock not asked.
+    const hk = this.morphHorn || this.hornKind, shut = !this.morphHorn && RELEASE.on && hk !== 'short' && !Heaven.hornsOpen();
+    const HN = (!shut && TUNING.goat.horns[hk]) || TUNING.goat.horns.short;
+    // CROOKED HORNS: the same horn with a bent side (`Goat.hornHit` reads `crook`), a copy so TUNING is never touched
+    this.mods.horn = this.mods.crooked ? Object.assign({}, HN, { crook: this.mods.crooked }) : HN;
     this.mods.headbuttReach *= 1 + HN.reach;
     this.mods.headbuttWindup = (this.mods.headbuttWindup || 1) * HN.windup;
     this.mods.headbuttRecovery *= HN.recovery;
@@ -399,8 +403,16 @@ class Game {
     if (e.soul) this.dropSoul(e.x, e.y, e.soulGate >= 0 ? e.soulGate : undefined); else if (!e.noPrize) this.dropMilk(e.x, e.y);
     this.dropBell(e);
     // A champion (a boss with no soul in him) sometimes carries a key too (`TUNING.keys.drop`).
-    if (e.boss && !e.soul && !e.keeper && !e.noPrize && !(this.level && this.level.def && this.level.def.heaven) && Math.random() < TUNING.keys.drop) this.dropKey(e.x, e.y);
+    if (e.boss && !e.soul && !e.keeper && !e.noPrize && !(this.level && this.level.def && this.level.def.heaven) && this.keyWanted() && Math.random() < TUNING.keys.drop) this.dropKey(e.x, e.y);
   }
+  // Keys in hand and on the floor never run past what this floor's shut iron asks plus `keys.spare` (19 Oct 2026 playtest:
+  // "two keys on the second floor and no cage, strange"): one carried ahead is a promise, a pocketful is a puzzle with no lock.
+  keyWanted() {
+    let iron = 0, loose = 0;
+    for (const p of this.props) { if (p.ironCage && !p.broken) iron++; else if (p.kind === 'key' && !p.broken && !p.dead) loose++; }
+    return (this.runKeys | 0) + loose < iron + TUNING.keys.spare;
+  }
+
   // THE OLD MAN'S BELLS (7 Oct 2026, "the bell you collect is left on the ground after a new boss, and you really pick it up,
   // right click"; the blind shepherd: "beat the bosses and take their bells"): the boss of a floor's last room carries one,
   // until this browser has taken that floor's (`Heaven.meta.bellsGot`). It lies by him; GRAB takes it (`Goat.tryGrab` →
@@ -581,7 +593,10 @@ class Game {
       hp, light: g.light || 0, armour: g.armour || 0, boons: this.boons.map((b) => b.id),
       artifacts: (this.artifacts || []).map((a) => ({ id: a.id, tier: a.tier })), cape: this.cape ? this.cape.id : null,
       third: (this.talRun && this.talRun.third) || 0, bag: (this.talRun && this.talRun.bag) || 0, keys: this.runKeys | 0, crowGift: !!gift,
-      kills: this.kills, time: this.timer, firstKill: this.firstKill || null, goneE, goneP, gates: sg.filter((o) => o.prop && o.prop.broken).map((o) => o.room),
+      kills: this.kills, time: this.timer, firstKill: this.firstKill || null,
+      // the clear card's tally (19 Oct 2026 playtest: "the corrupted soul I took did not show after the floor"): a quit and
+      // CONTINUE laid the floor again with the bodies, the white souls and the swallowed souls counted from nothing
+      marks: (this.killMarks || []).map((m) => [Math.round(m.x), Math.round(m.y)]), fsouls: this.floorSouls | 0, fcorrupt: this.floorCorrupt | 0, goneE, goneP, gates: sg.filter((o) => o.prop && o.prop.broken).map((o) => o.room),
       souls, second: !!this.secondUsed, cage: !!this.cageOpen, tripAt: this.tripAt, pet: pet ? { kind: pet.kind, won: pet.won || 0, fed: pet.fed || 0 } : null,
       supper: EndBoss.supperSpot(this) };   // THE LAST SUPPER as it stood (js/endboss.js)
   }
@@ -613,6 +628,7 @@ class Game {
     g.x = x; g.y = y; g.safeX = x; g.safeY = y; g.safeTrail = [];
     g.hp = clamp(sp.hp | 0, 1, g.maxHp); g.light = Math.min(g.light, sp.light | 0); g.armour = Math.min(g.armour, sp.armour | 0);
     this.kills = sp.kills | 0; this.timer = sp.time || 0; if (sp.firstKill) this.firstKill = sp.firstKill;
+    if (sp.marks) this.killMarks = sp.marks.map(([x, y]) => ({ x, y })); this.floorSouls = sp.fsouls | 0; this.floorCorrupt = sp.fcorrupt | 0;
     this.secondUsed = !!sp.second; if (sp.cage) this.cageOpen = true;
     this.goatRoom = clamp(sp.room | 0, 0, L.rooms.length - 1);
     // the first gate's mage has nobody to bless if his man is already down
@@ -1151,6 +1167,8 @@ class Game {
         if (hyp(e.x - d.x, e.y - d.y) <= C.killR + e.r * 0.5) e.die(this, 'splat', 0, 1, 'chandelier');
       }
       const t = new Prop(d.x, d.y, 'table'); this.props.push(t); t.flipTable(this, Math.cos(d.spin), Math.sin(d.spin));
+      // THE TABLE AMULET opens on the third (`ARTIFACTS` `tablecharm`, `lock`): counted for good in heaven's store
+      { const M = Heaven.meta || Heaven.load(); if (M && !(this.dev && this.dev.god) && !this.showroomOn) { M.skyTablesN = (M.skyTablesN | 0) + 1; Heaven.saveSoon(); if (M.skyTablesN === 3) this.floatText(this.goat.x, this.goat.y - 50, 'THE TABLE AMULET IS ON THE SHELVES', '#ffd27a'); } }
       this.thud(d.x, d.y, 6); this.audio.sfxThud(); this.audio.sfxCrack();
       this.dust(d.x, d.y, 8, 0, 0); this.particles(d.x, d.y, 16, PALETTE.wood, 190);
       this.world.emitNoise(d.x, d.y, TUNING.noise.smash);
@@ -1463,6 +1481,7 @@ class Game {
     if (b.heal) this.goat.hp = Math.min(this.goat.maxHp, this.goat.hp + b.heal);
     this.boonChoice = null; this.boonReplace = null; this.boonThird = null; this.state = 'play';
     this.audio.sfxBell(); this.floatText(this.goat.x, this.goat.y - 34, b.name, PALETTE.fireHi);
+    Cheer.start(this, b);   // the celebration, js/cheer.js
     // A soul that completes a set says so: the fourth of an element is the one that changes the rules.
     if (b.element) {
       const S = BOON_SETS[b.element], k = this.setCount(b.element);
@@ -1644,6 +1663,7 @@ class Game {
     // THE HORN TOOL (a panel of sliders over the run, `Renderer.drawHornTool`) and what it asks of the game.
     if (id === 'hornInfo') { this.dev.hornInfo = !this.dev.hornInfo; try { localStorage.setItem(HORN_INFO_KEY, this.dev.hornInfo ? '1' : '0'); } catch (e) { /* storage refused */ } return; }
     if (id === 'hornTool') { this.dev.hornTool = !this.dev.hornTool; this.dev.hornZone = true; return; }
+    if (id === 'minimap') { this.dev.minimap = !this.minimapOn(); try { localStorage.setItem(MINIMAP_KEY, this.dev.minimap ? '1' : '0'); } catch (e) { /* storage refused */ } return; }
     if (id === 'hornZone') { this.dev.hornZone = !this.dev.hornZone; return; }
     if (id === 'hornSave') { this.saveHorn(); return; }
     if (id === 'hornCopy') { this.copyHorn(); return; }
@@ -1750,8 +1770,23 @@ class Game {
     }
     if (id === 'mirror-reset') { const M = Heaven.meta || Heaven.load(); M.ranks = {}; Heaven.save(); this.applyBoons(); this.devToast('MIRROR RANKS CLEARED'); return; }
     // HEAVEN tab: wake one more bell (a floor counted as won), or put them all back to sleep but the first.
-    if (id === 'bells-add') { const M = Heaven.meta || Heaven.load(); M.bellsGot = M.bellsGot || {}; for (let k = 0; k < 64; k++) if (!M.bellsGot['dev' + k]) { M.bellsGot['dev' + k] = 1; break; } Heaven.save(); this.devToast(`${Heaven.bellsOpen()} BELLS AWAKE`); return; }
-    if (id === 'bells-all') { const M = Heaven.meta || Heaven.load(); M.bellsGot = M.bellsGot || {}; for (let k = 0; k < TUNING.heaven.bells.length; k++) M.bellsGot['dev' + k] = 1; Heaven.save(); this.devToast(`${Heaven.bellsOpen()} BELLS AWAKE`); return; }
+    // What rings is the HUNG bells (`Heaven.bellsHung`), so both buttons hang what they give: a bell only got, never hung,
+    // left the count where it was (19 Oct 2026, "give all the bells, I want to see the old man play" did nothing).
+    if (id === 'bells-add' || id === 'bells-all') {
+      const M = Heaven.meta || Heaven.load(), N = TUNING.heaven.bells.length; M.bellsGot = M.bellsGot || {};
+      const want = id === 'bells-all' ? N - 1 : Math.min(N - 1, Heaven.bellsHung() + 1);
+      for (let k = 0; Heaven.bellsGotN() < want && k < 64; k++) M.bellsGot['dev' + k] = 1;
+      M.bellsHung = want; if (id === 'bells-all') { M.bellSong = 0; M.bellQuest = true; }
+      Heaven.save();
+      // up there now: the hooks fill at once, and with every bell back the old man goes to the beam
+      if (this.heaven) {
+        const open = Heaven.bellsOpen();
+        for (const p of this.props) if (p.kind === 'hbell' && Heaven.bellAwake(p.note, open)) { p.broken = false; p.waking = 0; }
+        if (open >= N && !this.heaven.song) this.heaven.songAt = 1.5;
+      }
+      this.devToast(id === 'bells-all' ? 'EVERY BELL HUNG: THE OLD MAN PLAYS IN HEAVEN' : `${Heaven.bellsOpen()} BELLS AWAKE`); return;
+    }
+
     // THE ANIMALS' HOME (js/heaven-home.js `devHome`): `home=<kind>.<op>`, and the overlook, the mirror, one more life.
     if (id.startsWith('home=')) { const [kind, op] = id.slice(5).split('.'); Heaven.devHome(this, kind, op); return; }
     if (id === 'home-tower') { const M = Heaven.meta || Heaven.load(); M.towerMended = !M.towerMended; Heaven.save(); this.devToast(M.towerMended ? 'THE OVERLOOK STANDS' : 'THE OVERLOOK IS BROKEN'); return; }
@@ -2702,7 +2737,7 @@ class Game {
       if (this.touch.consumeRoll()) this.input.rollPressed = true;
       // The fifth button exists to be hit-tested only once something is at his neck to throw or
       // step through with it, before that it is not drawn and this flag keeps it from being felt.
-      this.touch.itemReady = !!(this.mods.boomerang || this.mods.blink || this.mods.effigy || this.mods.sprout || this.mods.ruin);
+      this.touch.itemReady = !!(this.mods.boomerang || this.mods.blink || this.mods.effigy || this.mods.sprout || this.mods.ruin || this.mods.morph);
       if (this.touch.consumeItem()) this.input.qPressed = true;
       // GRAB on a finger is a press as well as a hold: the shop's offer and a ware are taken on the edge
       // (a tap that is up again before the step must still land: `rmbPressed` is the latch).
@@ -2952,7 +2987,7 @@ class Game {
     this.bullets = []; this.parts = []; this.floats = []; this.rings = []; this.puffs = []; this.flares = []; this.hurt = null; this.hurtVignette = null; this.fallers = []; this.globs = []; this.tossed = []; this.twFlights = [];
     this.guide = null;   // a trail to a soul or a ware of the last layout pointed at nothing in this one
     this.fx = new CombatFX(this); this.scatter = new Scatter(this);
-    this.souls = []; this.boonChoice = null; this.breathFx = null; this.bless = null; this.endBoss = null; this.endScene = null; this.beastTalk = null; this.posterView = null; this.beastsHere = {}; this.clampWords = null; this.beastFarewell = null; this.beastBodies = []; this.bellWoke = false;
+    this.souls = []; this.boonChoice = null; this.breathFx = null; this.bless = null; this.endBoss = null; this.endScene = null; this.beastTalk = null; this.cheer = null; this.posterView = null; this.beastsHere = {}; this.clampWords = null; this.beastFarewell = null; this.beastBodies = []; this.bellWoke = false;
     if (this.perfAdapt) this.perfAdapt.noUp = false;   // a new floor may climb back to full resolution (`adaptRes`)
     // Before applyBoons: tied legs lend the roll their numbers, and they must not outlive the floor.
     this.legsTied = null; this.song = null; this.calmFast = false; this.applyBoons(); this.goat.hp = this.goat.maxHp;
@@ -3085,6 +3120,17 @@ class Game {
     // a fight room that gives one up once its last man is down (`onKill`; nothing says which).
     if (plan.bonusBoss >= 0 && bySpawn[plan.bonusBoss]) this.ensoul(bySpawn[plan.bonusBoss]);
     this.bonusRoom = plan.bonusRoom;
+    // CHAMPIONS ARE EARNED (19 Oct 2026, his: "the champion versions of the men start showing only after the third run"):
+    // until `boss.champFromRun` runs have been started in this browser, a boss with no soul in him is laid as a plain man
+    // of his kind. Never the ogre (a boss by kind), the last room's men (the floor's end reads them) or THE ALTAR AGAIN's
+    // bell man; never a LEVELS start or THE SHOWROOM, where the floor is looked at as it will be.
+    if (!this.runJumped && !this.showroomOn && ((this.best || this.loadBest()).runs | 0) < TUNING.boss.champFromRun) {
+      const last = this.level.rooms.length - 1;
+      bySpawn.forEach((e, i) => {
+        if (!e || !e.boss || e.soul || e.keeper || e.bellMan || e.kind === 'butcher' || this.level.spawns[i].roomIndex === last) return;
+        e.boss = false; e.elite = false; e.hp = e.maxHp = Math.max(1, e.maxHp - TUNING.boss.champHp);
+      });
+    }
     if (cp) this.enemies = this.enemies.filter((e) => !e.gone);
     this.goatRoom = 0;
     // Arriving up the stairs: the goat rises into the room under the card.
@@ -3298,7 +3344,8 @@ class Game {
     this.audio.sfxCard();
     if (id === 'levels') { m.panel = 'levels'; m.sub = 0; m.tripPick = false; return; }
     if (id === 'best') { m.panel = 'best'; return; }
-    if (id === 'unlocks') { Codex.openUnlocks(this); return; }
+    if (id === 'unlocks' || id === 'codex') { Codex.openUnlocks(this); return; }
+    if (id === 'exit') { this.exitGame(); return; }
     if (id === 'settings') { m.panel = 'settings'; m.sub = 0; return; }
     if (id === 'continue') { if (this.save) this.resumeRun(); else this.continueToHeaven(); return; }
     if (id === 'discord') { this.openDiscord(); return; }
@@ -3311,7 +3358,7 @@ class Game {
   // `heaven.extraLife.lives` more (Hades' Death Defiance, `Motes.second`).
   beginRun(withIntro) {
     this.clearRun(); this.boons = []; this.lastBoonActive = false; this.totalKills = 0; this.deaths = 0; this.totalScore = 0; this.henHearts = 0; this.runPaintings = []; this.spared = [];
-    this.beasts = {}; this.crowGift = false; this.runKeys = TUNING.keys.start; this.checkpoint = null; this.beastPlan = null;
+    this.beasts = {}; this.crowGift = false; this.runKeys = TUNING.keys.start; this.checkpoint = null; this.beastPlan = null; this.morphHorn = null;
     this.forgetLessons(); this.noteRunStart(); this.talRun = null;
     this.runSeed = this.askedSeed || ((Math.random() * 1e9) | 0);
     this.askedSeed = 0;   // a seed off the address is spent on the run it was asked for and no other
@@ -3372,6 +3419,12 @@ class Game {
     if (!this.levelBoons) { this.levelBoons = []; this.levelArtifacts = []; this.levelCape = null; }
     Heaven.enter(this, { visit: true });
   }
+  // EXIT: the run is already saved on the title. A window the script did not open will not close
+  // (itch's frame, a typed address), so then the row says so instead (`menu.exitTried`).
+  exitGame() {
+    try { window.close(); } catch (e) { /* refused */ }
+    this.menu.exitTried = true;
+  }
   // A new tab, never this one: the run on the title stays where it was. Framed as the artifact a
   // popup can be refused, so a plain link click is the fallback.
   openDiscord() {
@@ -3388,8 +3441,16 @@ class Game {
     for (let i = 0; i < r.length; i++) if (p.x >= r[i].x && p.x <= r[i].x + r[i].w && p.y >= r[i].y && p.y <= r[i].y + r[i].h) return i;
     return -1;
   }
+  // THE MINIMAP, a test (19 Oct 2026): on until the dev drawer's MINIMAP turns it off (kept per browser); never in the itch build.
+  minimapOn() {
+    if (RELEASE.on) return false;
+    if (this.dev.minimap === undefined) { let v = null; try { v = localStorage.getItem(MINIMAP_KEY); } catch (e) { /* storage refused */ } this.dev.minimap = v !== '0'; }
+    return this.dev.minimap;
+  }
+  // PAUSE's rows: PHOTOS only while the dev drawer is open (19 Oct 2026, his: "hide the photos from the menu, dev mode only").
+  pauseItems() { return PAUSE_MENU.filter((r) => r.id !== 'photos' || (this.dev && this.dev.open && !this.dev.hidden)); }
   pauseKey(code) {
-    const n = PAUSE_MENU.length;
+    const n = this.pauseItems().length;
     if (code === 'KeyW' || code === 'ArrowUp') { this.pause.index = (this.pause.index + n - 1) % n; this.audio.sfxSwing(); }
     else if (code === 'KeyS' || code === 'ArrowDown') { this.pause.index = (this.pause.index + 1) % n; this.audio.sfxSwing(); }
     else if (code === 'Space' || code === 'Enter' || code === 'NumpadEnter') this.pausePick(this.pause.index);
@@ -3399,7 +3460,7 @@ class Game {
   pausedIn() { return this.pauseFrom === 'heaven' && this.heaven ? 'heaven' : this.pauseFrom === 'boon' && this.boonChoice ? 'boon' : 'play'; }
   pausePick(i) {
     this.pause.index = i;
-    const id = (PAUSE_MENU[i] || PAUSE_MENU[0]).id;
+    const M = this.pauseItems(), id = (M[i] || M[0]).id;
     // The Space that picked RESUME is not a scream on the first step back.
     if (id === 'resume') { this.state = this.pausedIn(); this.clearEdges(); this.audio.sfxSwing(); return; }
     if (id === 'settings') { this.menu.panel = 'settings'; this.menu.sub = 0; this.audio.sfxCard(); return; }
@@ -4278,6 +4339,7 @@ class Game {
     if (this.endScene || EndBoss.watch(this)) { if (this.endScene) EndBoss.update(this, dt); this.clearEdges(); return; }
     // An animal saying its terms in a box (`Beast.talk`): the floor waits for the page to be turned.
     if (this.beastTalk) { Beast.updateTalk(this, dt); this.clearEdges(); return; }
+    if (this.cheer) { Cheer.update(this, dt); this.clearEdges(); return; }   // a soul taken, celebrated (js/cheer.js)
     if (this.posterView) { Codex.updatePoster(this, dt); this.clearEdges(); return; }
     // SECOND CHANCE: his soul up and back down into him, the floor held (js/motes.js).
     if (this.revive) { Motes.updateRevive(this, dt); this.clearEdges(); return; }

@@ -16,6 +16,8 @@
 //   - Flakes (`Snow.drawFlakes`, from `Renderer.drawUI`): a few dozen cells of white falling across the screen.
 // In THE SHOWROOM the snow room is a zone (`level.zones`): `Snow.at` reads the tile's own def, so the tracks and the caps
 // stop at its walls.
+// the top of a drift, a step whiter than the snow on the floor (a sprite's own tint)
+const SNOW_TOP = '#fbfdff';
 const Snow = {
   // Whether a floor is under snow (16 Oct 2026, his: "snow on the fourth level"): THE SNOW's own test floor (`snow`), or any
   // level carrying the modifier (`mods` with 'snow', `LEVEL_MODS.snow`; THE ROAD). The one question every reader asks.
@@ -93,6 +95,35 @@ const Snow = {
     if (typeof PIXEL_ENV !== 'undefined') PIXEL_ENV.snowOn = on;
     if (typeof PROP_PIXELS !== 'undefined') PROP_PIXELS.snowOn = on;
     return on;
+  },
+  // A grate lying in snow is dusted over (19 Oct 2026 playtest: "the grates could be dusted with snow too, harder to
+  // notice"): cells of white over most of the plate, thinning toward its rim, baked a variant at a time
+  // (`TUNING.snow.grate`). The teeth coming up throw it off for good (`p.snowGone`). Drawn in the prop's own frame.
+  dustGrate(R, p) {
+    if (p.snowGone || !R.game || !this.at(R.game, p.x, p.y)) return;
+    // only where the floor round it is snow: a grate on the boards of a room with a roof stays a grate
+    const w = R.game.world, bd = R.painted && R.painted.boards;
+    if (bd && bd[Math.floor(p.y / TILE) * w.W + Math.floor(p.x / TILE)]) return;
+    if (p.spikeState !== 'idle' && p.spikeState !== 'rest') { p.snowGone = true; return; }
+    const G = TUNING.snow.grate, v = ((p.x / TILE | 0) * 7 + (p.y / TILE | 0) * 13) & 3;
+    this.grateDust = this.grateDust || [];
+    let c = this.grateDust[v];
+    if (!c) {
+      c = this.grateDust[v] = document.createElement('canvas');
+      const cell = G.cell, W = 34, H = 30; c.width = W; c.height = H;
+      const g = c.getContext('2d');
+      // a blanket over the whole plate, its rim ragged so it melts into the snow round it, and under it the four slots only
+      // as faint dents in the snow, broken here and there: there to be seen by somebody looking, never at a glance
+      for (let y = 0; y < H; y += cell) for (let x = 0; x < W; x += cell) {
+        const h = (Math.imul((x + 1) * 73856093 ^ (y + 1) * 19349663 ^ (v + 1) * 83492791, 2654435761) >>> 0) / 4294967296;
+        const edge = Math.min(x, W - cell - x, y, H - cell - y) / cell;
+        if (edge < 1 && h > G.cover) continue;
+        g.fillStyle = PALETTE.snow; g.fillRect(x, y, cell, cell);
+        const slot = Math.floor((x - 4) / 7), inSlot = x >= 4 && x < W - 4 && (x - 4) % 7 < 4 && y >= 4 && y < H - 4;
+        if (inSlot && slot >= 0 && h < G.dent) { g.fillStyle = PALETTE.snowMid; g.fillRect(x, y, cell, cell); }
+      }
+    }
+    R.ctx.drawImage(c, Math.round(p.x - 17), Math.round(p.y - 15));
   },
   off() { if (typeof PIXEL_ENV !== 'undefined') PIXEL_ENV.snowOn = false; if (typeof PROP_PIXELS !== 'undefined') PROP_PIXELS.snowOn = false; },
 
@@ -282,7 +313,38 @@ const Snow = {
       if (sp > S.move || e.flung || e.state === 'hop') { if ((e.snowK || 0) > S.shake) this.shake(game, e); e.snowK = 0; }
       else e.snowK = Math.min(1, (e.snowK || 0) + dt / S.time);
     }
+    // The goat too (19 Oct 2026, his: "and if I stand still as the goat, snow falls on me too"), on `settle.goat` s; any
+    // verb, a roll, a carry off his feet shakes it off as a man's is.
+    const g = game.goat;
+    if (g && !g.dead) {
+      const lx = g.snowLX === undefined ? g.x : g.snowLX, ly = g.snowLY === undefined ? g.y : g.snowLY;
+      const sp = Math.hypot(g.x - lx, g.y - ly) / Math.max(dt, 1e-4); g.snowLX = g.x; g.snowLY = g.y;
+      const busy = g.state !== 'idle' && g.state !== 'stunned' && g.state !== 'ko';
+      if (!this.at(game, g.x, g.y)) g.snowK = 0;
+      else if (sp > S.move || busy) { if ((g.snowK || 0) > S.shake) this.shake(game, g); g.snowK = 0; }
+      else g.snowK = Math.min(1, (g.snowK || 0) + dt / S.goat);
+    }
+    // And on the dead (his, same day: "snow falls on the bodies"): a body lying still on snow is covered over `settle.body` s,
+    // and stays covered (`CombatFX.drawGround` lays `bodyDust` over it).
+    if (game.fx) for (const p of game.fx.ground) if (p.still && p.image && p.material !== 'gore' && p.material !== 'blood' && p.snowK !== 1) {
+      if (p.snowAt === undefined) p.snowAt = this.at(game, p.x, p.y);
+      if (p.snowAt) p.snowK = Math.min(1, (p.snowK || 0) + dt / S.body);
+    }
   },
+  // The snow on a body on the floor: the body is turned to lie on its side, so its top edge is found on the turned picture,
+  // baked once (`p.snowRot`, the body never moves again once still) at the body's own size, and the dust over that.
+  bodyDust(p, lv) {
+    let R = p.snowRot;
+    if (!R || R.angle !== p.angle) {
+      const D = Math.ceil(Math.hypot(p.width, p.height)) + 4, c = document.createElement('canvas'); c.width = c.height = D;
+      const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
+      g.translate(D / 2, D / 2); g.rotate(p.angle); g.drawImage(p.image, p.crop[0], p.crop[1], p.crop[2], p.crop[3], -p.width / 2, -p.height / 2, p.width, p.height);
+      R = p.snowRot = { angle: p.angle, c, D, lv: [] };
+    }
+    if (!R.lv[lv]) R.lv[lv] = this.dust(R.c, 0, 0, R.D, R.D, Math.max(1, Math.round(TUNING.snow.dust.texel)), lv, null);
+    return R;
+  },
+
   shake(game, e) {
     const S = TUNING.snow.settle, list = game.snowBits ||= [], n = Math.round(S.bits * e.snowK);
     for (let k = 0; k < n && list.length < S.cap; k++) {
@@ -306,16 +368,59 @@ const Snow = {
       ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(b.x), Math.round(y), c, c);
     }
   },
+  // Snow spilling past a wall's cap (18 Oct 2026), laid after every tile of the pass (`PaintedArt.drawTiles`) so the floor
+  // beside it, drawn later in its row, does not cover it. `mask` is the wall's open sides (N 1, E 2, S 4, W 8); `fy` the
+  // face's top in world px; everything in cells, a wavy run of white with its shade on the outer rim.
+  overhang(ctx, x, y, mask, fy, seed) {
+    const O = TUNING.snow.wall.over, c = O.cell, n = Math.round(TILE / c);
+    const rnd = (k, lo, hi) => { const q = (Math.imul(seed * 31 + k, 2654435761) >>> 0) % 1000 / 1000; return lo + Math.round(q * (hi - lo)); };
+    // one wave of depths along the edge, smoothed so it reads as a drift and not as noise
+    const wave = (salt, lo, hi) => { const d = []; for (let i = 0; i < n; i++) d.push(rnd(salt + i, lo, hi)); for (let i = 1; i < n - 1; i++) d[i] = Math.round((d[i - 1] + d[i] * 2 + d[i + 1]) / 4); return d; };
+    if (mask & 4) {
+      const d = wave(11, O.lip[0], O.lip[1]);
+      for (let i = 0; i < n; i++) {
+        const drop = rnd(97 + i, 0, 999) < O.droop * 1000 ? rnd(53 + i, O.drop[0], O.drop[1]) : 0, k = d[i] + drop;
+        ctx.fillStyle = PALETTE.snow; ctx.fillRect(x + i * c, fy, c, (k - 1) * c);
+        ctx.fillStyle = PALETTE.snowShade; ctx.fillRect(x + i * c, fy + (k - 1) * c, c, c);
+      }
+      this.icicles(ctx, x, fy + (O.lip[0] - 1) * c, seed);   // the lip covered the ones `drawWall` hung at the face's top
+    }
+    // a side wall: the drift rides over the wall's dark edge (`cover` cells onto the cap) and bulges out onto the floor in
+    // slow lumps; it is whiter than the trodden floor, and its rim and a cell of shadow past it are what make it read
+    const side = (right) => {
+      const d = wave(right ? 23 : 37, O.side[0], O.side[1]); for (let i = 1; i < n - 1; i++) d[i] = Math.round((d[i - 1] + d[i] * 2 + d[i + 1]) / 4);
+      const bot = (mask & 4) ? fy : y + TILE;
+      for (let j = 0; j < n; j++) {
+        const yy = y + j * c; if (yy >= bot) break;
+        const k = d[j], w = (k + O.cover) * c, x0 = right ? x + TILE - O.cover * c : x - k * c;
+        ctx.fillStyle = SNOW_TOP; ctx.fillRect(x0, yy, w, c);
+        ctx.fillStyle = PALETTE.snowMid; ctx.fillRect(right ? x0 + w - c : x0, yy, c, c);
+        ctx.globalAlpha = 0.45; ctx.fillStyle = PALETTE.snowShade; ctx.fillRect(right ? x0 + w : x0 - c, yy, c, c); ctx.globalAlpha = 1;
+      }
+    };
+    if (mask & 2) side(true);
+    if (mask & 8) side(false);
+    if (mask & 1) {
+      const d = wave(71, O.top[0], O.top[1]);
+      for (let i = 0; i < n; i++) {
+        ctx.fillStyle = SNOW_TOP; ctx.fillRect(x + i * c, y - d[i] * c, c, (d[i] + O.cover) * c);
+        ctx.fillStyle = PALETTE.snowMid; ctx.fillRect(x + i * c, y - d[i] * c, c, c);
+      }
+    }
+  },
   // Icicles off a wall's lip (the top of its south face), a few a tile at places of their own, in world px.
   icicles(ctx, x, y, tx) {
     const n = TUNING.snow.wall.icicles, h = (tx * 2654435761 >>> 0);
     ctx.fillStyle = PALETTE.ice;
+    // each in its own share of the tile, shaken a little inside it, so they hang as a row and never in a clump
+    // (19 Oct 2026 playtest: "a bit closer to each other")
+    const at = k => { const q = (h >>> (k * 5)) & 31, w = (TILE - 6) / n; return { q, ox: Math.round(3 + k * w + (q % 5) / 5 * (w - 2)) }; };
     for (let k = 0; k < n; k++) {
-      const q = (h >>> (k * 5)) & 31, ox = 3 + (q * 0.8) % (TILE - 8), len = 3 + (q % 4);
+      const { q, ox } = at(k), len = 3 + (q % 4);
       ctx.fillRect(x + ox, y, 2, len); ctx.fillRect(x + ox, y + len, 1, 1);
     }
     ctx.fillStyle = PALETTE.snow;
-    for (let k = 0; k < n; k++) { const q = ((h >>> (k * 5)) & 31), ox = 3 + (q * 0.8) % (TILE - 8); ctx.fillRect(x + ox, y, 1, 2); }
+    for (let k = 0; k < n; k++) ctx.fillRect(x + at(k).ox, y, 1, 2);
   },
   // Flakes over the picture, in screen space: cells of white drifting down, the near ones bigger and quicker.
   drawFlakes(R, game) {

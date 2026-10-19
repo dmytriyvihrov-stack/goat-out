@@ -157,7 +157,7 @@ Firebrand leaves a line of fire behind anything you throw.
 talisman, another talisman or three tufts of grass, and you take one. She takes nothing for it. Headbutting
 her stall is rude, and what comes out of the wall after the third time is not a mouse.
 
-**Talismans.** 19 of them, each COMMON, RARE or EPIC, up to three worn at once as charms on
+**Talismans.** 21 of them, each COMMON, RARE or EPIC, up to three worn at once as charms on
 a collar, each stated in plain words where it stands: a mirror shard that turns a blow back, a spade that
 leaves bodies lying to trip over and kick, a knucklebone that deals a soul's third card, a magnet that spins a sword
 or a crate round you to take a blow, a nosebag that keeps the grass you had no need of for later, and so on.

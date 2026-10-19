@@ -17,6 +17,94 @@ Tags: **bug** something is wrong; **feel** it works and does not read; **number*
 
 ## Batches
 
+### 19 Oct 2026, his thirty-one notes and seventeen screenshots, 0.037
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | number | the tortoise rights itself a bit sooner | On its back 4 s, not 6 (`prop.tortoise.cool`). |
+| 2 | art | these (icicles) a bit closer together | Four a tile, each in its own share, in a row (`snow.wall.icicles`). |
+| 3 | art | grates dusted with snow, harder to notice | A blanket of snow over a grate on a snow floor, slots only as dents; the teeth throw it off for good (`Snow.dustGrate`). |
+| 4 | feel | the drops must read better on snow | Snow lips over every open side, inked dark inside, the far face in ice and dark (`Renderer.snowPitEdges`). |
+| 5 | feel | the ogre's yellow landing ring is lost on snow | On snow a dark band either side and a deeper orange (`effects.snowTell`). |
+| 6 | feel | the web on snow: a pixel or two of black outline | Every web strand has a dark rim. |
+| 7 | bug | floor words on snow not readable at all | Every floor word whose spot is snow is drawn as dark ink (`snowInk`), the mouse's line included. |
+| 8 | number | the shieldman leaps a bit slower | 10.5 tiles/s over 0.37 s, the same length (`shieldman.bash`). |
+| 9 | gen | even a very big room sometimes gets a few pillars in the middle | Half of the big open drawn rooms take 2 to 4 pillars where the floor is bare (`midPillars`, `rooms.midPillars`). |
+| 10 | gen | grass at the wheel's edge, to time it | Half the wheels (never the lesson's) have a tuft under the arm's sweep (`mill.grass`). |
+| 11 | number | riflemen not on alert see too far | Their sight is 0.6 of it until they have seen him (`hunter.calmSight`). |
+| 12 | gen | the shaman stands by the drop, sees you sooner, pulls you into the drop | Stood 2.5 tiles off the lip, sees 1.4 × as far, and with a drop within 5 tiles of the goat the call pulls toward it (`Shaman.dropNear`). |
+| 13 | gen | Bane's room bigger, more men and things; he throws his own men | His own yard, 22 x 15 with crates and pillars (`BANE_ARENA_TEMPLATE`, in THE SHOWROOM's arena row), four men, and he reaches for a man of his before a crate (`thrower.bossMan`). |
+| 14 | feel | a man in the web shows it | The web drawn over his body while it holds him (`Status.drawWebbed`). |
+| 15 | ui | the web spit's chip does not read | The SPC chip shows a spider's web ahead of his mouth. |
+| 16 | bug | robots in the web can still jump | The web catches the factory's walkers now, and a webbed sawbot never leaps nor hops a drop. |
+| 17 | bug | the machines stopped as I came up | Machines never run down any more (`machine.stop` false). |
+| 18 | ui | what is this on my heart, which skill | The pointer on an iron heart says THE TORTOISE'S IRON and what it does; a heart of light says HALO. |
+| 19 | system | traps keep working after the robots in their room are dead | Same as 17. |
+| 20 | bug | the corrupted sawbot's blows are not broken by mine | A soul-bearer's shove now spends the blow he was winding up instead of landing it on the stunned goat. |
+| 21 | juice | THE ARM should come apart better | A burst, its plates and gears thrown, the claw torn off and flung onto open floor, the stump hanging off the base. |
+| 22 | bug | a bomb flies through the automaton too easily | A lit thrown bomb under his body or at a planted foot goes off there (`Automaton.bombMeets`). |
+| 23 | system | the god's life: on the rise, not on the floor's picture; there at once after the first visit | Every run after a visit carries it, unshown; the god says his line the first time it lifts him, in his box, then he rises. Nothing over the death card. |
+| 24 | system | the gas cylinder thrown explodes and throws everyone round | A cold burst; men flung harder (r 2.8, 15 tiles/s), the goat shoved too, no heart. |
+| 25 | feel | the oil is not clear; leak it from a valve in a wall | A far wall within 4 tiles north leaks the spill from a valve with drops; the pool has an oily rim and a glint. |
+| 26 | system | faint bars and a gate at heaven's edge until the musts are done | Faint iron over the lip while the mirror is sent for and broken, or mended and never looked into (`edgeGate`). |
+| 27 | ui | a ? over the tortoise the first time it is brought | A ? over any animal on its stand with a word waiting (`Heaven.hasWord`). |
+| 28 | bug | the second goal's souls already in hand and the god will not take them | Spoken to with the thirty in hand, he asks for them then and the pour opens (`HEAVEN_TALK.hornsNow`). |
+| 29 | ui | the mirror: what it does in more detail, that QUICK is speed | QUICK's line says SPEED; the hint shows each rank's effect in words under NOW and NEXT. |
+| 30 | ui | after mending a stand, a clearer message | The god's box where he stands: that animal can be met on the runs now, and how it comes up. |
+| 31 | ? | the automaton drops a shapeless mass that crawls at you, hurts, and a butt drops a soul; "make it simply..." | Not changed: the note is cut off, and no such thing is in the code I can find. |
+
+Still open: note 31, what the mass is (a screenshot, or the floor it was on) and how the sentence ends. The middle pillars
+are first guesses (`rooms.midPillars`), as is the wheel's tuft at `mill.grass.at` 0.8 of the arm; the rifleman's calm
+sight, the shaman's pull and the gas numbers are his to tune.
+
+### 19 Oct 2026, his twenty notes and six screenshots, 0.036
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | art | snow falling on the bodies | A body lying on snow is covered over 6 s (`Snow.bodyDust`). |
+| 2 | system | a metamorphosis cape: horn type and one active skill at random | THE MANTLE OF CHANGES (`morph`), Q, 36 s. |
+| 3 | system | three tables dropped from heaven unlock a "table amulet": a flipped table stuns | THE TABLE AMULET, locked until three sky tables land. |
+| 4 | system | the comb of fate: two halo hearts after a rebirth, unlocked by five combs | THE COMB OF FATE, every revive, locked until five combs. |
+| 5 | ui | a very simple map top right, geography only, a test | THE MINIMAP under the seed; dev drawer MINIMAP switches it. |
+| 6 | content | one room laid out like his Gungeon screenshot | THE PARAPET, YARD on. |
+| 7 | ui | PHOTOS off the menu, dev mode only | Only with the dev drawer open. |
+| 8 | art | snow on the goat when he stands | Settles over 7 s, shaken off by any verb. |
+| 9 | ui | no caption here (B-BEEH on the road) | None on the road scene. |
+| 10 | juice | the cheer on the same screen: he rears on his hind legs | The rear, in place; banner and gulp kept behind `only`. |
+| 11 | juice | the gong's and timed effects as a symbol over him | A note for the gong, an hourglass for the sandal. |
+| 12 | bug | the corrupted soul did not show after the floor | A straight clear shows it; a quit and CONTINUE lost the tally, it is in the spot now. |
+| 13 | tool | a dev option to give all the bells | ALL BELLS hangs every bell (it only "got" them before). |
+| 14 | system | a thing on the magnet does its own blow on a man | Shield floors, skulls gore, crate floors and breaks. |
+| 15 | system | champions only after the third run | `boss.champFromRun` 4. |
+| 16 | bug | the red dashed line | The Warden stand-in's 99 heart notches; none over scene actors. |
+| 17 | feel | the Warden's first scene a bit slower | Holds her 2.8 s, walks out at 0.55 pace. |
+| 18 | number | two keys and no cage on floor two | Keys only up to the floor's shut iron plus one. |
+| 19 | system | the hook drags you over fire, the fire must hurt | The first flame a drag meets costs the heart at once. |
+| 20 | bug | walked through a half-open door | A counting door swings clear of anyone in its gap. |
+
+Still open: note 12 was not reproduced on a straight clear (the tally showed); if it happens again without a quit, the
+floor and how the soul was taken would find it. The cape's horn change keeps for the run only, and a run's save does not
+carry it across CONTINUE yet; the soul it rolls is any active of that button he could be dealt. The minimap is a plain blob of seen floor; doors, the stairs' flight and the vault are not marked.
+
+### 18 Oct 2026, his ten notes and five screenshots, 0.035
+
+| # | tag | note | what shipped |
+|---|---|---|---|
+| 1 | ui | an EXIT button in the menu | EXIT on the title: closes the tab if allowed, else says to close it. |
+| 2 | ui | Codex in the menu | CODEX on the title: the book's UNLOCKS page. |
+| 3 | system | passive "crooked horns": a bigger reach on one side only | CROOKED HORNS (`crook`): his right side of the aim wider and ×1.35 further. |
+| 4 | tool | the test list: horn sizes, sound, everything new | THE TEST LAB: horns SHORT / BIG / LONG, CROOKED, SOUND, CLOAK, CHEER, CHASE, SNOW. |
+| 5 | juice | a celebration when a corrupted soul is taken, two different ones (Chain Beasts) | THE CHEER: BANNER and GULP in turn (js/cheer.js). |
+| 6 | art | the chase prettier (the red veined wall) | A living membrane in cells: veins, lumps, rim, spores, haze. |
+| 7 | juice | Chain Beasts drinking the elixir: something with that dynamic | THE CHEER's GULP: head back, the soul swallowed, a flash and a snap forward. |
+| 8 | art | snow: a bit more overhang on the edges | A cornice over the far walls' faces, drifts over side walls' edges. |
+| 9 | bug | the SHORT horns' book picture has a thing in the middle | IRON SKULL's plate, drawn for any quicker recovery; now only with IRON SKULL. |
+| 10 | system | the teleport cape: a random safe tile of the room, a panic button | CLOAK OF SIGNS blinks to a random safe tile of the room. |
+
+Still open: which side CROOKED HORNS bends (the right, fixed; a side rolled per run is a line); whether THE CHEER should play
+on every soul or only the first of a floor (it is every soul, about 2 s, skippable). Found in passing: two souls share the id
+`hooves` (MULE KICK and SURE HOOVES), so a save holding one loads as the first of the two.
+
 ### 16 Oct 2026, his marks on the factory catalogue doc (22 rows marked), 0.027
 
 The doc: https://claude.ai/code/artifact/136e0822-de01-47e2-9974-b1e8e0e2e05d (every factory object, wall and floor, a picture
@@ -179,7 +267,7 @@ sawbot's touch while hot hurts once every 0.9 s (first guess); the saw's reach i
 | 16 | system | first save: it thanks you and is in heaven; talked to, it asks to be saved again and its cage is at the very start of a floor; then the dare; then the skill | As written: `thanks` / `again` lines, its cage the first room that takes it (`opts.beastAtStart`), the dare only after the second save, TURTLEIZE after the tortoise's dare. |
 | 17 | system | the first life before the mirror, as reward and promise ("faith") | ONE MORE LIFE from the first visit again, said in the god's first talk (half a day ago it waited for the mirror). |
 | 18 | feel | run far from the tortoise and it shouts BRING ME WITH YOU | Once he is a room on (or far), its plate says it, at most every 9 s, kept in the picture. |
-| 19 | system | mushrooms on the 4th after the 3rd run there | Only on THE ROAD, and only once this browser has walked onto it in 3 runs (`shroom.upTo`, `runs`, `Heaven.arrived`). |
+| 19 | system | mushrooms on the 4th after the 3rd run there | Only on THE ROAD, and only once this browser has walked onto it in 3 runs (`shroom.upTo`, `runs`, `Heaven.arrived`). | **19 Oct 2026: undone, on every run from the first (`runs` 0, `chance` 1).**
 | + | feel | UNLOCKS: open, not found (?), locked until a condition (the shell) | A third state: a padlock, and under the page what opens it (TURTLEIZE, the talismans a dare pays for; `Unlocks.lockOf`). |
 
 Checked: syntax on every file, the generator sweep (0 failures), `balance.js` (passes), `doc-numbers.js`; in the browser: the shell
@@ -284,6 +372,9 @@ Open from this batch: the camera at ×1.2 is his call (numbers in the reply); th
 ## Ask him
 
 Read one way and built that way; his word settles it.
+
+- (19 Oct 0.037 #31) After THE AUTOMATON dies "a shapeless mass" crawls at you, hurts on touch, and a butt drops a soul; "make it simply..." was cut off. Which floor was it, and what should it simply be?
+- (19 Oct 0.037 #23, built) The god's life is now in every run after the first visit, hidden, and said as it lifts him. Should the HUD show it after that first rise (it does), or stay hidden always?
 
 - (9 Oct sixth #4) "from the skills:" came with nothing after it. What was it?
 - (9 Oct sixth #10) "it glitched at this moment" read as the hook's rope left hanging behind him (fixed). Was it a freeze instead?

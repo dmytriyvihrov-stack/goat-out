@@ -583,7 +583,11 @@ class CombatFX {
       const k=p.poolAt;if(!k||k.r!==r||k.x!==p.x||k.y!==p.y)p.poolAt={r,x:p.x,y:p.y,paths:CombatFX.poolPaths(p.x,p.y,r,p.seed,w)};
       CombatFX.fillPool(c,p.poolAt.paths);
     }
-    for(const p of this.ground)if(!game.hidden(p.x,p.y))this.drawPiece(c,p,false);
+    for(const p of this.ground)if(!game.hidden(p.x,p.y)){
+      this.drawPiece(c,p,false);
+      // THE SNOW come down on a body lying out in it (js/snow.js `Snow.settle`, `bodyDust`), in three steps
+      if(p.snowK>0.08&&p.still&&typeof Snow!=='undefined'){const R=Snow.bodyDust(p,Math.min(3,Math.ceil(p.snowK*3)));c.save();c.imageSmoothingEnabled=false;c.drawImage(R.lv[Math.min(3,Math.ceil(p.snowK*3))],p.x-R.D/2,p.y-R.D/2);c.restore();}
+    }
   }
 
   draw(renderer,game) {

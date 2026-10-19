@@ -7,6 +7,28 @@ const T = { FLOOR: 0, WALL: 1, HAY: 2, ASH: 3, EXIT: 4, ENTRY: 5, PIT: 6 };
 
 // A room whose sides mean something, the killbox's rifles are its far wall, sets `noFlipX` and
 // keeps its left and right the way they were written. Up and down never matter to anyone.
+// A few pillars stood in the bare floor of a big open drawn room (`TUNING.rooms.midPillars`): the spot nearest the middle where
+// every pillar of the shape has plain floor all round it, so nothing the template placed is covered and the room stays one
+// piece round them.
+function midPillars(rows, rng, ground) {
+  const M = TUNING.rooms.midPillars, h = rows.length, w = rows[0].length;
+  if (!rng.chance(M.chance) || ground < M.ground || floorOf({ rows }) < M.minFloor) return rows;
+  const shape = M.shapes[rng.int(0, M.shapes.length - 1)];
+  const r = 1 + Math.max(...shape.map(([dx, dy]) => Math.max(Math.abs(dx), Math.abs(dy))));
+  const clear = (cx, cy) => shape.every(([dx, dy]) => {
+    for (let y = cy + dy - 1; y <= cy + dy + 1; y++) for (let x = cx + dx - 1; x <= cx + dx + 1; x++) if (!rows[y] || rows[y][x] !== '.') return false;
+    return true;
+  });
+  let best = null, bd = Infinity;
+  for (let cy = r + 1; cy < h - r - 1; cy++) for (let cx = r + 1; cx < w - r - 1; cx++) {
+    const d = Math.abs(cx - w / 2) + Math.abs(cy - h / 2) * 1.5;
+    if (d < bd && d <= M.near * Math.max(w, h) && clear(cx, cy)) { bd = d; best = [cx, cy]; }
+  }
+  if (!best) return rows;
+  const out = rows.map((s) => s.split(''));
+  for (const [dx, dy] of shape) out[best[1] + dy][best[0] + dx] = 'P';
+  return out.map((a) => a.join(''));
+}
 function flipTemplate(tpl, rng) {
   let rows = tpl.rows.slice();
   if (rng.chance(0.5) && !tpl.noFlipY) rows = rows.slice().reverse();   // the roll is spent either way
@@ -359,6 +381,7 @@ function soulPlan(L) {
 }
 
 function tryGenerate(levelDef, seed, opts) {
+  const pillarRng = new RNG(((seed ^ 0x091a5e) >>> 0));   // the middle pillars' own stream (`midPillars`)
   const rng = new RNG(seed);
   const luck = (opts && opts.luck) || { secret: 1, racks: 1, grass: 1, heals: 0 };
   const W = 420, H = 78;
@@ -488,7 +511,7 @@ function tryGenerate(levelDef, seed, opts) {
       if (pool.length && roll < AV.vary) arenaTplAt.set(a.at, pool[Math.min(pool.length - 1, Math.floor(pick * pool.length))].tpl);
     }
   }
-  const arenaTpl = (a) => a.supper ? SUPPER_TEMPLATE : levelDef.mech ? MECH_RING : a.boss !== 'butcher' ? (arenaTplAt.get(a.at) || ARENA_TEMPLATE)
+  const arenaTpl = (a) => a.supper ? SUPPER_TEMPLATE : levelDef.mech ? MECH_RING : a.boss === 'thrower' ? BANE_ARENA_TEMPLATE : a.boss !== 'butcher' ? (arenaTplAt.get(a.at) || ARENA_TEMPLATE)
     : levelDef.met && !levelDef.met.has('butcher') ? OGRE_FIRST_TEMPLATE : OGRE_ARENA_TEMPLATE;
   const fixedW = (j) => {
     const aj = (levelDef.arenas || []).find((a) => a.at === j);
@@ -577,6 +600,7 @@ function tryGenerate(levelDef, seed, opts) {
     else { tpl = draw(mixPool, mixUsed, i, drawOrder.mix); drawn = true; }
     const source = tpl;
     tpl = flipTemplate(tpl, rng);
+    if (drawn && !tpl.fac && !levelDef.cave) tpl.rows = midPillars(tpl.rows, pillarRng, groundOf(source));
     // The cave squares nothing off: an ordinary room, an arena or a rest room there has its corners
     // filled back in with rock and a bulge or two grown out of its straight walls. Only floor is ever
     // turned to rock, and only where the room stays open round it (`erodeCave`); set pieces keep the
@@ -1935,7 +1959,8 @@ function tryGenerate(levelDef, seed, opts) {
     for (const s of spawns) {
       const across = (x, y) => chasms.every((o) => o.room !== r.index || (Math.sign(((o.axis === 'v') ? x : y) / TILE - o.at - 0.5) || 1) === o.far);
       const sham = s.shaman && ch.shaman;
-      if (s.roomIndex !== r.index || !(sham || TUNING.chasm.farKinds.includes(s.champion ? 'champion' : s.kind)) || (sham ? across(s.x, s.y) : side(s.x, s.y) === ch.far)) continue;
+      // the shaman is always stood again, by the lip (19 Oct 2026 playtest: "he stands closer to the drop"): `chasm.shamanLip` tiles off it
+      if (s.roomIndex !== r.index || !(sham || TUNING.chasm.farKinds.includes(s.champion ? 'champion' : s.kind)) || (!sham && side(s.x, s.y) === ch.far)) continue;
       let best = null, bs = -Infinity;
       for (let k = 0; k < 60; k++) {
         const tx = rng.int(r.x + 1, r.x + r.w - 2), ty = rng.int(r.y + 1, r.y + r.h - 2);
@@ -1944,7 +1969,7 @@ function tryGenerate(levelDef, seed, opts) {
         let near = Infinity; for (const o of spawns) if (o !== s) near = Math.min(near, len(o.x - px, o.y - py));
         let prop = Infinity; for (const p of props) if (p.kind !== 'door') prop = Math.min(prop, len(p.x - px, p.y - py));
         if (near < 1.5 * TILE || prop < 0.9 * TILE) continue;
-        const sc = Math.min(near, 3 * TILE) + Math.min(prop, 1.2 * TILE) * 2;
+        const sc = Math.min(near, 3 * TILE) + Math.min(prop, 1.2 * TILE) * 2 - (sham ? Math.abs(Math.abs((v ? px : py) / TILE - ch.at - 0.5) - TUNING.chasm.shamanLip) * 3 * TILE : 0);
         if (sc > bs) { bs = sc; best = { x: px, y: py }; }
       }
       if (!best) return null;   // no floor across it for him: a fresh cut
@@ -1973,6 +1998,20 @@ function tryGenerate(levelDef, seed, opts) {
       if (!MILL_CLEAR.has(p.kind) || !inMillSweep(cleanProps, p.x, p.y)) continue;
       for (const g of cleanProps) if (g.kind === 'spike' && g.hidden && len(g.x - p.x, g.y - p.y) < 4) g.hidden = false;
       cleanProps.splice(i, 1);
+    }
+    // THE WHEEL'S GRASS (19 Oct 2026 playtest: "sometimes grass at the edge of the wheel, so you have to time it to take it"):
+    // `mill.grass.chance` of the wheels (never the lesson's) have a tuft under the arm's sweep, `at` of the arm out from the hub,
+    // on its own stream; grazing it means standing there between two passes of the arm.
+    const MG = TUNING.mill.grass, grng = new RNG(((seed ^ 0x0e11a55) >>> 0));
+    for (const m of cleanProps.filter((p) => p.kind === 'mill')) {
+      const room = rooms.find((r) => m.x > r.x * TILE && m.x < (r.x + r.w) * TILE && m.y > r.y * TILE && m.y < (r.y + r.h) * TILE);
+      if (!room || (room.index === levelDef.millAt && levelDef.millLesson) || !grng.chance(MG.chance)) continue;
+      for (let k = 0; k < 16; k++) {
+        const a = grng.float(0, Math.PI * 2), x = m.x + Math.cos(a) * TUNING.mill.armLen * MG.at, y = m.y + Math.sin(a) * TUNING.mill.armLen * MG.at;
+        const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
+        if (tiles[ty * W + tx] !== T.FLOOR || grass.has(ty * W + tx) || cleanProps.some((p) => p !== m && p.kind !== 'door' && len(p.x - x, p.y - y) < MG.clear * TILE)) continue;
+        cleanProps.push({ x, y, kind: 'heal', millGrass: true }); break;
+      }
     }
   }
   // Nobody is put down inside the furniture. A spawn marker and a crate scattered later could land

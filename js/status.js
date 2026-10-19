@@ -392,7 +392,9 @@ const Status = {
   webbable(e) {
     const W = TUNING.status.web;
     return !e.dead && !e.held && !e.ghosted && !e.statue && !e.aloft && !(e.webT > 0) && e.state !== 'flung' && e.state !== 'hop'
-      && W.immune.indexOf(e.kind) < 0 && !(typeof Arm !== 'undefined' && Arm.iron(e));
+      // the factory's walkers are caught too (19 Oct 2026 playtest: "robots in the web cannot jump!"); the automaton stands
+      // over it and THE ARM is bolted down
+      && W.immune.indexOf(e.kind) < 0 && !e.automaton && !e.arm;
   },
   // Once a step (`Status.update`): the web ages, a burning tile burns away and lights the web beside it, a man stepping on
   // web is caught and the tile is spent.
@@ -447,7 +449,26 @@ const Status = {
       cell(Math.round(m + Math.cos(an) * R), Math.round(m + Math.sin(an) * R), R === 3 ? WEB_COL.strand : WEB_COL.faint);
     }
     cell(m, m, WEB_COL.knot);
-    return (C[v] = cv);
+    // a dark rim a world px round every strand (19 Oct 2026 playtest: "the web on snow must show better, a pixel or two of
+    // black outline"): the strands' shape laid four ways under them in ink
+    const out = document.createElement('canvas'); out.width = out.height = TILE;
+    const o = out.getContext('2d');
+    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) o.drawImage(cv, dx, dy);
+    o.globalCompositeOperation = 'source-in'; o.fillStyle = WEB_COL.ink; o.fillRect(0, 0, TILE, TILE);
+    o.globalCompositeOperation = 'source-over'; o.drawImage(cv, 0, 0);
+    return (C[v] = out);
+  },
+  // A man held by the web (`e.webT`) wears it: strands drawn over his body from his feet up, a size over him, so being
+  // caught reads on the man and not only on the floor under him (19 Oct 2026 playtest). Drawn after the cast.
+  drawWebbed(R, game) {
+    const ctx = R.ctx, L = TUNING.status.web.look;
+    for (const e of game.enemies) {
+      if (!(e.webT > 0) || e.dead || e.held || game.hidden(e.x, e.y)) continue;
+      const w = TILE * L.w * (e.r > 16 ? 1.4 : 1), h = TILE * L.h * (e.r > 16 ? 1.4 : 1), end = e.webT < 0.6 && Math.floor(R.t * 10) % 2;
+      ctx.globalAlpha = end ? 0.35 : L.alpha;
+      ctx.drawImage(Status.webTile((e.x | 0) & 1 ? 1 : 2), Math.round(e.x - w / 2), Math.round(e.y - h + TILE * 0.2), Math.round(w), Math.round(h));
+    }
+    ctx.globalAlpha = 1;
   },
   drawWebs(R, game) {
     const W = game.webs, ctx = R.ctx, w = game.world;
@@ -465,7 +486,7 @@ const Status = {
     ctx.globalAlpha = 1;
   },
 };
-const WEB_COL = { strand: '#ece6d6', faint: 'rgba(236,230,214,0.55)', knot: '#ffffff' };
+const WEB_COL = { strand: '#ece6d6', faint: 'rgba(236,230,214,0.55)', knot: '#ffffff', ink: 'rgba(14,12,18,0.9)' };
 
 // TELEKINESIS (15 Oct 2026, his ask; the `kinesis` soul, `BOONS`): the grab held with nothing in reach to take charges
 // `holdFor` s, and at the full charge every loose thing within `r` tiles flies at the nearest man it can see, the men

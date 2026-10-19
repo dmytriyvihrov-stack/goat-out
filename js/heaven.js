@@ -110,11 +110,11 @@ const HEAVEN_TALK = {
   ],
   // The second chance (9 Oct 2026 playtest, his words: "not up there: when you die for the first time after the visit and
   // begin to rise, he says, oh, I almost forgot, from now on I give you a second chance, do not disappoint me"): said in
-  // the god's box over the death card, the first death after a visit (`Heaven.lifeDue`); from then on a run begun carries
-  // ONE MORE LIFE (`extraLivesFor`).
+  // the god's box as the life he gave lifts the goat the first time (19 Oct 2026, `Motes.second` → `Heaven.sayLife`; it was over
+  // the death card); every run after a visit carries ONE MORE LIFE (`extraLivesFor`).
   life: [
     'OH, I ALMOST FORGOT.',
-    'FROM NOW ON I GIVE YOU A SECOND CHANCE. FALL ONCE, AND YOU GET BACK UP.',
+    'FROM NOW ON I GIVE YOU A SECOND CHANCE. YOU FELL ONCE. GET BACK UP.',
     'DO NOT DISAPPOINT ME.',
   ],
   // For a goat who met him before the gift existed: the same gift, said on its own.
@@ -148,6 +148,12 @@ const HEAVEN_TALK = {
     'WAIT, LITTLE GOAT. I FORGOT TO TELL YOU.',
     'IF YOU GATHER THIRTY SOULS AND GIVE THEM TO ME, MY HORNS ARE YOURS. NOT THESE: A WIDE PAIR, AND A LONG ONE. THEY LIE HERE BY THE EDGE.',
     'BRING THEM, STAND BEFORE ME AND HOLD STILL, AND POUR. NOW GO ON. JUMP.',
+  ],
+  // The same ask when he already carries them (`pickTalk`): no "go and fetch", the pour is now.
+  hornsNow: [
+    'WAIT, LITTLE GOAT. YOU ALREADY CARRY THIRTY.',
+    'GIVE THEM TO ME AND MY HORNS ARE YOURS. NOT THESE: A WIDE PAIR, AND A LONG ONE. THEY LIE HERE BY THE EDGE.',
+    'STAND BEFORE ME, HOLD STILL, AND POUR. NOW.',
   ],
   // The fifty given: said over him as the last soul goes in.
   hornsDone: ['THIRTY. THE HORNS BY THE EDGE ARE YOURS NOW. PICK A PAIR BEFORE YOU JUMP. AND THE LOCKS ARE OFF THE OTHER STANDS: POUR SOULS INTO ONE, AND ITS ANIMAL IS DOWN THERE FOR YOU.'],
@@ -423,11 +429,19 @@ const Heaven = {
   // (`first`, the god's first talk not yet heard, is always fresh: it is the whole of heaven.)
   freshNews(game, dying) { const seen = (this.meta && this.meta.newsSeen) || []; return this.news(game, dying).filter((k) => k === 'first' || seen.indexOf(k) < 0); },
   seeNews(game) { if (this.meta) { this.meta.newsSeen = this.news(game, false); this.saveSoon(); } },
-  // The first death after a visit up here: the god's second chance is said over the card and is his from then on (`told.life`).
-  lifeDue(game) { const M = this.meta || this.load(), X = TUNING.heaven.extraLife; return !!(X && X.on && M && M.visits > 0 && M.told && M.told.intro && !M.told.life && !game.showroomOn && !game.runJumped); },
+  // 19 Oct 2026 playtest ("the god should give the first life back not on the floor's picture but as you rise; it is there at
+  // once, really from the first time you reach heaven, only hidden until the first death"): a run begun after a visit carries
+  // the life (`extraLivesFor`), unshown (`lifeShown`), and the god says his line the moment it lifts him (`Motes.second` →
+  // `sayLife`). Nothing is said over the death card any more.
+  lifeDue() { return false; },
+  lifeShown() { const M = this.meta || this.load(); return !!(M && M.told && M.told.life); },
   sayLife(game) {
     const M = this.meta; M.told.life = 1; this.save();
-    Beast.talk(game, { kind: 'god', x: game.goat.x, y: game.goat.y }, this.parts(HEAVEN_TALK.life), false, {
+    this.godSay(game, this.parts(HEAVEN_TALK.life));
+  },
+  // The god's words in the animals' box over wherever the goat is, his portrait in it (`Beast.talk`).
+  godSay(game, pages) {
+    Beast.talk(game, { kind: 'god', x: game.goat.x, y: game.goat.y }, pages, false, {
       name: 'THE GOAT ABOVE', sound: () => game.audio.sfxGodVoice(0.7),
       portrait: (R, ctx, k) => {
         const S = HEAVEN_PIXELS.sprites.god, z = k * 0.8, sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
@@ -438,9 +452,9 @@ const Heaven = {
   // How many more lives a run begun now carries (`heaven.extraLife`, `Game.beginRun`): one once the god has promised it.
   extraLivesFor() {
     const X = TUNING.heaven.extraLife, M = this.meta || this.load();
-    // 9 Oct 2026, last note of the day: given on the death card after the first visit (`lifeDue`, `HEAVEN_TALK.life`), not up here.
+    // 19 Oct 2026: every run after the first visit up here (`visits`), said only when it is spent (`lifeShown`, `sayLife`).
     const r = this.rank('life');
-    return (X && X.on && M && M.told && M.told.life ? X.lives : 0) + (r > 0 ? MIRROR.find((u) => u.id === 'life').params.lives[r - 1] : 0);
+    return (X && X.on && M && (M.visits > 0 || (M.told && M.told.life)) ? X.lives : 0) + (r > 0 ? MIRROR.find((u) => u.id === 'life').params.lives[r - 1] : 0);
   },
   // RESTART on the death card (past heaven) is still a death to the god's tally.
   restarted() { if (this.meta) { this.meta.deaths++; this.saveSoon(); } },
@@ -464,7 +478,7 @@ const Heaven = {
   // on the way in and again after anything up here rebuilds them (`pickHorns`' `applyBoons`).
   heavenMods(game) {
     game.mods = Object.assign({}, game.mods, { breath: false, spit: false, screamStun: false, bomb: false, splash: false,
-      venomRoll: false, rollStun: 0, leapfrog: null, boomerang: null, blink: null, effigy: null, sprout: null, ruin: null, venomHold: 0, brandHold: 0, web: false, kinesis: null,
+      venomRoll: false, rollStun: 0, leapfrog: null, boomerang: null, blink: null, effigy: null, sprout: null, ruin: null, morph: null, venomHold: 0, brandHold: 0, web: false, kinesis: null,
       headbuttRecovery: TUNING.heaven.buttRecovery, headbuttWindup: TUNING.heaven.buttWindup });
     game.mods.speed *= TUNING.heaven.speed;   // up here even a plain goat runs light (8 Oct 2026 playtest)
   },
@@ -906,6 +920,10 @@ const Heaven = {
     if (!told.intro) return { key: 'intro', lines: K.intro };
     if (!M.gift) return { key: 'gift', lines: K.gift };
     if (this.mendReady() && !this.mended() && !told.mend) return { key: 'mend', lines: K.mend };
+    // The thirty already in hand before he has asked for them at the lip (19 Oct 2026 playtest: "on the second run I had the
+    // souls for the second goal at once, and the god would not let me take it"): spoken to, he asks now, with the end the
+    // goat can act on at once, and the pour is open (`pourable`, `told.horns0`).
+    if (this.hornsAsk() && !told.horns0 && this.hornsHave() >= TUNING.heaven.gift.horns) return { key: 'horns0', lines: K.hornsNow };
     if (this.animalAsk() && !told.animal1) return { key: 'animal1', lines: K.animal };
     if (this.skillsAsk() && !told.skills0) return { key: 'skills0', lines: K.skills };
     if (M.sung && !told.song0) return { key: 'song0', lines: K.song };
@@ -1004,7 +1022,7 @@ const Heaven = {
       game.audio.sfxBleat(320, 0.07, 0.4); game.audio.sfxChime(T0.bells[Math.floor(Math.random() * T0.bells.length)], 0.35);
     }
     // Not over the edge until he has looked in the mirror once: the god holds him back and says so.
-    if (!g.dead && !this.mirrorKnown() && game.world.isPitPx(g.x, g.y + g.r)) this.holdEdge(game, ox, oy);
+    if (!g.dead && this.edgeShut() && game.world.isPitPx(g.x, g.y + g.r)) this.holdEdge(game, ox, oy);
     // The horns' ask comes at the lip (9 Oct 2026 playtest: "after the mirror is unlocked, as you come to the edge before the
     // jump: forgot to tell you, but if you collect..."): once, held where he stood, the god's talk over the floor.
     else if (!g.dead && this.mirrorKnown() && this.hornsAsk() && !this.meta.told.horns0 && !H.talk && game.world.isPitPx(g.x, g.y + g.r + TILE * T0.hornsEdge)) {
@@ -1018,6 +1036,31 @@ const Heaven = {
   // the flag existed counts). Until then the edge is shut to him (`holdEdge`).
   // Broken, it holds nobody back: there is nothing yet to look at.
   mirrorKnown() { const M = this.meta; return !M || !this.mended() || M.mirror || M.bought > 0; },
+  // The edge shut (19 Oct 2026 playtest: "faint bars and a gate at the jump, while you have not done what you must: the
+  // fifteen brought, the mirror mended"): the mirror sent for and still broken, or mended and never looked into.
+  edgeShut() { return !this.mirrorKnown() || (this.mendSent() && !this.mended()); },
+  // The bars over the lip while it is shut (`edgeShut`): iron so faint it is nearly not there, a gate in the middle of them
+  // with a lock, lit up a beat each time the god puts him back (`H.holdT`). Cells, in the lip's own frame (`drawArrows`').
+  drawEdgeGate(R, game) {
+    const H = game.heaven, G = TUNING.heaven.edgeGate;
+    H.gateK = clamp((H.gateK || 0) + (this.edgeShut() ? 1 : -1) / 60 / G.fade, 0, 1);
+    if (H.gateK <= 0) return;
+    const ctx = R.ctx, c = G.cell, lip = 19.55 * TILE, x0 = (HEAVEN_MAP.edge.x + 4) * TILE, x1 = x0 + 15 * TILE, top = Math.round((lip * TILT - G.h) / c) * c, base = Math.round(lip * TILT / c) * c;
+    const hot = clamp((H.holdT || 0) / TUNING.heaven.holdGap, 0, 1), a = H.gateK * (G.alpha + (G.hot - G.alpha) * hot + 0.04 * Math.sin(R.t * 2));
+    const mid = Math.round((x0 + x1) / 2 / c) * c;
+    ctx.save(); ctx.scale(1, 1 / TILT); ctx.globalAlpha = a;
+    ctx.fillStyle = G.iron;
+    ctx.fillRect(Math.round(x0 / c) * c, top, Math.round((x1 - x0) / c) * c, c * 2);   // the top rail
+    ctx.fillRect(Math.round(x0 / c) * c, base - c * 2, Math.round((x1 - x0) / c) * c, c);   // the bottom rail
+    for (let x = Math.round(x0 / c) * c; x <= x1; x += G.gap) if (Math.abs(x - mid) > G.gateW / 2 + c) ctx.fillRect(x, top, c, base - top);
+    // the gate: two posts, a grid of bars between, a lock on it
+    ctx.fillRect(mid - G.gateW / 2 - c * 2, top - c * 3, c * 3, base - top + c * 3); ctx.fillRect(mid + G.gateW / 2 - c, top - c * 3, c * 3, base - top + c * 3);
+    for (let x = mid - G.gateW / 2 + c * 2; x < mid + G.gateW / 2 - c; x += c * 3) ctx.fillRect(x, top, c, base - top);
+    ctx.fillRect(mid - G.gateW / 2, Math.round((top + base) / 2 / c) * c, G.gateW, c);
+    ctx.fillStyle = G.lock; ctx.fillRect(mid - c * 2, Math.round((top + base) / 2 / c) * c - c * 2, c * 4, c * 4);
+    ctx.fillStyle = G.iron; ctx.fillRect(mid - c, Math.round((top + base) / 2 / c) * c - c * 4, c * 2, c * 2);
+    ctx.restore();
+  },
   // The god will not let him go down yet: put back where he stood, a step off the lip, the god's
   // word over the screen and the mirror lit, so the way to it is plain. Said once a `holdGap`.
   holdEdge(game, ox, oy) {
@@ -1239,7 +1282,9 @@ const Heaven = {
   },
   endComb(game, whole) {
     const H = game.heaven;
-    if (whole) { this.meta.combed++; this.save(); game.audio.sfxBleat(330, 0.08, 0.5); game.floatText(game.goat.x, game.goat.y - 34, 'COMBED', '#fff4c2'); }
+    if (whole) { this.meta.combed++; this.save(); game.audio.sfxBleat(330, 0.08, 0.5); game.floatText(game.goat.x, game.goat.y - 34, 'COMBED', '#fff4c2');
+      // the fifth opens THE COMB OF FATE (`ARTIFACTS` `fatecomb`, `lock`)
+      if (this.meta.combed === 5) game.floatText(game.goat.x, game.goat.y - 52, 'THE COMB OF FATE IS ON THE SHELVES', '#ffd27a'); }
     H.comb = null;
   },
 
@@ -2182,6 +2227,7 @@ Object.assign(Heaven, {
     this.drawFlock(R, game);   // the goose and its flock, round the sky
     this.drawMarks(R, game);
     this.drawArrows(R, game);       // the way down, for a dawdler who never jumped
+    this.drawEdgeGate(R, game);     // the way down shut, faintly, until the mirror is mended and looked into
     this.drawSongLights(R, game);   // the old man's tune, the goat's turn
     this.drawPlates(R, game);
     R.drawFloatTexts(game);
@@ -2428,6 +2474,9 @@ Object.assign(Heaven, {
       if (img) { const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false; ctx.drawImage(img, -img.width / 2, y0); ctx.imageSmoothingEnabled = sm; }
       // the halo over its own head, whatever height that is
       this.halo(ctx, 0, y0 + (img && img.headY !== undefined ? img.headY : 30) - 8, 11, true, t);
+      // something to say to him (19 Oct 2026 playtest: "when I brought the tortoise the first time, a question mark over it too"):
+      // a ? of cells over the halo, bobbing, until it has said it (`hasWord`)
+      if (this.hasWord(p.seat)) this.drawAsk(ctx, 0, y0 + (img && img.headY !== undefined ? img.headY : 30) - 24 + Math.round(Math.sin(t * 3) * 2), t);
     } else if (met) {
       // met and lost: the animal as a pale shade, no gold, no halo lit, turned away from him
       const img = this.animalGod(R, p.seat), y0 = img ? -img.height + 12 : -46;
@@ -2435,6 +2484,22 @@ Object.assign(Heaven, {
       ctx.globalAlpha = 0.4; this.halo(ctx, 0, y0 + (img && img.headY !== undefined ? img.headY : 30) - 8, 11, false, t); ctx.globalAlpha = 1;
     }
     ctx.restore();
+  },
+  // Whether the animal on its stand has a word waiting (`dareTalk`): its thanks the first time, the dare once brought out
+  // twice, the last word of a dare won. Only the animals with a dare (`QUESTS`) talk at their stands.
+  hasWord(kind) {
+    const M = this.meta; if (!M || !QUESTS[kind] || !M.saved[kind]) return false;
+    if (M.questWon && M.questWon[kind]) return true;
+    if (this.freed(kind) || this.questOn(kind)) return false;
+    return ((M.savedN && M.savedN[kind]) || 0) < 2 ? !(M.again && M.again[kind]) : !(M.quest && M.quest[kind]);
+  },
+  drawAsk(ctx, x, y, t) {
+    const G = ['.###.', '#...#', '....#', '..##.', '..#..', '.....', '..#..'], c = 4, w = G[0].length * c, h = G.length * c;
+    const ox = Math.round(x - w / 2), oy = Math.round(y - h);
+    ctx.fillStyle = '#3a2c4e';
+    for (let r = 0; r < G.length; r++) for (let q = 0; q < G[r].length; q++) if (G[r][q] === '#') ctx.fillRect(ox + q * c - 1, oy + r * c - 1, c + 2, c + 2);
+    ctx.fillStyle = Math.floor(t * 2) % 2 ? '#fff4c2' : '#f7d774';
+    for (let r = 0; r < G.length; r++) for (let q = 0; q < G[r].length; q++) if (G[r][q] === '#') ctx.fillRect(ox + q * c, oy + r * c, c, c);
   },
   // The sign under a stand, in cells on the cloud (drawn in the sprite's upright frame, its rings flattened by `TILT` so it
   // lies on the floor): a dotted ring, a solid one inside it, eight short rays. Lit white and breathing on an open stand,
@@ -2999,7 +3064,17 @@ Object.assign(Heaven, {
       for (const w of hint.split(' ')) { const tl = line ? line + ' ' + w : w; if (line && textW(ctx, tl) > tw) { lines.push(line); line = w; } else line = tl; }
       if (line) lines.push(line);
       const rows = [['NOW', val(r)]]; if (r < max) rows.push(['NEXT', val(r + 1)]);
-      const bw = tw + pad * 2, bh = pad * 2 + lines.length * lh + 6 * s + rows.length * rowH;
+      // under each, what that rank does in words (19 Oct 2026 playtest: "show in more detail what is in the mirror, and that
+      // it makes you faster"): the entry's own `tell` for the rank, wrapped; nothing yet at rank 0
+      const says = rows.map(([k], j) => {
+        const rk = j === 0 ? r : r + 1, text = rk > 0 ? (u.tell ? u.tell(u.params, rk) : '') : 'Nothing yet.', out = []; let ln = '';
+        ctx.font = FONT_PICK.font('text', Math.round(13 * s));
+        if (text) for (const w of String(text).split(' ')) { const tl = ln ? ln + ' ' + w : w; if (ln && textW(ctx, tl) > tw - 60 * s) { out.push(ln); ln = w; } else ln = tl; }
+        if (ln) out.push(ln);
+        return out;
+      });
+      ctx.font = FONT_PICK.font('text', Math.round(15 * s));
+      const sayH = 17 * s, bw = tw + pad * 2, bh = pad * 2 + lines.length * lh + 6 * s + rows.length * (rowH + 6 * s) + says.reduce((a, o) => a + o.length * sayH, 0);
       let bx = tip.x + 18 * s, by = tip.y + 14 * s;
       if (bx + bw > W - 8 * s) bx = tip.x - bw - 12 * s;
       if (by + bh > Hh - 8 * s) by = Hh - 8 * s - bh;
@@ -3008,12 +3083,15 @@ Object.assign(Heaven, {
       ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(244,239,226,0.92)';
       lines.forEach((l, j) => ctx.fillText(l, bx + pad, by + pad + 15 * s + j * lh));
       let yy = by + pad + lines.length * lh + 6 * s;
-      for (const [k, v] of rows) {
+      rows.forEach(([k, v], j) => {
         yy += rowH;
         ctx.font = `700 ${14 * s}px ${FONT_SC}`; ctx.fillStyle = k === 'NOW' ? 'rgba(247,215,116,0.75)' : '#d9ccff'; ctx.fillText(k, bx + pad, yy - 7 * s);
         ctx.font = `700 ${18 * s}px ${FONT_SC}`; ctx.fillStyle = '#fff4c2'; ctx.fillText(v, bx + pad + 60 * s, yy - 7 * s);
         this.glyph(ctx, u.glyph, bx + pad + 60 * s + textW(ctx, v) + 8 * s, yy - 13 * s, Math.max(2, Math.round(2.4 * s)));
-      }
+        ctx.font = FONT_PICK.font('text', Math.round(13 * s)); ctx.fillStyle = k === 'NOW' ? 'rgba(244,239,226,0.7)' : 'rgba(217,204,255,0.9)';
+        for (const l of says[j]) { ctx.fillText(l, bx + pad + 60 * s, yy + 11 * s); yy += sayH; }
+        yy += 6 * s;
+      });
     }
     // the way out, small, in the corner (the keys walk to it; the cross does the same)
     const bw2 = 130 * s, bh2 = 26 * s, bx2 = rx + rw - bw2, cy2 = y0 + ph - 40 * s;

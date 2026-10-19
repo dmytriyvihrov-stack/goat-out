@@ -56,13 +56,28 @@ const Shaman = {
   // ---- THE CALL ----
   call(e, game) {
     const S = TUNING.shaman.call, g = game.goat;
-    // As a key is held: one of eight ways, the one nearest the line to him.
-    const a = Math.round(Math.atan2(e.y - g.y, e.x - g.x) / (Math.PI / 4)) * (Math.PI / 4);
+    // As a key is held: one of eight ways, the one nearest the line to him, or with a drop within `gapR` tiles of the goat in
+    // his room, the line to its nearest tile (19 Oct 2026 playtest: "he leads you not to himself, but to the drop").
+    const to = Shaman.dropNear(game, g, S.gapR) || e;
+    const a = Math.round(Math.atan2(to.y - g.y, to.x - g.x) / (Math.PI / 4)) * (Math.PI / 4);
     g.called = { by: e, ux: Math.round(Math.cos(a) * 1000) / 1000, uy: Math.round(Math.sin(a) * 1000) / 1000, t: S.time, max: S.time };
     game.floatText(g.x, g.y - 34, 'CALLED', PALETTE.fireHi);
     game.audio.sfxSeized();   // the one sound for "he has you" (8 Oct 2026), its twin is `free`
     game.ring(g.x, g.y, g.r * 2, PALETTE.fireHi, 0.35, 2);
     game.bark(e, 'call', 0.8);
+  },
+  // The middle of the drop tile nearest the goat within `r` tiles and in his room (`level.gaps`), or null.
+  dropNear(game, g, r) {
+    const L = game.level, gaps = L && L.gaps; if (!gaps || !(gaps.size || gaps.length)) return null;
+    const w = game.world, room = roomAt(L, g.x, g.y); if (!room) return null;
+    const gx = Math.floor(g.x / TILE), gy = Math.floor(g.y / TILE), n = Math.ceil(r);
+    let best = null, bd = r * TILE;
+    for (let ty = gy - n; ty <= gy + n; ty++) for (let tx = gx - n; tx <= gx + n; tx++) {
+      if (w.tileAt(tx, ty) !== T.PIT || tx <= room.x || ty <= room.y || tx >= room.x + room.w - 1 || ty >= room.y + room.h - 1) continue;   // never a window in the wall
+      const x = (tx + 0.5) * TILE, y = (ty + 0.5) * TILE, d = hyp(x - g.x, y - g.y);
+      if (d < bd && game.sees(g.x, g.y, x, y)) { bd = d; best = { x, y }; }
+    }
+    return best;
   },
   // Every way the call ends (expired, shaken off by a blow, its caster down or gone) goes through here, so the
   // goat always hears the one sound for "your legs are yours again". `why` is the word floated, if any.

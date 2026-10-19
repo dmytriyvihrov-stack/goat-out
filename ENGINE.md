@@ -10,6 +10,15 @@ Checked against: Godot **4.7** (stable since 18 Jun 2026, 4.7.2 maintenance rele
 Re-check version-specific lines before acting on them, Godot 3 → 4 renamed so much that most old
 tutorials quietly produce broken code, and that is the single biggest trap for anyone learning it.
 
+**Set up, not started** (19 Oct 2026): Godot 4.7.2, the standard build (GDScript, no .NET), unzipped in
+`C:\Godot` (`Godot_v4.7.2-stable_win64.exe` the editor, `_console` beside it for command-line runs and
+logs; it does not update itself, a new version is a new zip). The port's project folder is
+`C:\Godot\projects\doomed-goat`, its own git repository, private on GitHub as
+`dmytriyvihrov-stack/doomed-goat`, outside Google Drive on purpose (the `.godot` cache would sync
+endlessly, and a plain ASCII path keeps exports and tools out of trouble). It holds only `.gitignore`,
+`.gitattributes` and a README: no Godot project yet. The first step, when he says start, is a small
+prototype (one room, the goat, the headbutt, one clubman) to feel the game in Godot before any full port.
+
 ---
 
 ## Part 1, which engine, and whether to port at all

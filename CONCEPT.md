@@ -231,7 +231,7 @@ them to you and you to them, and a headbutt puts it on the floor alight and then
 lantern on the wall by every door is never put out. Out of the light the cult sees you only close and
 hunts by what it hears. Fewer men, no rifles, hounds and Seers oftener.
 
-**THE TRIP.** On THE ROAD alone, and only once this browser has walked onto it in three runs (9 Oct 2026), a tuft of pale mushrooms lies on some floors (never where it would turn the last floor into the trip). Eat it and the next floor is played as THE
+**THE TRIP.** On THE ROAD alone, on every run from the first (19 Oct 2026), a tuft of pale mushrooms lies on the floor (never where it would turn the last floor into the trip). Eat it and the next floor is played as THE
 TRIP: a glowing cave where every key is the other way round, the stick reversed, the horns and the
 teeth swapped, the tumble and the voice swapped, with the first floor's men and the first floor's
 curve, because what is asked of the hands is already the whole difficulty. Take THE FORK's dark flight
@@ -386,7 +386,7 @@ the player to believe that a goat reads.
 
 **A level gives up exactly two**, one in the middle and one at the end: the keeper of the middle gate
 carries the first, the last boss the second. On THE YARD, THE ROAD and THE BRIDGE the mouse stands in
-for the first, thirteen across a run, against 32 boons (TURTLEIZE only once the tortoise's dare is won) and a build that holds seventeen, so no
+for the first, thirteen across a run, against 33 boons (TURTLEIZE only once the tortoise's dare is won) and a build that holds seventeen, so no
 run gets everything and no two runs are the same goat. Nothing else pays one: not a cleared room, not a
 lit boss on a lucky seed, not the vault. Every other boss leaves grass. **A man carrying one is lit**: an
 violet haze that breathes, a ring at his feet, and red eyes, so the one man in a room worth crossing the

@@ -112,6 +112,9 @@ const CAPE_PIXELS = (() => {
     // SCARECROW'S CAPE: straw-gold, light straws down it, a fringe of twine, a twist of rope at the throat.
     effigy: { a: '#7a5a26', b: '#a8823c', c: '#c9a24e', h: '#5a3e22', k: '#6b4a2c', K: '#c29a44', edge: '#2a1c0e', fray: true,
       pat: (u, v) => (((u % 3) + 3) % 3 === 0 && v > 0 ? '#e2c27a' : null) },
+    // THE MANTLE OF CHANGES: deep teal scales shot with violet, a moulted hem, a shell of a clasp that is two colours.
+    morph: { a: '#0f2427', b: '#1c3f44', c: '#2b5d63', h: '#4fd1c5', k: '#b98cff', K: '#e9fffb', edge: '#071214',
+      pat: (u, v, n) => { const m = ((u + (v % 2) * 2) % 4 + 4) % 4; return v >= n - 2 && h(u, v) < 0.3 ? '#b98cff' : m === 0 && v > 0 ? (v % 4 < 2 ? '#4fd1c5' : '#8a6ee0') : null; } },
   };
   // The cape folded, for the HUD chip, the shelf, the floor of a niche and the book: one picture of each.
   const FOLDED = [
@@ -145,6 +148,8 @@ const CAPE_PIXELS = (() => {
     tally: { rows: ['g.g', '.c.', '.n.', '.c.'], g: '#6f8a3a', c: '#c9d28a', n: '#7c8f52' },
     nosebag: { rows: ['g.g', 'bbb', 'bbb'], g: '#9fd84a', b: '#8a6238' },
     hourglass: { rows: ['ggg', '.s.', 'ggg'], g: '#d8b46a', s: '#e8c27a' },
+    tablecharm: { rows: ['ttt', 'l.l'], t: '#a8794a', l: '#6b4a2c' },
+    fatecomb: { rows: ['ggg', 'w.w', 'w.w'], g: '#f2e2b0', w: '#e8dcc0' },
   };
   const cellSize = () => (typeof TUNING !== 'undefined' ? TUNING.goat.face.cell : 34 / 112 * 3);
   // One grid at cell (i0, j0) from the foot, cell size `C`, mirrored with `flip`, ringed in `edge`.

@@ -501,6 +501,21 @@ const FACTORY_PIXELS = (() => {
     ctx.save(); ctx.translate(w.x, w.y); ctx.scale(1, 1 / TILT);
     PROP_PIXELS.draw(ctx, 'arm-base-dead', -base.w * k / 2, -base.h * k, k);
     const R = A.reach * TILE * 0.7, gx = Math.cos(w.ang) * R, gy = Math.sin(w.ang) * R * TILT + 3, sy = -(base.h - 2) * k, ex = gx * 0.45, ey = sy * 0.25 + gy * 0.55;
+    if (w.claw) {
+      // torn apart (`Arm.wreck`): the upper arm's stump hanging off the base, its end ragged, and the forearm and the claw
+      // lying where they were flung, flat on the floor
+      const sx = Math.cos(w.ang) * R * 0.3, sxy = sy * 0.4 + Math.sin(w.ang) * R * 0.3 * TILT + 6 * k;
+      armBar(ctx, 0, sy, sx, sxy, A.look.w * k, c, ARM_DEAD);
+      ctx.fillStyle = '#17151b'; ctx.fillRect(Math.round(sx - 2 * k), Math.round(sxy - 2 * k), 4 * k, 4 * k);
+      ctx.fillStyle = '#8e4535'; ctx.fillRect(Math.round(sx - k), Math.round(sxy - k), 2 * k, c);
+      const lx = w.claw.x - w.x, ly = (w.claw.y - w.y) * TILT, L = R * 0.55, ux = Math.cos(w.claw.ang), uy = Math.sin(w.claw.ang) * TILT;
+      armBar(ctx, lx - ux * L, ly - uy * L, lx, ly, A.look.w * k * 0.8, c, ARM_DEAD);
+      ctx.fillStyle = '#17151b'; ctx.fillRect(Math.round(lx - 6 * k), Math.round(ly - 2 * k), 12 * k, 4 * k);
+      ctx.fillStyle = '#34333b'; ctx.fillRect(Math.round(lx - 5 * k), Math.round(ly - k), 10 * k, 2 * k);
+      for (const sd of [-1, 1]) { ctx.fillStyle = '#17151b'; ctx.fillRect(Math.round(lx + sd * 5 * k - k), Math.round(ly + k), 2 * k, 5 * k); }
+      ctx.restore();
+      return;
+    }
     armBar(ctx, 0, sy, ex, ey, A.look.w * k, c, ARM_DEAD); armBar(ctx, ex, ey, gx, gy, A.look.w * k * 0.8, c, ARM_DEAD);
     ctx.fillStyle = '#17151b'; ctx.fillRect(Math.round(gx - 6 * k), Math.round(gy - 2 * k), 12 * k, 4 * k);
     ctx.restore();

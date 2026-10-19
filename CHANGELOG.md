@@ -5,6 +5,102 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 0.038, 19 Oct 2026: the mushrooms back, from the first run
+
+- **THE TRIP is reachable again** (his: "bring the mushroom level back, show the mushrooms from the very start"): the tuft
+  on THE ROAD no longer waits for three runs there (`shroom.runs` 3 → 0) and lies there every run (`chance` 0.45 → 1).
+  The gate itself (`Heaven.arrivals`, `opts.shrooms`) stays, for a later number.
+
+## 0.037, 19 Oct 2026: his thirty-one notes (snow readable, Bane's yard, the god's life on the rise, the factory)
+
+- **Snow reads** (notes 2 to 7): icicles four a tile in a row; a grate on a snow floor lies under a blanket of snow with
+  only dents for its slots, thrown off for good when its teeth come up (`Snow.dustGrate`, `snow.grate`); a drop in snow
+  has white lips over its open sides inked dark inside and an ice face going down (`Renderer.snowPitEdges`,
+  `effects.pit.snow`); a landing ring on snow gets a dark band and deeper orange (`effects.snowTell`); every web strand has
+  a dark rim; every floor word on snow is drawn as ink (`snowInk`, a wrapper on `fillText` while `drawHints` runs).
+- **Numbers**: the tortoise on its back 4 s (was 6); the shieldman's leap 10.5 tiles/s over 0.37 s (was 13 over 0.3);
+  a rifleman not yet aware sees 0.6 of his range (`hunter.calmSight`).
+- **The generator**: half of the big open drawn rooms stand 2 to 4 pillars on their bare floor (`midPillars`, its own
+  stream, `rooms.midPillars`); half the wheels past the lesson have a tuft under the arm (`mill.grass`, `GEN_RULES.milk`
+  lets that one bowl into the set piece); the shaman's drop room stands him 2.5 tiles off the lip, he sees 1.4 × as far,
+  and his call pulls toward a drop within 5 tiles of the goat (`Shaman.dropNear`); BANE's ring is his own yard
+  (`BANE_ARENA_TEMPLATE`, 22 x 15, crates and pillars, in THE SHOWROOM's arena row) with four men, and he reaches for a
+  man of his own before a crate (`thrower.bossMan`).
+- **The web** holds the factory's walkers too (not THE AUTOMATON or THE ARM); a webbed sawbot never leaps and no webbed
+  man hops a drop; a caught man wears the web over his body (`Status.drawWebbed`). The SPC chip for WEB SPIT is a web.
+- **The factory**: machines never run down when their room's men are dead (`machine.stop` false); a soul-bearer's shove
+  spends the blow he was winding up (it landed on the stunned goat, `champion.shove.after`); THE ARM comes apart, the claw
+  flung onto open floor (`arm.wreck`); a lit bomb thrown under THE AUTOMATON or at a planted foot goes off there
+  (`Automaton.bombMeets`); the gas cylinder bursts in a cold cloud, throws men harder and shoves the goat (no heart);
+  oil leaks from a valve on a far wall within 4 tiles of its spot (`oil.valveReach`) and has an oily rim.
+- **The god's life** (note 23): every run after a visit up there carries ONE MORE LIFE, unshown, and the first time it
+  lifts him the god says his line in his box (`Motes.second` → `Heaven.sayLife`); nothing is said over the death card.
+- **Heaven**: faint bars and a gate over the lip while the mirror is sent for and broken, or never looked into
+  (`Heaven.edgeShut`, `heaven.edgeGate`); a ? over an animal on its stand with a word waiting (`hasWord`); the god asks
+  for the horns' thirty when spoken to with them already in hand (`HEAVEN_TALK.hornsNow`); the mirror's hint shows each
+  rank's effect in words and QUICK says SPEED; a stand mended says, in the god's box, that its animal is on the runs now.
+- The pointer on an iron heart or a heart of light says what it is.
+
+## 0.036, 19 Oct 2026: his twenty notes (snow on the dead, two new talismans, a new cape, the minimap, the red line)
+
+- **Snow settles on the dead and on the goat** (`Snow.settle`, `TUNING.snow.settle.goat` / `body`): a body lying still on
+  snow is covered over 6 s (`Snow.bodyDust`, the cap found on the body as it lies, drawn by `CombatFX.drawGround`), and the
+  goat standing still gathers it as the men do; any verb, a roll or rearing shakes it off.
+- **THE MANTLE OF CHANGES** (`morph`, a sixth cape): Q turns his horns to another of SHORT, BIG, LONG for the run
+  (`game.morphHorn`) and one active soul he carries into another for the same button. 36 s wait.
+- **THE TABLE AMULET** (`tablecharm`, RARE): a table going over dazes every man within 1.8 tiles 1.6 s. Off every shelf
+  until three tables dropped from heaven have landed on the cult (`Heaven.meta.skyTablesN`; the book says how).
+- **THE COMB OF FATE** (`fatecomb`, RARE): every revive (SECOND CHANCE, ONE MORE LIFE, REBORN) stands him up with two halo
+  hearts on top. Off every shelf until the blind shepherd has combed him five times. A talisman's own `lock` is new
+  (`ARTIFACTS[].lock`, read by `Heaven.talismanLocked` and the book's padlock).
+- **THE MINIMAP, a test** (`Renderer.drawMinimap`, `TUNING.hud.minimap`): top right under the seed, the floor as he has
+  seen it (the fog's own memory), no men; the dev drawer's MINIMAP turns it off. Never in the itch build.
+- **THE PARAPET** (`parapet`, js/rooms.js), off his Enter the Gungeon screenshot: a wall across the room with a stem up
+  its top half; the bays reach the floor below by the wide way at the far end or a roll over a one-tile drop by a
+  brazier. From THE YARD on, never THE DARK or THE TRIP (`ROOM_LEVELS`).
+- **THE CHEER rears**: no screen of its own any more; he goes up on his hind legs where he stands, pawing the air, a
+  bleat at the top (`TUNING.cheer.only` 'rear'). The banner and the gulp are kept behind `only: null`.
+- **A note over his head while the gong rings** (`Renderer.drawBuffMarks`, `BUFF_MARKS`): PILGRIM'S SANDAL's hourglass
+  beside it while that lasts; each blinks its last two seconds.
+- **The red dashed line across the screen** (THE YARD's end, THE ROAD's drop) was the 99 heart notches of the Warden's
+  untouchable stand-in: no notches over a scene's actor.
+- **The hook drags him over fire and the fire bites**: the first flame a drag crosses lands its heart at once (a drag
+  crossed a tile faster than the fire's tick).
+- **A counting door no longer stands half-open across him**: a body near the gap swings it back out of the way (0.92
+  open), and it closes again at 1.6 a second once the gap is clear.
+- **Keys only where there is iron**: a champion drops one only while the keys held and lying about are under the floor's
+  shut iron plus one (`Game.keyWanted`, `keys.spare`).
+- **Champions are earned**: until a browser has started four runs (`boss.champFromRun`) a boss with no soul is laid as a
+  plain man of his kind (never the ogre, the last room's men or THE ALTAR AGAIN's bell man).
+- **The clear card's tally survives a quit**: kills, white souls and the swallowed souls go into the floor's spot, so
+  CONTINUE no longer counts them from nothing.
+- **The Warden's first showing is slower**: he holds her 2.8 s and walks out at 0.55 of the pace (`endBoss.mage.first`).
+- **The magnet's orbit hits as each thing does**: a shield floors, the shieldman's skulls gore, a crate floors and breaks.
+- **ALL BELLS in the dev drawer works**: it hung nothing (what rings is the hung bells); it hangs all of them and the old
+  man goes to the beam in heaven. BELL +1 hangs one.
+- **PHOTOS** is off the pause menu unless the dev drawer is open; the road scene of the prologue has no B-BEEH caption.
+
+## 0.035, 18 Oct 2026: his ten notes (menu, crooked horns, the cheer, the chase, snow, the cloak)
+
+- **The title has CODEX and EXIT**: CODEX opens the book's UNLOCKS page for everyone (it took the dev-only UNLOCKS row's
+  place); EXIT closes the tab where the browser lets a page do it, and otherwise says the run is saved and to close the tab.
+- **CROOKED HORNS** (`crook`, a headbutt passive, `mods.crooked`): to the right of his aim the arc opens wider and reaches
+  ×1.35 (LONG: the right strip wider), the left side as it was. `Goat.hornHit` reads `HN.crook`, and the wave on the floor
+  is drawn off the same test, so the picture is the hit.
+- **THE CHEER** (js/cheer.js, `TUNING.cheer`): a soul taken holds the floor a beat and celebrates, two scenes in turn: the
+  BANNER (a torn dark band across the screen with the soul's name and line, him rearing at the right in a turning chain of
+  cells, Chain Beasts' skill card) and the GULP (a close-up in a ring of runes, the soul comes down, he throws his head back
+  and swallows it, a flash; the elixir's beat). A press after 0.45 s skips it.
+- **THE CHASE is a membrane** (`Chase.flesh`, `TUNING.chase.look`): veined flesh in cells, scrolling, its veins pulsing,
+  a lumpy edge with a pale wet rim, spores and a dithered haze past it; dark under the hearts in the bottom-left corner.
+- **Snow hangs over the walls** (`Snow.overhang`, `TUNING.snow.wall.over`): a cornice drooping over every far wall's face
+  (the icicles under it) and drifts riding over the dark edge of side walls onto the floor, laid after the tiles.
+- **The book's HORNS picture**: IRON SKULL's plate showed on the SHORT horns whenever anything cut the recovery (the
+  mirror's QUICK, heaven); it is drawn only with IRON SKULL taken now (`mods.ironSkull`).
+- **CLOAK OF SIGNS** blinks to a random safe tile of the room he stands in (no stone, drop, fire, poison, grate or
+  furniture, no man within 2.5 tiles, 3+ tiles from where he was): a panic button, not a step ahead.
+- **THE TEST LAB**: rooms for the three horn sizes, CROOKED HORNS, the sound, the cloak, THE CHEER, THE CHASE and the snow.
+
 ## 0.034, 16 Oct 2026: the goat's speed is one base number
 
 - **`TUNING.goat.speed` is 172 px/s, written plain** ("not a multiplier, change the base figure; multipliers are for buffs only"): the chain of x0.8 and x1.1 over `PACE` is gone, the speed is the same as 0.033's. Also in: THE TEST LAB's build files (`output/test-lab-2026-10-16/`) and its project skill (`.claude/skills/test-lab/`).

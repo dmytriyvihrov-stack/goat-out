@@ -340,30 +340,36 @@ const Shop = {
   },
 
   // ---- the blink ----
-  // Q, not the roll: no tumble, no travel, the goat is simply `dist` tiles further along the way
-  // he was going. Stone and a drop stop it short; a shut door or a table stops it short; a man
-  // does not. A held man is dropped the way the roll drops him, and the mercy frames it opens are
+  // Q, not the roll: no tumble, no travel. Since 18 Oct 2026 (his ask: "not in the chosen direction,
+  // a random point on safe floor in the room: a critical panic button") he is simply somewhere else
+  // in the room he stands in: a tile picked at random among those with no stone, drop, fire, poison,
+  // grate or furniture on it and no man within `B.clear` tiles, never nearer than `B.min` tiles to
+  // where he was. A held man is dropped the way the roll drops him, and the mercy frames it opens are
   // the roll's own, but its wait is `Goat.itemCd`, set by the press that used it, never `rollCd`.
   blink(game, goat, inx, iny) {
-    const B = game.mods.blink, R = TUNING.goat.roll, w = game.world;
-    let dx = inx, dy = iny;
-    // The stick first; with none, where he is going; standing, where he faces.
-    if (hyp(dx, dy) < 0.2) { dx = goat.vx; dy = goat.vy; if (hyp(dx, dy) < 20) { dx = Math.cos(goat.facing); dy = Math.sin(goat.facing); } }
-    const l = hyp(dx, dy) || 1; dx /= l; dy /= l;
-    const dist = B.dist * TILE;
+    const B = game.mods.blink, R = TUNING.goat.roll, w = game.world, L = game.level;
+    const room = roomAt(L, goat.x, goat.y) || L.rooms[game.goatRoom];
     const solidAt = (px, py) => {
-      if (w.isSolid(Math.floor(px / TILE), Math.floor(py / TILE)) || w.isPitPx(px, py)) return true;
-      for (const p of game.props) if (p.blocking && hyp(p.x - px, p.y - py) < p.r + goat.r * 0.6) return true;
+      const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE);
+      if (!w.walkableAt(tx, ty) || w.isPitPx(px, py)) return true;
+      const k = ty * w.W + tx; if (w.fire[k] > 0 || w.poison[k] > 0) return true;
+      for (const p of game.props) {
+        if (p.dead || p.held) continue;
+        if ((p.blocking || p.kind === 'spike' || p.kind === 'spire' || p.kind === 'brazier') && hyp(p.x - px, p.y - py) < (p.r || 10) + goat.r + 4) return true;
+      }
       return false;
     };
-    let bx = goat.x, by = goat.y;
-    for (let t = 6; t <= dist; t += 6) {
-      const px = goat.x + dx * t, py = goat.y + dy * t;
-      // The goat's own width, not only his centre: a landing with his shoulder in the wall was a
-      // landing the wall then shoved him out of, a tile short and facing the wrong way.
-      if (solidAt(px, py) || solidAt(px + dy * goat.r * 0.7, py - dx * goat.r * 0.7) || solidAt(px - dy * goat.r * 0.7, py + dx * goat.r * 0.7)) break;
-      bx = px; by = py;
+    const spots = [];
+    if (room) for (let ty = room.y + 1; ty < room.y + room.h - 1; ty++) for (let tx = room.x + 1; tx < room.x + room.w - 1; tx++) {
+      const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE;
+      if (hyp(px - goat.x, py - goat.y) < B.min * TILE) continue;
+      if (solidAt(px, py) || solidAt(px + goat.r * 0.7, py) || solidAt(px - goat.r * 0.7, py) || solidAt(px, py + goat.r * 0.7) || solidAt(px, py - goat.r * 0.7)) continue;
+      if (game.enemies.some((e) => !e.dead && !e.ghosted && hyp(e.x - px, e.y - py) < B.clear * TILE)) continue;
+      spots.push([px, py]);
     }
+    let bx = goat.x, by = goat.y;
+    if (spots.length) { const s = spots[Math.floor(Math.random() * spots.length)]; bx = s[0]; by = s[1]; }
+    const dx = (bx - goat.x) / (hyp(bx - goat.x, by - goat.y) || 1), dy = (by - goat.y) / (hyp(bx - goat.x, by - goat.y) || 1);
     if (hyp(bx - goat.x, by - goat.y) < TILE * 0.6) { game.floatText(goat.x, goat.y - 30, 'NO ROOM', PALETTE.ashHi); game.audio.sfxThud(); return false; }
     const ox = goat.x, oy = goat.y;
     if (goat.holding) {

@@ -1003,8 +1003,8 @@ const Unlocks = {
   lockOf(sec, x) {
     if (sec === 'boons' && x.unlock && !x.unlock()) return x.lockText || 'NOT OPEN YET.';
     if (sec === 'arts' && typeof Heaven !== 'undefined' && typeof QUESTS !== 'undefined' && Heaven.talismanLocked(x.id)) {
-      const k = Object.keys(QUESTS).find((q) => QUESTS[q].talisman === x.id);
-      return k ? `WIN ${QUESTS[k].name} UP IN HEAVEN, AND IT IS ON THE MOUSE'S SHELVES.` : 'NOT OPEN YET.';
+      const k = Object.keys(QUESTS).find((q) => QUESTS[q].talisman === x.id), A = ARTIFACTS.find((a) => a.id === x.id);
+      return k ? `WIN ${QUESTS[k].name} UP IN HEAVEN, AND IT IS ON THE MOUSE'S SHELVES.` : A && A.lock ? A.lock.text : 'NOT OPEN YET.';
     }
     return null;
   },

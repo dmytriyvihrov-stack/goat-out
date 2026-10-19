@@ -111,6 +111,30 @@
     seer: cult('MAGE (SEER)', 'seer'), shieldman: cult('SHIELDMAN', 'shield'), shaman: cult('SHAMAN', 'shaman'), wraith: cult('WRAITH', 'wraith'),
     ogre: Object.assign(cult('OGRE', 'butcher', { boss: true }), { size: [22, 16] }), bane: Object.assign(cult('BANE (THROWER)', 'thrower', { boss: true }), { size: [20, 14] }),
   });
+  // 18 Oct 2026, his: "add the horn sizes, the sound and every other thing we bring in". A `setup(g, at)` runs once the
+  // floor is laid and the kit given: it puts the horn on, a soul or a cape, the chase.
+  const horn = (kind, more) => Object.assign(cult('HORNS · ' + kind.toUpperCase(), 'bearer'), { setup: (g) => { g.hornKind = kind; if (more) more(g); g.applyBoons(); } });
+  const boon = (id) => (g) => { const b = BOONS.find((o) => o.id === id); if (b && !g.boons.includes(b)) { g.boons.push(b); g.levelBoons = g.boons.slice(); } };
+  Object.assign(LAB, {
+    'horns-short': horn('short'), 'horns-big': horn('big'), 'horns-long': horn('long'),
+    // CROOKED HORNS (0.035): the right of the aim reaches wider and further; men stand both sides of the way in
+    'horns-crooked': Object.assign(cult('CROOKED HORNS', 'bearer'), { setup: (g) => { g.hornKind = 'short'; boon('crook')(g); g.applyBoons(); } }),
+    // what is heard: hooves, the club, a death, a barrel going up, a bomb, a crate breaking, the hound's bark
+    sound: { name: 'SOUND', look: 'cult', size: [20, 13], fill: (R, k) => {
+      R.put('barrel', R.ix + 3, R.iy + 1); R.put('bomb', R.ix + 3, R.iy + R.h - 2); R.put('crate', R.ix + 5, R.mid + 2); R.put('brazier', R.ix + R.w - 2, R.iy + 1);
+      man1('bearer')(R, k); if (k > 1) R.man('dog', R.ix + R.w - 3, R.iy + R.h - 3); if (k > 2) R.man('seer', R.ix + R.w - 3, R.iy + 2);
+    } },
+    // CLOAK OF SIGNS (0.035): Q is a random safe tile of the room he stands in
+    blink: Object.assign(cult('CLOAK OF SIGNS · Q', 'bearer'), { setup: (g) => { g.cape = { id: 'symbols' }; g.levelCape = g.cape; g.applyBoons(); } }),
+    // THE CHEER (0.035): a soul's cards come up in each room; room 1 the BANNER, 2 the GULP, 3 the two in turn
+    cheer: Object.assign(cult('THE CHEER · TAKE A SOUL', 'bearer'), { setup: (g, at) => { TUNING.cheer.only = at === 1 ? 'banner' : at === 2 ? 'gulp' : null; setTimeout(() => { if (g.state === 'play') { g.openBoonChoice(); } }, 1200); } }),
+    // THE CHASE's new look (0.035): the red comes from the left at once, full early
+    chase: Object.assign(cult('THE CHASE', 'bearer'), { setup: (g) => { Chase.start(g); if (g.chase) { g.chase.p = 0.35; } } }),
+    // THE SNOW's overhang on the walls (0.035): the cult's rooms under snow
+    snow: Object.assign(cult('SNOW ON THE WALLS', 'bearer'), { zone: { snow: true } }),
+  });
+  // THE CHASE never runs on a test floor (`Chase.on` refuses THE SHOWROOM); here, for its own card only
+  const chaseOn = Chase.on; Chase.on = (g) => CUR.id === 'chase' || chaseOn(g);
   // the test asked for: off the address, or `TEST_LAB.run(id, at)`
   const CUR = { id: LAB[ID] ? ID : null, at: AT };
 
@@ -190,8 +214,14 @@
   const giveKit = () => {
     const g = window.game; if (!g || !CUR.id) return;
     g.boons = KIT.map((id) => BOONS.find((b) => b.id === id)).filter(Boolean);
-    g.levelBoons = g.boons.slice(); g.applyBoons();
+    g.levelBoons = g.boons.slice();
+    // what an earlier test put on (a horn, the cape) is taken off; this one's own `setup` puts its own on
+    if (HORN0 === undefined) HORN0 = g.hornKind; g.hornKind = HORN0; g.cape = null; g.levelCape = null;
+    TUNING.cheer.only = null;
+    if (LAB[CUR.id].setup) LAB[CUR.id].setup(g, CUR.at);
+    g.applyBoons();
   };
+  let HORN0;
   const gen0 = generateLevel;
   generateLevel = function (def, seed, opts) {
     if (CUR.id && (def === FACTORY_LEVEL || def === SHOWROOM_LEVEL)) { setTimeout(giveKit, 0); return labLevel(def, seed); }

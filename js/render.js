@@ -176,6 +176,12 @@ function kbUse(set) { if (KB_SET !== set) { KB_SET = set; kbLay(); } }
 const padOn = (game) => !!(game && game.pad && game.pad.active);
 // The hook over a goat on the butcher's rope (`Renderer.drawHookMark`): `r` the rope, `#` the iron.
 const HOOK_MARK = ['..r..', '..r..', '..#..', '..#..', '#.#..', '#.#..', '.##..'];
+// The marks over his head for a buff that lasts (`Renderer.drawBuffMarks`): the gong's note, the sandal's hourglass.
+const BUFF_MARKS = {
+  note: ['..##.', '..#.#', '..#..', '..#..', '###..', '###..', '.#...'],
+  glass: ['#####', '.#.#.', '..#..', '.#.#.', '#####'],
+};
+
 // KEYBOARD ONLY is on and nothing else has the controls (a finger or a pad takes them as before).
 // `kbLive`: J K L or Z X C pressed with the setting off, until the mouse takes the aim back.
 const kbOn = (game) => !!(game && game.settings && (game.settings.keysOnly || game.kbLive) && !(game.touch && game.touch.active) && !padOn(game));
@@ -200,6 +206,16 @@ const DEPTH = { below: 0.42, night: 0.1 };
 
 // A stable value in 0..1 for one cell of the far layer. The landscape has to be the same landscape
 // every frame, generated from the cell rather than from `Math.random`, or it boils.
+// A pale floor word's colour as ink for snow (`Renderer.drawHints`): the same hue taken down dark, and more opaque.
+function snowInk(st) {
+  if (typeof st !== 'string') return st;
+  let r, g, b, a = 1, m = st.match(/rgba?\(([^)]+)\)/);
+  if (m) { const v = m[1].split(',').map(Number); [r, g, b] = v; if (v.length > 3) a = v[3]; }
+  else if ((m = st.match(/^#([0-9a-f]{6})$/i))) { const n = parseInt(m[1], 16); r = n >> 16; g = (n >> 8) & 255; b = n & 255; }
+  else return st;
+  if (r * 0.3 + g * 0.59 + b * 0.11 < 110) return st;   // already dark
+  return `rgba(${Math.round(r * 0.32)},${Math.round(g * 0.22)},${Math.round(b * 0.2)},${Math.min(0.9, Math.max(0.5, a * 2.2)).toFixed(3)})`;
+}
 function farHash(i, j) {
   const v = Math.sin(i * 127.1 + j * 311.7) * 43758.5453;
   return v - Math.floor(v);
@@ -593,6 +609,7 @@ class Renderer {
       for (const h of heads) { ctx.globalAlpha = h.a; this.drawOverhead(h.e, plates); }
       ctx.globalAlpha = 1;
       Shaman.drawWorld(this, game);   // THE CALL: the held key over the goat (js/shaman.js)
+      Status.drawWebbed(this, game);   // a man caught in WEB SPIT's web, strands over his body (js/status.js)
       if (typeof ShieldGen !== 'undefined') ShieldGen.drawWorld(this, game);   // the shield generator's domes over its machines (js/factory.js)
       if (typeof Arm !== 'undefined') Arm.drawMark(this, game);   // the goat in a grip: a claw over him, the ways out (js/factory.js)
       Beast.drawHealth(this, game, (p) => near(p) && lit(p));   // the animals' hearts over their heads (js/beasts.js)
@@ -643,6 +660,7 @@ class Renderer {
     if ((game.altar && game.altar.done) || game.altarFade) Sacrifice.drawOverlay(this, game);   // the dark the altar opens
     this.drawUI(game);
     if (game.beastTalk && game.state === 'play') Beast.drawTalk(this, game);
+    if (game.cheer && game.state === 'play') Cheer.draw(this, game);   // a soul taken, celebrated (js/cheer.js)
     if (game.beastFarewell && game.state === 'play') Beast.drawFarewell(this, game);   // the end of an escort's road (js/beasts.js)
     if (game.shopDlg && game.state === 'play') Codex.drawShop(this, game);   // js/codex.js
     if (game.posterView && game.state === 'play') Codex.drawPoster(this, game);
@@ -1728,8 +1746,10 @@ class Renderer {
     // caught in the light, a ragged lighter line the eye cannot take for a pillar's top. The spikes
     // are at the bottom (`throughHoles`).
     const P = TUNING.effects.pit, open = (x, y) => wd.tileAt(x, y) !== T.PIT;
+    const snowy = typeof Snow !== 'undefined' && Snow.look(def);
     for (const [tx, ty] of holes) {
       const px = tx * TILE, py = ty * TILE;
+      if (snowy && Snow.at(game, px + TILE / 2, py + TILE / 2)) { this.snowPitEdges(tx, ty, open); continue; }
       if (open(tx, ty - 1)) {
         // the far lip, then its face going down into the dark
         ctx.fillStyle = def.wallTop; ctx.fillRect(px, py, TILE, P.lip);
@@ -1761,6 +1781,39 @@ class Renderer {
       // the stone reveal above and the sill below: a window is a thing cut through something thick
       ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(px, py, TILE, 5);
       ctx.fillStyle = 'rgba(239,230,208,0.18)'; ctx.fillRect(px, py + TILE - 4, TILE, 4);
+    }
+  }
+
+  // A drop in snow (19 Oct 2026 playtest: "the drops must read better"): the cream board ends vanished on white, so its
+  // edges are the snow's own: a lip of white hanging over each open side, ragged off the tile's hash, inked dark along
+  // its inside edge, and the far side's face going down in ice and then dark (`TUNING.effects.pit.snow`).
+  snowPitEdges(tx, ty, open) {
+    const ctx = this.ctx, P = TUNING.effects.pit, S = P.snow, px = tx * TILE, py = ty * TILE, c = S.cell;
+    const rag = (i, k) => (farHash(tx * 7 + i, ty * 13 + k) * S.rag) | 0;
+    if (open(tx, ty - 1)) {
+      // the far face: ice catching the light at the top, three steps into the dark
+      for (let k = 0; k < 3; k++) { ctx.fillStyle = S.face[k]; ctx.fillRect(px, py + k * S.faceH / 3, TILE, Math.ceil(S.faceH / 3)); }
+      for (let x = 0; x < TILE; x += c) {
+        const d = S.lip + rag(x, 1);
+        ctx.fillStyle = PALETTE.snow; ctx.fillRect(px + x, py, c, d);
+        ctx.fillStyle = S.ink; ctx.fillRect(px + x, py + d, c, c / 2);
+        if (rag(x, 7) === 0) { ctx.fillStyle = PALETTE.ice; ctx.fillRect(px + x + c / 2, py + d, 1, c * 2); }   // an icicle
+      }
+    }
+    if (open(tx, ty + 1)) for (let x = 0; x < TILE; x += c) {
+      const d = S.lip + rag(x, 3);
+      ctx.fillStyle = S.ink; ctx.fillRect(px + x, py + TILE - d - c / 2, c, c / 2);
+      ctx.fillStyle = PALETTE.snow; ctx.fillRect(px + x, py + TILE - d, c, d);
+    }
+    if (open(tx - 1, ty)) for (let y = 0; y < TILE; y += c) {
+      const d = S.lip - 1 + rag(y, 5);
+      ctx.fillStyle = PALETTE.snowMid; ctx.fillRect(px, py + y, d, c);
+      ctx.fillStyle = S.ink; ctx.fillRect(px + d, py + y, c / 2, c);
+    }
+    if (open(tx + 1, ty)) for (let y = 0; y < TILE; y += c) {
+      const d = S.lip - 1 + rag(y, 9);
+      ctx.fillStyle = PALETTE.snowMid; ctx.fillRect(px + TILE - d, py + y, d, c);
+      ctx.fillStyle = S.ink; ctx.fillRect(px + TILE - d - c / 2, py + y, c / 2, c);
     }
   }
 
@@ -1903,6 +1956,19 @@ class Renderer {
   drawHints(game) {
     const ctx = this.ctx, lv = game.level;
     ctx.save(); ctx.scale(1, 1 / TILT); ctx.textAlign = 'center';
+    // Every word on the floor on snow is ink (19 Oct 2026 playtest: "the hints on snow are not readable at all"): while
+    // they are laid, a line whose spot is snow has its pale colour turned dark (`snowInk`), whichever line it is.
+    const snowWords = typeof Snow !== 'undefined' && lv && (Snow.look(lv.def) || lv.zones), ownFt = snowWords && Object.prototype.hasOwnProperty.call(ctx, 'fillText');
+    const ft0 = snowWords ? ctx.fillText : null;
+    if (snowWords) ctx.fillText = function (s, x, y, mw) {
+      if (!Snow.at(game, x, y / TILT)) return mw === undefined ? ft0.call(ctx, s, x, y) : ft0.call(ctx, s, x, y, mw);
+      const st = ctx.fillStyle; ctx.fillStyle = snowInk(st);
+      if (mw === undefined) ft0.call(ctx, s, x, y); else ft0.call(ctx, s, x, y, mw);
+      ctx.fillStyle = st;
+    };
+    try { this.drawHintsBody(game, lv, ctx); } finally { if (snowWords) { if (ownFt) ctx.fillText = ft0; else delete ctx.fillText; } }
+  }
+  drawHintsBody(game, lv, ctx) {
     // Never wider than the view either: a phone held upright sees about fourteen tiles, and a line
     // fitted to a wider room ran off both sides of it and could never be read whole.
     const viewW = this.view(game.cam).w - 2 * TILE;
@@ -2514,7 +2580,8 @@ class Renderer {
     const front = R * Math.min(1, p / 0.45), fade = Math.pow(1 - p, 1.2);
     ctx.save();
     const cells = (test) => {
-      const j0 = Math.floor((y - R) / px), j1 = Math.floor((y + R) / px), i0 = Math.floor((x - R) / px), i1 = Math.floor((x + R) / px);
+      const Rb = R * (HN.crook ? HN.crook.reachMul : 1);
+      const j0 = Math.floor((y - Rb) / px), j1 = Math.floor((y + Rb) / px), i0 = Math.floor((x - Rb) / px), i1 = Math.floor((x + Rb) / px);
       for (let j = j0; j <= j1; j++) {
         let run = null;
         for (let i = i0; i <= i1 + 1; i++) {
@@ -2526,13 +2593,15 @@ class Renderer {
     let pale, hard;
     if (HN.rows) {
       const off = HN.rowGap * TILE, w = HN.rowW * TILE, tipAt = R * HN.tip, s0 = g.r * 0.8;
-      const inRows = (u, v) => { const s = u * ax + v * ay, o = u * ay - v * ax; return s >= s0 && s <= front && Math.min(Math.abs(o - off), Math.abs(o + off)) <= w; };
+      const inRows = (u, v) => { const s = u * ax + v * ay; return s >= s0 && !!Goat.hornHit(HN, u, v, ax, ay, front, w - HN.rowW * TILE); };
       pale = (u, v) => inRows(u, v) && u * ax + v * ay < tipAt;
       hard = (u, v) => inRows(u, v) && u * ax + v * ay >= tipAt;
     } else {
-      const inFan = (u, v) => { const d = hyp(u, v); return d >= g.r * 0.8 && d <= front && (d < 1 || (u * ax + v * ay) / d >= HN.cone); };
-      pale = (u, v) => inFan(u, v) && hyp(u, v) < front - px * 2;
-      hard = (u, v) => inFan(u, v) && hyp(u, v) >= front - px * 2;
+      // the shape `Goat.hornHit` asks (CROOKED HORNS' bent side included), its front edge where that side's reach ends
+      const inFan = (u, v) => hyp(u, v) >= g.r * 0.8 && !!Goat.hornHit(HN, u, v, ax, ay, front, 0);
+      const edge = (u, v) => front * Goat.hornReachMul(HN, u, v, ax, ay) - px * 2;
+      pale = (u, v) => inFan(u, v) && hyp(u, v) < edge(u, v);
+      hard = (u, v) => inFan(u, v) && hyp(u, v) >= edge(u, v);
     }
     ctx.globalAlpha = W.alpha * fade; ctx.fillStyle = PALETTE.bone; ctx.beginPath(); cells(pale); ctx.fill();
     if (HN.rows) {
@@ -2930,6 +2999,7 @@ class Renderer {
     // An animal inside its window after a wound blinks, the goat's own i-frame look (`Beast.hurt`).
     if (p.hurtCd > 0 && Beast.animal(p) && Math.floor(this.t * 14) % 2) ctx.globalAlpha *= 0.35;
     this.drawPropBody(p);
+    if (p.kind === 'spike' && typeof Snow !== 'undefined') Snow.dustGrate(this, p);   // a grate dusted over in snow
     if (p.alight || p.brand || p.venom || p.held) this.drawItemStatus(p);
     ctx.restore();
   }
@@ -4364,7 +4434,9 @@ class Renderer {
     // Small on purpose: what a man shouts is colour, not information the fight turns on, and at the
     // old size two of them in a room covered more of it than the men did. It sits over his head and
     // over his notches, never across his face.
-    const head = this.spriteHead(e), notched = e.maxHp > 1 && !e.ghosted;
+    // Not over an untouchable actor of a scene (`barrier`: the Warden seen at THE YARD's end and THE ROAD's drop carries 99
+    // hearts so nothing can end him there): 99 notches were a dashed red line across the whole screen (19 Oct 2026 playtest).
+    const head = this.spriteHead(e), notched = e.maxHp > 1 && !e.ghosted && !e.barrier && !e.endActor;
     if (e.say && !e.dead) {
       const a = Math.max(0, Math.min(1, e.say.life / 0.4, (e.say.max - e.say.life) / 0.08));
       ctx.save(); ctx.scale(1, 1 / TILT);
@@ -4923,8 +4995,12 @@ class Renderer {
   // and off the grid, where every swing and run had gone amber and into cells.
   drawLandCells(x, y, R, p) {
     const ctx = this.ctx, px = TUNING.effects.pixel * 2;
-    ctx.fillStyle = `rgba(242,170,48,${0.1 + 0.22 * p})`; ctx.beginPath(); this.floorRing(x, y, R * clamp(p, 0, 1), 0, px); ctx.fill();
-    ctx.fillStyle = `rgba(255,224,138,${0.35 + 0.6 * p})`; ctx.beginPath(); this.floorRing(x, y, R, R - px * 1.2, px); ctx.fill();
+    // On snow the pale amber was lost on white (19 Oct 2026 playtest): the ring gets a dark band of cells either side
+    // of it and the disc and the rim go a deeper orange (`TUNING.effects.snowTell`).
+    const st = this.game && typeof Snow !== 'undefined' && Snow.at(this.game, x, y) ? TUNING.effects.snowTell : null;
+    if (st) { ctx.fillStyle = `rgba(28,24,30,${st.ink * (0.4 + 0.6 * p)})`; ctx.beginPath(); this.floorRing(x, y, R + px, R - px * 2.2, px); ctx.fill(); }
+    ctx.fillStyle = st ? `rgba(226,110,20,${st.fill[0] + st.fill[1] * p})` : `rgba(242,170,48,${0.1 + 0.22 * p})`; ctx.beginPath(); this.floorRing(x, y, R * clamp(p, 0, 1), 0, px); ctx.fill();
+    ctx.fillStyle = st ? `rgba(242,140,30,${0.6 + 0.4 * p})` : `rgba(255,224,138,${0.35 + 0.6 * p})`; ctx.beginPath(); this.floorRing(x, y, R, R - px * 1.2, px); ctx.fill();
   }
 
   drawAimTelegraph(e) {
@@ -5331,6 +5407,7 @@ class Renderer {
           ['altar-again', 'ALTAR AGAIN  ' + (!game.dev.altarAgain ? (game.altarKnown() ? 'AUTO: ON' : 'AUTO: OFF') : game.dev.altarAgain > 0 ? 'ON' : 'OFF')],
           ['hornInfo', d.hornInfo ? 'HORN INFO  ON' : 'HORN INFO  OFF'],   // the horn's numbers under the hearts
           ['hornTool', d.hornTool ? 'HORN TOOL  ON' : 'HORN TOOL  OFF'],   // the sliders over the run, and the zone on the floor
+          ['minimap', game.minimapOn() ? 'MINIMAP  ON' : 'MINIMAP  OFF'],   // the floor as seen, top right (a test, `drawMinimap`)
           ['cam-zoom', 'CAMERA  ×' + (d.tune && d.tune.camera || 1)],   // the lens, a step a click (also a slider on ENEMIES)
           ['heal', 'HEAL'], ['clear', 'CLEAR NEAR'],
           // 15 Oct 2026 ("what is the difference between them"): one list of every floor, dealt the souls a run would have by
@@ -8200,6 +8277,29 @@ class Renderer {
     for (let r = 0; r < G.length; r++) for (let q = 0; q < w; q++) if (G[r][q] !== '.') { ctx.fillStyle = G[r][q] === 'r' ? PALETTE.bone : PALETTE.fireHi; ctx.fillRect(x0 + q * px, y0 + r * px, px, px); }
     ctx.restore();
   }
+  // WHAT IS ON HIM FOR A WHILE (19 Oct 2026, his: "the gong and the other effects that last a while shown over the goat,
+  // a symbol, a music note over his head after the blow"): a mark in cells a buff, side by side, bobbing; one about to run
+  // out (`juice.marks.buff.warn` s) blinks. The gong's note (`goat.gong`), PILGRIM'S SANDAL's glass (`Talisman.cdMul`).
+  drawBuffMarks(g, game, above) {
+    const B = TUNING.juice.marks.buff, marks = [];
+    if (g.gong > 0) marks.push({ G: BUFF_MARKS.note, col: B.note, left: g.gong });
+    if (Talisman.cdMul(game, g) > 1) marks.push({ G: BUFF_MARKS.glass, col: B.glass, left: g.sandalT });
+    if (!marks.length) return;
+    const ctx = this.ctx, px = TUNING.juice.marks.px, gap = 2 * px;
+    const wAll = marks.reduce((a, m) => a + m.G[0].length * px, 0) + gap * (marks.length - 1);
+    ctx.save(); ctx.translate(g.x, g.y); ctx.scale(1, 1 / TILT);
+    let x0 = -Math.round(wAll / 2 / px) * px;
+    marks.forEach((m, i) => {
+      if (m.left < B.warn && Math.floor(this.t * 8) % 2) { x0 += m.G[0].length * px + gap; return; }
+      const G = m.G, bob = Math.round(Math.sin(this.t * B.bob + i * 1.7) * 1.2), y0 = -above - (G.length + 3 + bob) * px;
+      ctx.fillStyle = 'rgba(13,10,12,0.85)';
+      for (let r = 0; r < G.length; r++) for (let q = 0; q < G[0].length; q++) if (G[r][q] !== '.') ctx.fillRect(x0 + (q - 1) * px, y0 + (r - 1) * px, px * 3, px * 3);
+      ctx.fillStyle = m.col;
+      for (let r = 0; r < G.length; r++) for (let q = 0; q < G[0].length; q++) if (G[r][q] !== '.') ctx.fillRect(x0 + q * px, y0 + r * px, px, px);
+      x0 += G[0].length * px + gap;
+    });
+    ctx.restore();
+  }
   drawStars(x, y, above, alpha) {
     const ctx = this.ctx;
     ctx.save(); ctx.translate(x, y); ctx.scale(1, 1 / TILT);
@@ -8391,9 +8491,10 @@ class Renderer {
       // The pen is under this. Sacking, dropping off it from the top down, with a sway in it.
       PrologueArt.cloth(this, game, L, clamp(pr.sceneT / P.cloth, 0, 1));
     }
-    // The words. Over whoever said it in the field and on the road; in the dark they are all there is,
-    // and they come from the two sides of the screen the two of them were last on.
-    if (pr.last) {
+    // The words. Over whoever said it in the field; in the dark they are all there is, and they come from the two
+    // sides of the screen the two of them were last on. Not on the road (19 Oct 2026, his: "no caption needed here"):
+    // the cage and the truck's sound carry it, and the word floated far over the bars.
+    if (pr.last && ph !== 'road') {
       const L = pr.last, a = Math.min(1, L.life * 3), size = ph === 'dark' ? 22 : 13;
       if (ph === 'dark') word(L.word, L.who === 'goat' ? w * 0.36 : w * 0.64, cy + (1 - L.life) * 12 * s, a, size);
       else if (ph !== 'cloth') { const o = over(L.who === 'goat' ? pr.goat : pr.ewe, ph === 'road' ? 62 : 34); word(L.word, o.x, o.y, a, size); }
@@ -9530,7 +9631,8 @@ class Renderer {
     // Hades stands its Death Defiances over the health bar (7 Oct 2026, his ask: "the life as a little goat portrait,
     // smaller, above them"). Up top on touch, after the hearts, as before.
     // Spent ones stay as an empty ring (`game.livesMax`, the most the run has held).
-    const lives = Math.max(game.extraLives | 0, game.livesMax | 0), LB = TUNING.hud.life * s;
+    // (the god's life is not shown until it has once lifted him, `Heaven.lifeShown`: it is his surprise)
+    const lives = Heaven.lifeShown() || Heaven.rank('life') > 0 ? Math.max(game.extraLives | 0, game.livesMax | 0) : 0, LB = TUNING.hud.life * s;
     for (let i = 0; i < lives; i++) {
       const bx = low ? hx + i * (LB + 4 * s) : hx + (g.maxHp + (g.light || 0) + (g.armour || 0) + i) * HGAP, by = low ? hy - 8 * s - LB : hy - 5 * s;
       this.lifePortrait(game, bx, by, LB, i, i >= (game.extraLives | 0));
@@ -9601,6 +9703,16 @@ class Renderer {
     if (low) this.drawArtifactChip(game, 10 * s + (this.hornRowW || 0) + (this.dareRowW || 0), top + 6 * s, 24 * s);
     else this.drawArtifactChip(game, 14 * s + (g.maxHp + (g.light || 0) + (g.armour || 0) + (game.extraLives | 0)) * 22 * s + 6 * s, top + 14 * s + HEART.length * 1.3 * s - 13 * s, 26 * s);
     this.savedHover(game);   // after the rail too, which clears the hover it shares
+    // The pointer on a heart of light or of iron says what it is and where it came from (19 Oct 2026 playtest: "what is
+    // going on with my heart, I did not quite get what skill this is").
+    { const m = game.input.mouse, n0 = g.maxHp, nl = g.light || 0, na = g.armour || 0, hw = HEART[0].length * px, hh = HEART.length * px;
+      if (m && !game.touch.active && !padOn(game) && m.y >= hy - 3 * s && m.y <= hy + hh + 3 * s) {
+        const i = Math.floor((m.x - hx) / HGAP), inHeart = m.x - hx - i * HGAP <= hw + 2 * s;
+        const tip = !inHeart ? null
+          : i >= n0 + nl && i < n0 + nl + na ? { name: "THE TORTOISE'S IRON", note: `Armour, not a heart: it takes the next ${na > 1 ? na + ' blows' : 'blow'} before your hearts do, then falls off you. The tortoise you brought to the stairs gives you a new suit on every floor.` }
+          : i >= n0 && i < n0 + nl ? { name: 'A HEART OF LIGHT', note: `The mirror's HALO: it takes the next ${nl > 1 ? nl + ' blows' : 'blow'} before your hearts do, and is gone. It comes back on every floor.` } : null;
+        if (tip) this.skillHover = { row: Object.assign(tip, { half: true }), x: hx + i * HGAP, left: hx + i * HGAP, y: hy + hh + 12 * s,
+          above: low ? hy - 10 * s - (lives ? 8 * s + LB : 0) : undefined, hot: false, boons: [] }; } }
     // What the god is paid in, the way heaven counts it (29 Sep 2026: "the same look as up there"):
     // the gold skull and the heap, and beside it the corrupted souls heaven keeps (`Heaven.meta`).
     // Meta, so not standing (6 Oct 2026, his ask): shown `hud.purse.show` s after either count moves, then
@@ -9650,12 +9762,52 @@ class Renderer {
       ctx.font = `${Math.max(12 * this.s, 9.5 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.3)'; ctx.textAlign = 'right';
       ctx.fillText(`${seedTxt} · v${BUILD}`, right, line + 14 * s); ctx.textAlign = 'left';
       this.devTop = line + 22 * s;   // the dev word goes under it (`drawDevPage`)
+      // THE MINIMAP (a test): under the seed, and the dev word under it
+      if (game.minimapOn() && game.state === 'play') { const mh = this.drawMinimap(game, right, line + 24 * s, s); if (mh) this.devTop = line + 30 * s + mh; }
     } else {
       ctx.fillText(seedTxt, 14 * s, this.h - 23 * s);
       ctx.font = `${Math.max(12 * this.s, 9.5 * s)}px ${FONT}`; ctx.fillStyle = 'rgba(239,230,208,0.3)';
       ctx.fillText(`v${BUILD}`, 14 * s, this.h - 12 * s);
     }
     // (the exit compass, a gold triangle pinned at the bottom of the view, went on 9 Oct 2026: "this arrow is not needed")
+  }
+
+  // THE MINIMAP (19 Oct 2026, his: "a very simple map of the room and the ones joined to it, top right; only the geography,
+  // no men; still a test"): the floor as he has seen it (`world.mem`, the fog's own memory), a window of `hud.minimap.w` x
+  // `h` tiles round him at `cell` px a tile, floor pale, its walls dark, drops black, the stairs gold, him a blinking cell.
+  // Baked a pixel a tile, again only when the memory has grown (`memN`) or the floor is new. Returns its height, or 0.
+  drawMinimap(game, right, top, s) {
+    const w = game.world, L = game.level, M = TUNING.hud.minimap;
+    if (!w || !w.mem || !L || L.def.heaven || !game.goat) return 0;
+    let B = this.miniBake;
+    if (!B || B.world !== w) B = this.miniBake = { world: w, n: -1, at: -9, c: document.createElement('canvas') };
+    if (B.n !== w.memN && this.t - B.at > M.every) {
+      B.n = w.memN; B.at = this.t;
+      const W = w.W, H = w.H, c = B.c; if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
+      const g = c.getContext('2d'), img = g.createImageData(W, H), d = img.data, mem = w.mem, tl = w.tiles;
+      const put = (i, rgb, a) => { const o = i * 4; d[o] = rgb[0]; d[o + 1] = rgb[1]; d[o + 2] = rgb[2]; d[o + 3] = a; };
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const i = y * W + x; if (!mem[i]) continue;
+        const t = tl[i];
+        if (t === T.WALL) put(i, M.wall, 255);
+        else if (t === T.PIT) put(i, M.pit, 255);
+        else if (t === T.EXIT) put(i, M.exit, 255);
+        else put(i, M.floor, 255);
+      }
+      g.putImageData(img, 0, 0);
+    }
+    const ctx = this.ctx, cell = Math.max(2, Math.round(M.cell * s)), gx = Math.floor(game.goat.x / TILE), gy = Math.floor(game.goat.y / TILE);
+    const sx = clamp(gx - (M.w >> 1), 0, Math.max(0, w.W - M.w)), sy = clamp(gy - (M.h >> 1), 0, Math.max(0, w.H - M.h));
+    const mw = M.w * cell, mh = M.h * cell, x0 = Math.round(right - mw), y0 = Math.round(top);
+    ctx.save();
+    ctx.fillStyle = 'rgba(9,7,9,0.62)'; ctx.fillRect(x0 - 3, y0 - 3, mw + 6, mh + 6);
+    ctx.strokeStyle = 'rgba(239,230,208,0.28)'; ctx.lineWidth = 1; ctx.strokeRect(x0 - 2.5, y0 - 2.5, mw + 5, mh + 5);
+    ctx.globalAlpha = M.alpha; ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(B.c, sx, sy, M.w, M.h, x0, y0, mw, mh);
+    ctx.globalAlpha = 1;
+    if (Math.floor(this.t * 3) % 3) { ctx.fillStyle = M.goat; ctx.fillRect(x0 + (gx - sx) * cell - cell / 2, y0 + (gy - sy) * cell - cell / 2, cell * 2, cell * 2); }
+    ctx.restore();
+    return mh + 6;
   }
 
   // The skill rail, bottom right (top right on a touch screen): the four verbs, whether each one is available, how
@@ -9888,7 +10040,7 @@ class Renderer {
         }
         ctx.stroke();
       }
-      if (m.headbuttRecovery < 1) {                                    // Iron Skull: a plate over the brow
+      if (m.ironSkull) {                                               // Iron Skull: a plate over the brow
         ctx.strokeStyle = PALETTE.bone; ctx.lineWidth = h * 0.17;
         ctx.beginPath(); ctx.moveTo(-h * 0.4, h * 0.05); ctx.lineTo(h * 0.4, h * 0.05); ctx.stroke();
       }
@@ -10017,7 +10169,7 @@ class Renderer {
     const g = game.goat, itemOn = t.itemReady;
     const labels = { butt: 'BUTT', grab: held ? 'THROW' : game.mods.grabMen ? 'GRAB' : 'THINGS',
       scream: fire ? 'FIRE' : game.mods.screamStun ? 'BAAH' : 'CALL', roll: 'ROLL',
-      item: game.mods.boomerang ? 'THROW' : game.mods.blink ? 'BLINK' : game.mods.sprout ? 'GRASS' : game.mods.ruin ? 'RUIN' : 'STRAW' };
+      item: game.mods.boomerang ? 'THROW' : game.mods.blink ? 'BLINK' : game.mods.sprout ? 'GRASS' : game.mods.ruin ? 'RUIN' : game.mods.morph ? 'CHANGE' : 'STRAW' };
     const ready = { butt: game.goat.state === 'idle' && !held, grab: held || game.goat.grabCd <= 0,
       scream: game.goat.screamCd <= 0, roll: game.goat.rollCd <= 0, item: g.itemCd <= 0 };
     // The fifth key is drawn last of the five and only once the shop has put something on it,
@@ -10192,6 +10344,8 @@ class Renderer {
       // "best run 0" read as a run scored nothing; until one is finished the board is levels only
       best: { label: 'BEST', note: board.run ? `(best run ${board.run})` : cleared ? `(${cleared} level${cleared === 1 ? '' : 's'} on the board)` : '(nothing on the board yet)' },
       unlocks: { label: 'UNLOCKS', note: `(${Unlocks.found()} of ${Unlocks.count()} found: souls, animals, talismans, things)` },
+      codex: { label: 'CODEX', note: `(${Unlocks.found()} of ${Unlocks.count()} found)` },
+      exit: { label: 'EXIT', note: game.menu.exitTried ? (run ? '(your run is saved: close the tab)' : '(close the tab)') : undefined },
       settings: { label: 'SETTINGS' },
       // the one row in someone else's colour, so it is found without being looked for. It says what it
       // is FOR, not where it goes: "join the discord" read as an ad, "send feedback" reads as a door.
@@ -10261,8 +10415,9 @@ class Renderer {
     if (game.menu.panel === 'book') { Codex.drawBook(this, game); return; }
     const ctx = this.ctx, s = this.ts, w = this.w, h = this.h, cx = w / 2;
     ctx.fillStyle = 'rgba(9,7,9,0.72)'; ctx.fillRect(0, 0, w, h);
-    const rows = PAUSE_MENU.length;
-    const rowH = clamp(h * 0.1, 40 * s, 66 * s), gap = 10 * s;
+    const PM = game.pauseItems(), rows = PM.length;
+    const rowH = clamp(h * 0.1
+, 40 * s, 66 * s), gap = 10 * s;
     const bw = clamp(Math.min(w * 0.86, 420 * s), 200 * s, 480 * s), x0 = cx - bw / 2;
     const top = h / 2 - (rows * (rowH + gap)) / 2;
     ctx.textAlign = 'center'; ctx.fillStyle = PALETTE.ochre;
@@ -10276,7 +10431,7 @@ class Renderer {
       ctx.strokeStyle = sel ? PALETTE.blood : 'rgba(239,230,208,0.2)'; ctx.lineWidth = 2 * s;
       ctx.strokeRect(x0, y, bw, rowH);
       ctx.fillStyle = PALETTE.bone; ctx.font = `700 ${16 * s}px ${FONT_SC}`;
-      ctx.fillText(PAUSE_MENU[i].id === 'photos' && Photo.shots.length ? `PHOTOS (${Photo.shots.length})` : PAUSE_MENU[i].id === 'abandon' && game.pause.armAbandon > performance.now() ? 'ABANDON RUN? PRESS AGAIN' : PAUSE_MENU[i].name, cx, y + rowH * 0.62);
+      ctx.fillText(PM[i].id === 'photos' && Photo.shots.length ? `PHOTOS (${Photo.shots.length})` : PM[i].id === 'abandon' && game.pause.armAbandon > performance.now() ? 'ABANDON RUN? PRESS AGAIN' : PM[i].name, cx, y + rowH * 0.62);
     }
     ctx.textAlign = 'left';
   }

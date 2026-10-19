@@ -43,9 +43,30 @@ const Cape = {
     else if (m.effigy) { if (Talisman.placeEffigy(game, g)) cd = m.effigy.cooldown; }
     else if (m.sprout) { if (Cape.sprout(game, g)) cd = m.sprout.cooldown; }
     else if (m.ruin) { if (g.state === 'idle' && Cape.ruin(game, g)) cd = m.ruin.cooldown; }
+    else if (m.morph) { if (g.state === 'idle' && Cape.morph(game, g)) cd = m.morph.cooldown; }
     if (cd) g.itemCd = g.itemCdMax = cd;
   },
 
+  // THE MANTLE OF CHANGES: the horns to another kind (`game.morphHorn`, read over `hornKind` by `applyBoons`, the god's lock
+  // on BIG and LONG not asked: the cape is its own way to them) and one active soul he carries to another for its button,
+  // never one he has, a deleted one or one whose `needs` he lacks. No active soul, and only the horns change.
+  morph(game, g) {
+    const O = TUNING.goat.horns.order, now = game.morphHorn || game.hornKind, kinds = O.filter((k) => k !== now);
+    game.morphHorn = kinds[Math.floor(Math.random() * kinds.length)] || now;
+    const acts = game.boons.filter((b) => b.active && !b.key), lines = [TUNING.goat.horns[game.morphHorn].name + ' HORNS'];
+    const old = acts[Math.floor(Math.random() * acts.length)];
+    if (old) {
+      const pool = BOONS.filter((b) => b.active && !b.key && b.skill === old.skill && b !== old && !b.off && !game.boons.includes(b) && !(b.needs && !game.mods[b.needs]) && !(b.unlock && !b.unlock()));
+      const nu = pool[Math.floor(Math.random() * pool.length)];
+      if (nu) { game.boons[game.boons.indexOf(old)] = nu; lines.push(old.name + ' в†’ ' + nu.name); }
+    }
+    game.applyBoons(); game.saveRun && game.saveRun();
+    lines.forEach((s, i) => game.floatText(g.x, g.y - 34 - i * 16, s, i ? PALETTE.witchHi : '#4fd1c5'));
+    game.particles(g.x, g.y - 10, 22, '#4fd1c5', 180); game.particles(g.x, g.y - 10, 12, PALETTE.witchHi, 140);
+    game.ring(g.x, g.y, 1.6 * TILE, '#4fd1c5', 0.5, 2); game.flash('#4fd1c5', 0.12);
+    game.audio.sfxBell && game.audio.sfxBell(); game.audio.sfxBleat(); game.vibe(14);
+    return true;
+  },
   // SHEPHERD'S MANTLE: a tuft of milk grass grows `ahead` tiles in front of him, on open floor. It is
   // grazed like any (`Prop.graze`): the heart is paid for in standing still, not in the press.
   sprout(game, g) {

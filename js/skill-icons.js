@@ -370,18 +370,16 @@ const SKILL_ART = {
     '.............CM.',
     '.............MN.',
     '..........X.....'] },
-  // WEB SPIT: a white ball of silk on its way, strands trailing.
+  // WEB SPIT: a spider's web out ahead of his mouth, spokes and a ring in ink-edged silk (19 Oct 2026 playtest: "a status
+  // attack like the web spit should read better on its chip": the ball of silk read as a tuft of fur).
   webGlob: { rows: [
-    '', '', '',
-    '..............W.',
-    '............WWwW',
-    '...........WwWWs',
-    '...........WWwWs',
-    '............Wsss',
-    '............w.s.',
-    '...........w....',
-    '................',
-    '..........w.....'] },
+    '', '', '', '', '', '', '', '', '',
+    '...........s....',
+    '...........W.W.W',
+    '............sWs.',
+    '...........WWWWW',
+    '............sWs.',
+    '...........W.W.W'] },
   // VENOM SPIT: froth at his lips and a glob on its way.
   spit: { rows: [
     '', '', '',
@@ -409,7 +407,9 @@ const SKILL_ICONS = {
       else if (m.splash) L.push('bigHorns:venom', 'drips');
       else if (m.antlers) L.push('antlers');
       else L.push('horns');
-      if (m.headbuttRecovery < 1) L.push('skull');
+      // the plate is IRON SKULL's alone (18 Oct 2026: the SHORT wore it in the book because the mirror's QUICK, or heaven's
+      // own quicker butt, also cut the recovery)
+      if (m.ironSkull) L.push('skull');
       if (m.runButt > 0) L.push('steam');
       if (m.hoofKick) L.push('hoof');
       return L;

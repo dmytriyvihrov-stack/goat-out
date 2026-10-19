@@ -60,8 +60,12 @@ Object.assign(Heaven, {
   // A talisman a dare pays for is off the shelves until that dare is won (`Shop.restock`, `Beast.placeGift`).
   talismanLocked(id) {
     for (const k of Object.keys(QUESTS)) if (QUESTS[k].talisman === id && !this.freed(k)) return true;
+    // a talisman with a `lock` of its own (THE TABLE AMULET, THE COMB OF FATE) until what it asks is done
+    const A = typeof ARTIFACTS !== 'undefined' && ARTIFACTS.find((a) => a.id === id);
+    if (A && A.lock && !A.lock.need()) return true;
     return false;
   },
+
   towerMended() { const M = this.meta; return !!(M && M.towerMended); },
 
   // ---------------------------------------------------------------- pouring
@@ -161,7 +165,12 @@ Object.assign(Heaven, {
     M.mendedStands = M.mendedStands || {}; M.mendedStands[kind] = 1; this.save();
     const seat = HEAVEN_SEATS.find((s) => s.kind === kind);
     game.floatText(n.x, n.y - 80, (seat ? seat.name : 'ITS') + "'S STAND IS WHOLE", '#fff4c2');
-    game.heaven.plates.push({ x: game.level.god.x, y: game.level.god.y - 118, text: kind === 'horse' ? 'GOOD. NOW THE HORSE WILL FIND YOU DOWN THERE. BEAT IT IN A RACE AND IT COMES UP HERE.' : 'GOOD. IT WILL FIND YOU DOWN THERE.', life: TUNING.heaven.plate * 1.4, god: true });
+    // Said where he stands, in the god's box (19 Oct 2026 playtest: "after mending a stand, a clearer message that from now on
+    // you can meet that animal on your runs"; the god's plate was over the god, a room away, and nobody read it).
+    const nm = seat ? seat.name : 'IT';
+    this.godSay(game, this.parts([kind === 'horse'
+      ? `GOOD. ${nm} IS ONE OF YOUR ANIMALS NOW: FROM NOW ON YOU CAN MEET IT ON YOUR RUNS, SHUT IN A STALL. | LET IT OUT, BEAT IT IN A RACE, AND IT COMES UP HERE.`
+      : `GOOD. ${nm} IS ONE OF YOUR ANIMALS NOW: FROM NOW ON YOU CAN MEET IT ON YOUR RUNS, SHUT IN A CAGE. | LET IT OUT, BRING IT TO THE STAIRS, AND IT COMES UP HERE.`]));
     game.audio.sfxGodVoice(0.9);
     this.layPaddock(game);
   },

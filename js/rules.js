@@ -513,7 +513,8 @@ const GEN_RULES = [
         if (p.kind !== 'brazier' && p.kind !== 'lamp') continue;
         if (Math.hypot(p.x - b.x, p.y - b.y) < 2 * TILE) return `a bowl in a ${p.kind}`;
       }
-      for (const p of bowls) { const r = p.counts === undefined && roomAt(L, p.x, p.y); if (r && SET_PIECE.has(r.role) && r.role !== 'hall') return `a bowl in the ${r.role}`; }
+      // (the wheel's own tuft under its arm is the one bowl a set piece is dealt, gen.js)
+      for (const p of bowls) { const r = p.counts === undefined && roomAt(L, p.x, p.y); if (r && SET_PIECE.has(r.role) && r.role !== 'hall' && !(p.millGrass && r.role === 'mill')) return `a bowl in the ${r.role}`; }
       const idx = rooms.map((r) => r.index).sort((a, b) => a - b);
       let prev = 0, worst = 0;
       for (const i of idx) { worst = Math.max(worst, i - prev); prev = i; }
@@ -1150,7 +1151,7 @@ const GEN_RULES = [
       if (!rings.length) return null;
       for (const r of rings) {
         const name = r.tpl.name, v = ARENA_VARIANTS.find((o) => o.tpl.name === name);
-        if (!v) { if (name !== ARENA_TEMPLATE.name && !(def.mech && name === MECH_RING.name)) return `room ${r.index} is "${name}"`; continue; }
+        if (!v) { if (name !== ARENA_TEMPLATE.name && !(def.mech && name === MECH_RING.name) && !(r.arena.boss === 'thrower' && name === BANE_ARENA_TEMPLATE.name)) return `room ${r.index} is "${name}"`; continue; }
         if (def.shroom || def.dark || li < AV.from || !(def.met && def.met.has(r.arena.boss))) return `room ${r.index} is ${name} where the plain ring is owed`;
         if (!arenaVariantsFor(def, r.arena.boss, li).includes(v)) return `room ${r.index} is ${name}, which does not fit a ${r.arena.boss} on floor ${li + 1}`;
         if (r.bossSpot && L.tiles[Math.floor(r.bossSpot.y / TILE) * L.W + Math.floor(r.bossSpot.x / TILE)] === T.PIT) return `the boss of room ${r.index} stands on the drop`;

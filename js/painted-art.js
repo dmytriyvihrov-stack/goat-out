@@ -331,6 +331,7 @@ class PaintedArt extends AltarArt {
         if(!n&&!e&&!stone(x+1,y-1))m|=16; if(!s&&!e&&!stone(x+1,y+1))m|=32;
         if(!s&&!w&&!stone(x-1,y+1))m|=64; if(!n&&!w&&!stone(x-1,y-1))m|=128;
         this.drawWall(ctx,def,px,py,m,x,y);
+        if ((m&15)&&typeof Snow!=='undefined'&&Snow.look(def)) (this.snowOver ||= []).push(px,py,m,x+y*997);
         if (s&&x%5===1&&h%3!==0&&!w&&!e&&!def.factory) this.stamp(ctx,'banner',px+16,py+18,13,17,0.2);
         continue;
       }
@@ -353,6 +354,9 @@ class PaintedArt extends AltarArt {
       else if(t===T.ENTRY)renderer.drawStairs(px,py,x-game.level.entry.x0,false,game.level.def);
       else if(!(typeof Snow!=='undefined'&&Snow.look(def))&&wd.isSolid(x,y-1)&&h%5===0)this.straw(ctx,px+16,py+6,h,false);
     }
+    // THE SNOW's overhang past every wall's cap (js/snow.js `Snow.overhang`), once the floor round it is down
+    const so = this.snowOver;
+    if (so && so.length) { const F = PIXEL_ROOMS.wall.faceH; for (let i = 0; i < so.length; i += 4) Snow.overhang(ctx, so[i], so[i + 1], so[i + 2], so[i + 1] + (64 - F) / 64 * TILE, so[i + 3]); so.length = 0; }
     // The carpets (`layCarpets`, gen.js) over the floor they lie on, whole, after every tile: each has a
     // tile of plain floor round it, so nothing standing up out of the next row is painted over.
     const cps = game.level.carpets;
@@ -816,7 +820,7 @@ class PaintedArt extends AltarArt {
       if(cs!==null)CAPE_PIXELS.draw(ctx,this.capeId,'behind',angle,cs,cw);
       // BIG and LONG are drawn whole by `PIXEL_ART.horns`: the frame under them goes without its packed horns (`bare`).
       PIXEL_ART.penitent=!!e.coward||key==='coward';   // THE COWARD's own robe and open face (`COWARD_STUDY`), for this one draw
-      PIXEL_ART.snowK=key!=='sheep'&&!renderer.silPass?e.snowK||0:0;   // THE SNOW settled on a man who stood still (js/snow.js)
+      PIXEL_ART.snowK=!renderer.silPass?e.snowK||0:0;   // THE SNOW settled on a man, or the goat, who stood still (js/snow.js)
       PIXEL_ART.draw(ctx,pixel,angle,moving,renderer.t,e.x,key==='sheep'&&this.hornMods&&this.hornMods.horn&&this.hornMods.horn.look,runP);
       PIXEL_ART.penitent=false;PIXEL_ART.snowK=0;
       if(cs!==null)CAPE_PIXELS.draw(ctx,this.capeId,'over',angle,cs,cw);
@@ -1092,6 +1096,11 @@ class PaintedArt extends AltarArt {
       else if(fid.kind==='sniff'){const S=I.sniff,k=Math.sin(fk*Math.PI),d=Math.max(0,Math.sin(fk*S.sniffs*Math.PI*2));ctx.rotate(Math.cos(g.facing)*S.lean*k);ctx.scale(1+S.dip*0.5*k,1-S.dip*k*(0.6+0.4*d));}
       else if(fid.kind==='scratch'){const S=I.scratch,k=Math.sin(fk*Math.PI);ctx.rotate(-Math.cos(g.facing)*S.lean*k+Math.sin(fid.t*S.freq)*S.amp*k);}
     }
+    // THE CHEER's rear (js/cheer.js `Cheer.rearK`): up on his hind hooves, turned about them, the front pawing the air
+    const rk=game&&game.cheer&&game.cheer.kind==='rear'&&typeof Cheer!=='undefined'?Cheer.rearK(game.cheer):0;
+    if(rk>0){const R=TUNING.cheer.rear,dx=Math.cos(g.facing),side=Math.abs(dx)>0.35?Math.sign(dx):0,heel=-side*R.heel,paw=Math.sin(game.cheer.t*R.paw*Math.PI*2)*0.06*rk;
+      ctx.translate(0,-R.lift*rk);
+      if(side){ctx.translate(heel,0);ctx.rotate(-side*(R.tilt*rk+paw));ctx.translate(-heel,0);}else ctx.scale(1-0.1*rk,1+R.tall*rk+paw);}
     const fx=game.stairFx,climb=fx?clamp(fx.dir>0?fx.t:1-fx.t,0,1):0;
     if(climb>0){ctx.translate(0,-TUNING.stairs.rise*climb);ctx.scale(1-0.22*climb,1-0.22*climb);ctx.globalAlpha=1-climb*0.55;}
     // Heaven's own moments (js/heaven.js): out of the light, over the edge, down onto a floor.
@@ -1150,6 +1159,7 @@ class PaintedArt extends AltarArt {
     this.goatFx(renderer,g,game);
     if(g.dazed>0&&!(game.intro&&game.intro.fade>0))renderer.drawStars(g.x,g.y,PIXEL_EXTENT.goat+2,Math.min(1,g.dazed*1.5));
     if(g.hooked)renderer.drawHookMark(g.x,g.y,PIXEL_EXTENT.goat+2);   // on the butcher's rope: a hook over his head, not a word
+    else if(!g.dead&&!renderer.silPass&&!g.dazed)renderer.drawBuffMarks(g,game,PIXEL_EXTENT.goat+2);   // the gong's note, the sandal's glass
     // and the bubbles off him, in cells, the same as off a poisoned man
     if(g.poisoned>0&&!g.dead&&!renderer.silPass){ctx.save();ctx.translate(g.x,g.y);ctx.scale(1,1/TILT);renderer.drawBubbles(0,0,30,Math.min(1,g.poisoned*3),g.x);ctx.restore();}
     if((game.touch.active||(game.pad&&game.pad.active))&&game.state==='play'){const a=game.input.aim;ctx.fillStyle=PALETTE.bone;ctx.beginPath();ctx.arc(g.x+a.x*34,g.y+a.y*34,2,0,Math.PI*2);ctx.fill();}

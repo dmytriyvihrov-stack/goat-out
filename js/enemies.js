@@ -446,7 +446,7 @@ class Enemy {
   sightRange(game) {
     const cfg = this.cfg, ST = TUNING.stealth;
     // THE WELDER sees further (`welder.sightMul`, 15 Oct 2026: "they spot you sooner and fire sooner")
-    let R = (cfg.sight + (this.watchful ? (cfg.watchSight || 4) : 0)) * TILE * (game.sneak ? ST.sight : 1) * (this.welder ? TUNING.welder.sightMul : 1);
+    let R = (cfg.sight * (!this.aware && cfg.calmSight ? cfg.calmSight : 1) + (this.watchful ? (cfg.watchSight || 4) : 0)) * TILE * (game.sneak ? ST.sight : 1) * (this.welder ? TUNING.welder.sightMul : 1) * (this.shaman ? TUNING.shaman.sightMul : 1);
     if (game.goatLit === false) {
       const S = TUNING.dark.ai.sight;
       R = Math.min(R, (S[this.kind] || S.all) * TILE * (game.sneak && game.stealthLive ? ST.dark.sight : 1));
@@ -970,6 +970,10 @@ class Enemy {
     this.butts = 0;
     // Up off the floor and square on to him: the corner he was being held in is his again.
     if (this.state === 'floored' || this.state === 'stagger' || this.state === 'stunned' || this.state === 'braced') { this.state = 'chase'; this.timer = 0; }
+    // The shove is all he does with that butt: a blow he was winding up (a club, the saw, the sawbot's crouch for its leap)
+    // is spent on it, never kept to land on the goat the shove has just stunned (19 Oct 2026 playtest: "with the corrupted
+    // sawbot your blows do not break its blows").
+    else if (this.state === 'windup' || this.state === 'hopwind' || this.state === 'swing') { this.state = 'recover'; this.timer = TUNING.champion.shove.after; this.leapAim = null; }
     this.facing = Math.atan2(g.y - this.y, g.x - this.x); this.aware = true; this.vx = 0; this.vy = 0;
     this.shoveAt = now;
     g.state = 'stunned'; g.timer = S.daze; g.dazed = Math.max(g.dazed || 0, S.daze);

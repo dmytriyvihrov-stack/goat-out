@@ -107,6 +107,12 @@ class Goat {
       }
       // Dragged over flame or a puddle he burns and is poisoned like anyone (the hook hurts through
       // what the rope drags him over); this returned before both, so the rope was a way across fire.
+      // A drag crosses a burning tile in a fraction of the fire's tick, so it never cost a heart (19 Oct 2026, his: "the hook
+      // drags you over fire, the fire must hurt you, that is the system"): the first flame a drag meets lands its heart at once,
+      // one a drag (`hookBurn` names the throw).
+      if (this.hooked && this.hooked.hook && this.hookBurn !== this.hooked.hook && (world.isBurningPx(this.x, this.y) || world.isWitchPx(this.x, this.y))) {
+        this.hookBurn = this.hooked.hook; this.fireTick = 1e6;
+      }
       this.burnStep(game, world, dt);
       if (this.timer <= 0) { this.state = 'idle'; this.hooked = null; }
       return;
@@ -710,17 +716,19 @@ class Goat {
   // (the SHORT, BIG) is a cone of the horn's own width; LONG is two strips, a horn each, straight out, and what is
   // met in the last of it is hit by the tips. `{ tip }` or null. The picture draws the same shape (`drawHornWave`).
   static hornHit(HN, dx, dy, ax, ay, reachPx, r) {
-    const along = dx * ax + dy * ay;
+    const along = dx * ax + dy * ay, C = HN.crook, bent = C && (dx * ay - dy * ax) * C.side > 0;   // CROOKED HORNS' side
     if (HN.rows) {
-      if (along < 0 || along > reachPx) return null;
-      const perp = dx * ay - dy * ax, off = HN.rowGap * TILE, w = HN.rowW * TILE + r;
+      if (along < 0 || along > reachPx * (bent ? C.reachMul : 1)) return null;
+      const perp = dx * ay - dy * ax, off = HN.rowGap * TILE, w = HN.rowW * TILE + r + (bent ? C.rowW * TILE : 0);
       if (Math.min(Math.abs(perp - off), Math.abs(perp + off)) > w) return null;
       return { tip: along >= reachPx * HN.tip };
     }
     const d = hyp(dx, dy);
-    if (d > reachPx || (d > 1 && along / d < HN.cone)) return null;
+    if (d > reachPx * (bent ? C.reachMul : 1) || (d > 1 && along / d < (bent ? Math.max(-0.4, HN.cone - C.widen) : HN.cone))) return null;
     return { tip: false };
   }
+  // How far the horns reach along `(dx, dy)` as a share of the plain reach: CROOKED HORNS' side reaches further.
+  static hornReachMul(HN, dx, dy, ax, ay) { const C = HN.crook; return C && (dx * ay - dy * ax) * C.side > 0 ? C.reachMul : 1; }
 
   headbuttHits(game) {
     const g = TUNING.goat.headbutt, HN = game.mods.horn || TUNING.goat.horns.short;   // the horn he has, `TUNING.goat.horns`
@@ -2374,6 +2382,17 @@ class Prop {
     game.world.emitNoise(this.x, this.y, TUNING.noise.table); game.audio.sfxThud(); game.shake(2);
     game.dust(this.x, this.y, 5, ax, ay); game.particles(this.x, this.y, 6, PALETTE.wood, 110);
     if (game.scatter) game.scatter.fromTable(this, ax, ay, 1);
+    // THE TABLE AMULET (`mods.tableCharm`): every man round a table going over is dazed (a ring of cells shows how far)
+    const TC = game.mods && game.mods.tableCharm;
+    if (TC) {
+      let n = 0;
+      for (const e of game.enemies) {
+        if (e.dead || e.held || e.ghosted || e.scripted || e.barrier || e.state === 'hidden' || hyp(e.x - this.x, e.y - this.y) > TC.r * TILE + e.r) continue;
+        e.daze(game, TC.stun); e.aware = true; n++;
+      }
+      game.ring(this.x, this.y, TC.r * TILE, '#ffd27a', 0.4, 2);
+      if (n) game.floatText(this.x, this.y - 30, 'STUNNED', '#ffd27a');
+    }
   }
   // A headbutt on a table on its side only rocks it; the last of `flip.hits` breaks it into planks.
   knockFlipped(game, ax, ay) {
@@ -2839,6 +2858,9 @@ class Prop {
       // Into a man at speed: it goes off on him. Not a man in the teeth, mist, or an ogre in the air.
       // The thrower's (js/thrower.js) goes off on the goat it reaches, and never on him.
       if (this.byCult && !game.goat.dead && hyp(game.goat.x - this.x, game.goat.y - this.y) < game.goat.r + this.r) { this.explode(game); return; }
+      // THE AUTOMATON (js/factory.js): a lit bomb thrown under his body or into a planted foot goes off there, armed or not
+      // (19 Oct 2026 playtest: "a bomb thrown at the automaton must not fly through him so easily")
+      if (lit && !this.byCult && typeof Automaton !== 'undefined' && v0 >= H.speed * 0.4 && Automaton.bombMeets(game, this)) { this.explode(game); return; }
       if (armed && v0 >= H.speed) for (const e of game.liveEnemies || game.enemies) {
         if (e.dead || e.held || e.ghosted || e.state === 'hop' || e === this.byCult) continue;
         if (hyp(e.x - this.x, e.y - this.y) < e.r + this.r + (this.byCult ? 0 : TUNING.prop.throwHit)) { this.explode(game); return; }
@@ -2942,10 +2964,13 @@ class Prop {
       // It will not shut on anybody. A body in the gap holds it at a hair over the blocking line the
       // way a real one would, the crowd on your heels props your own way out open for a moment,
       // and it seats as soon as the gap is clear.
-      const near = (b) => b && !b.dead && hyp(b.x - this.x, b.y - this.y) < b.r + this.r * 0.5;
+      // 19 Oct 2026 playtest ("I could walk through a half-open door"): held at 0.52 the leaf was drawn at 45 degrees
+      // across the body walking through it. A body near the gap now swings it back out of the way (`clockHold`, eased),
+      // and it closes again no faster than `clockBack` a second once the gap is clear.
+      const near = (b) => b && !b.dead && hyp(b.x - this.x, b.y - this.y) < b.r + this.r * 1.2;
       const blocked = near(game.goat) || game.enemies.some((e) => !e.ghosted && !e.held && near(e));
       const t = Math.pow(this.clock / D.clockFor, D.clockEase);
-      this.open = blocked ? Math.max(t, 0.52) : t;
+      this.open = blocked ? Math.max(t, Math.min(D.clockHold, this.open + dt * 4)) : Math.max(t, this.open - dt * D.clockBack);
       if (this.open <= 0) {
         this.open = 0; this.timed = false;
         game.audio.sfxThud(); game.audio.sfxSteel(); game.shake(3);

@@ -335,7 +335,8 @@ function showroomLevel(def, seed) {
   {
     const y0 = 63;
     let prevR = hall, px0 = hall.x + hall.w + 4;
-    ARENA_VARIANTS.forEach((v) => {
+    // and BANE's yard after them (19 Oct 2026), THE ROAD's last ring, its crates laid too
+    [...ARENA_VARIANTS, { tpl: BANE_ARENA_TEMPLATE }].forEach((v) => {
       const tpl = v.tpl, w = tpl.rows[0].length, h = tpl.rows.length, doorRows = [y0 + 5, y0 + 6];
       const r = room(px0, y0, w, h, tpl.name, 1); r.role = 'arena';
       fill(prevR.x + prevR.w - 1, doorRows[0], px0, doorRows[1], T.FLOOR); zone(prevR.x + prevR.w, doorRows[0] - 1, px0 - 1, doorRows[1] + 1, 1);
@@ -346,6 +347,7 @@ function showroomLevel(def, seed) {
         else if (c === 'h') tiles[at(X, Y)] = T.HAY;
         else if (c === 'B') put('brazier', X, Y);
         else if (c === 'L') put('lamp', X, Y);
+        else if (c === 'o') put('crate', X, Y);
         else if (c === 'w') put('weapon', X, Y, { weapon: tx < w / 2 ? 'sword' : 'shield' });
         // one table on each 2 x 2 of a `t` block, as `placeTables` stands them: at the block's even offsets
         else if (c === 't' && (tx - row.indexOf('t')) % 2 === 0 && (ty - tpl.rows.findIndex((rw) => rw[tx] === 't')) % 2 === 0) put('table', X + 0.5, Y + 0.5);

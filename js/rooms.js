@@ -199,6 +199,24 @@ const ROOM_TEMPLATES = [
     '#............#',
     '##############',
   ]},
+  // THE PARAPET (19 Oct 2026, his: "one room laid out like Enter the Gungeon's", off his screenshot): a wall across the room
+  // with a stem up the middle of its top half, so the top is two bays joined by a gap in the stem; the bays reach the floor
+  // below by the wide way at the far end, or by rolling over the one-tile drop at the near end, past a brazier.
+  { name: 'parapet', rows: [
+    '######################',
+    '#........#...........#',
+    '#..e.....#........e..#',
+    '#........#...........#',
+    '#....o...............#',
+    '#........#.....o.....#',
+    '######O###########...#',
+    '#...B................#',
+    '#..e.......r.......e.#',
+    '#.....hh.......P.....#',
+    '#..o..hh.............#',
+    '#.........e..........#',
+    '######################',
+  ]},
 
   // THE MECHANICS' ROOMS (13 Oct 2026, the user's: "a few rooms devoted to the mechanics"). Each is built round one
   // thing the game does and nothing else to look at, each in the canon of the floor that teaches its thing (so it is
@@ -1647,6 +1665,27 @@ const ARENA_TEMPLATE = { name: 'arena', rows: [
   '#..B......B..#',
   '#............#',
   '##############',
+]};
+
+// BANE's yard (19 Oct 2026 playtest: "in Bane's room, a bigger room, more men and more things; and Bane throws his own men
+// at you"): THE ROAD's last ring, wider and deeper than the plain arena, with crates and a barrel's worth of things to lift
+// round the walls and pillars to throw them into, and his men (`arenas[].escorts`) standing about in it.
+const BANE_ARENA_TEMPLATE = { name: 'arena bane', rows: [
+  '######################',
+  '#....................#',
+  '#..o..............o..#',
+  '#.....P........P.....#',
+  '#..L..............L..#',
+  '#.........o..........#',
+  '#..w.................#',
+  '#..........X.........#',
+  '#....o...............#',
+  '#..........o.........#',
+  '#.....P........P.....#',
+  '#..hh.............hh.#',
+  '#..B....o.......B....#',
+  '#....................#',
+  '######################',
 ]};
 
 // The ogre's ring (25 Sep 2026). The horns do nothing to him (`butcher.hornsHurt`), so the room

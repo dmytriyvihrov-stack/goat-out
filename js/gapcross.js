@@ -12,7 +12,7 @@ const GapCross = {
   step(e, dt, game) {
     if (e.gapHop) return this.fly(e, dt, game);
     const G = TUNING.gapCross, L = game.level;
-    if (!L || !L.gaps || !(L.gaps.size || L.gaps.length) || e.dead || e.held || !e.aware || e.scripted || e.coward) return false;
+    if (!L || !L.gaps || !(L.gaps.size || L.gaps.length) || e.dead || e.held || !e.aware || e.scripted || e.coward || e.webT > 0) return false;
     e.gapT = (e.gapT || 0) - dt; if (e.gapT > 0) return false;
     e.gapT = G.every;
     if (!(e.state === 'chase' || e.state === 'orbit' || e.state === 'retreat')) { e.lipT = 0; return false; }

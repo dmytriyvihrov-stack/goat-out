@@ -217,6 +217,8 @@ const Motes = {
     game.world.splat(g.x, g.y, 0, 0, 12);
     game.hitstop(0.12); game.shake(8, true); game.flash('#f4f8ff', 0.35);
     game.audio.sfxToll(); game.audio.sfxAscend();
+    // the god's life, never yet spent: he says so as it lifts him (`Heaven.lifeShown`, 19 Oct 2026), the floor held under his box
+    if (extra && !Heaven.lifeShown()) Heaven.sayLife(game);
     return true;
   },
   // While it plays the floor waits (`Game.update`): up out of him, a beat, and back down into him.
@@ -258,6 +260,8 @@ const Motes = {
     game.revive = null;
     g.hp = Math.min(g.maxHp, V.rebirth ? Math.max(1, Math.ceil(g.maxHp * TUNING.heaven.rebirth.hearts)) : V.extra ? Math.max(1, Math.ceil(g.maxHp * TUNING.heaven.extraLife.hearts)) : game.mods.secondChance || S.hearts);
     if (V.rebirth) game.floatText(g.x, g.y - 60, 'REBORN', '#fff4c2');
+    // THE COMB OF FATE (js/tuning.js `ARTIFACTS`, `mods.fateComb`): every revive, whichever brought him up, gives halo hearts
+    if (game.mods.fateComb) { g.light = (g.light || 0) + game.mods.fateComb.halo; game.floatText(g.x, g.y - 44, `+${game.mods.fateComb.halo} HALO`, '#fff4c2'); }
     g.state = 'idle'; g.timer = 0; g.invuln = S.invuln; g.dazed = 0; g.vx = g.vy = 0;
   },
 

@@ -185,7 +185,7 @@ const EndBoss = {
     if (game.beastTalk) { Beast.updateTalk(game, dt); return; }
     S.t += dt;
     const skip = S.seen && S.t > C.skipAfter && (game.input.lmbPressed || game.input.spacePressed);
-    if (skip || S.t > (S.long ? TUNING.endBoss.ogre.long.cap : S.kind === 'supper' ? TUNING.endBoss.supper.scene.cap : S.kind === 'turn' ? TUNING.warden.turn.cap : C.cap)) { this.end(game); return; }
+    if (skip || S.t > (S.long ? TUNING.endBoss.ogre.long.cap : S.kind === 'supper' ? TUNING.endBoss.supper.scene.cap : S.kind === 'turn' ? TUNING.warden.turn.cap : S.kind === 'mage' && S.warden && game.endBoss.meet <= 1 ? C.cap + 4 : C.cap)) { this.end(game); return; }
     S.bars = S.done ? Math.max(0, S.bars - dt * 4) : Math.min(1, S.bars + dt * 3);
     const look = S.kind === 'twin' ? this.stepTwin(game, dt) : S.kind === 'mage' ? this.stepMage(game, dt)
       : S.kind === 'rifle' ? this.stepRifle(game, dt) : S.kind === 'butcher' || S.kind === 'clubman' ? this.stepRally(game, dt)
@@ -295,6 +295,9 @@ const EndBoss = {
     if (!m) { this.end(game); return null; }
     S.pt += dt;
     const wd = S.warden, carrier = S.carrier || m;
+    // the Warden's first showing (19 Oct 2026, his: "the first time the scene with him a bit slower"): he holds her
+    // longer and walks out at `first.walk` of the pace; the cap grows with it
+    const F = B.meet <= 1 && wd ? T.first : null, hand = F ? F.hand : T.hand, walk = T.run * (F ? F.walk : 1), cap = T.runCap / (F ? F.walk : 1);
     if (!s.gone) { game.underArm(s, carrier, S.t); s.bleating = Math.max(0, s.bleating - dt); }
     if (wd && wd.say) { wd.say.life -= dt; if (wd.say.life <= 0) wd.say = null; }
     const phase = (p) => { S.phase = p; S.pt = 0; };
@@ -327,7 +330,7 @@ const EndBoss = {
     }
     if (S.phase === 'hand') {
       game.followPath(m, T.run * 0.8, dt); bleat();
-      if (S.pt >= T.hand) {
+      if (S.pt >= hand) {
         phase('out'); wd.path = [{ x: d.x - S.out.x * TILE, y: d.y - S.out.y * TILE }, { x: d.x, y: d.y }, { x: d.x + S.out.x * TILE * 2.2, y: d.y + S.out.y * TILE * 2.2 }];
         // and the mage goes out at his heels (he was left standing in the room for good, a statue nobody could do anything with)
         m.path = wd.path.map((q) => ({ x: q.x, y: q.y }));
@@ -335,11 +338,11 @@ const EndBoss = {
       return wd;
     }
     if (S.phase === 'out') {
-      const done = game.followPath(wd, T.run, dt), far = hyp(wd.x - d.x, wd.y - d.y);
-      if (m.path) game.followPath(m, T.run, dt);
+      const done = game.followPath(wd, walk, dt), far = hyp(wd.x - d.x, wd.y - d.y);
+      if (m.path) game.followPath(m, walk, dt);
       bleat();
       if (far < 1.4 * TILE) d.open = Math.min(1, d.open + dt * 4);
-      if (done || S.pt > T.runCap) { game.enemies = game.enemies.filter((o) => o !== wd && o !== m); S.warden = null; shut(); }
+      if (done || S.pt > cap) { game.enemies = game.enemies.filter((o) => o !== wd && o !== m); S.warden = null; shut(); }
       return wd;
     }
     if (S.phase === 'witch') {

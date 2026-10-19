@@ -73,6 +73,8 @@ const Sawbot = {
   // Closer than `min` it swings its saw as before.
   leap(e, dt, game) {
     const L = TUNING.sawbot.leap, g = game.goat, slow = game.mods.enemySlow;
+    // held by the web it does not leap, and a crouch the web catches is let go (19 Oct 2026 playtest)
+    if (e.webT > 0) { if (e.leapAim && e.state === 'windup') e.state = 'chase'; e.leapAim = null; return false; }
     if (e.state === 'chase') {
       e.leapAim = null;
       if (g.dead || (e.leapCd || 0) > game.timer || e.gapHop) return false;
@@ -360,7 +362,25 @@ const Arm = {
     ctx.restore();
   },
   // What is left of it: the base and the arm lying flat, drawn by js/factory-pixels.js `drawWreck` off `game.wrecks`.
-  wreck(game, e) { (game.wrecks || (game.wrecks = [])).push({ kind: 'arm', x: e.x, y: e.y, ang: e.armAng || 0 }); game.world.scorch(e.x, e.y, e.r * 1.2, false); },
+  // Dead, it comes apart (19 Oct 2026 playtest: "the arm should fall apart more spectacularly"): a burst at its joint, its
+  // plates, gears and bolts thrown wide, and the forearm with the claw torn off and flung `wreck.throw` × its reach along
+  // where it pointed, lying there by itself; the stump of the upper arm hangs off the dead base (js/factory-pixels.js).
+  wreck(game, e) {
+    const W = TUNING.arm.wreck, a = e.armAng || 0, d = TUNING.arm.reach * TILE * (W.throw[0] + Math.random() * (W.throw[1] - W.throw[0]));
+    // along where it pointed if that lands on open floor in sight, else the nearest way round that does
+    let ca = a + (Math.random() - 0.5) * W.spread, cx = e.x, cy = e.y;
+    for (let k = 0; k < 8; k++) {
+      const t = ca + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * Math.PI / 4, x = e.x + Math.cos(t) * d, y = e.y + Math.sin(t) * d;
+      if (game.world.tileAtPx(x, y) === T.FLOOR && game.sees(e.x, e.y, x, y)) { ca = t; cx = x; cy = y; break; }
+    }
+    (game.wrecks || (game.wrecks = [])).push({ kind: 'arm', x: e.x, y: e.y, ang: a, claw: { x: cx, y: cy, ang: ca + (Math.random() - 0.5) * 1.6 } });
+    game.world.scorch(e.x, e.y, e.r * 1.2, false);
+    game.fx.explosion(e.x, e.y - 14, W.burst, false, true);
+    game.fx.explosion(cx, cy, W.burst * 0.6, false, true);
+    game.particles(e.x, e.y - 18, 18, PALETTE.fireHi, 300); game.particles(e.x, e.y - 12, 10, PALETTE.ash, 180); game.particles(cx, cy, 8, PALETTE.voltHi || PALETTE.fireHi, 220);
+    game.thud(e.x, e.y, 2); game.audio.sfxSteel(); game.audio.sfxThud(); game.dust(cx, cy, 8, 0, 0);
+    if (game.scatter) game.scatter.breakUp(W.bits, e.x, e.y - 6, 12, Math.cos(a), Math.sin(a), W.fly);
+  },
 };
 
 // THE SWEEPER (15 Oct 2026, his ask: "a robot vacuum cleaner with chainsaws in front, always driving at you, one heart"):
@@ -1144,6 +1164,16 @@ const Automaton = {
       p.vx *= -0.3; p.vy *= -0.3;
       if (p.kind === 'weapon' && p.uses !== undefined && --p.uses <= 0) p.snap(game);
       return true;
+    }
+    return false;
+  },
+  // A thrown bomb under his body (`bombBody` × `bodyR` of his middle) or at a planted foot (`Prop.updateBomb`).
+  bombMeets(game, p) {
+    const A = TUNING.automaton, fr = A.legs.hitR * TILE + p.r;
+    for (const e of game.enemies) {
+      const au = e.automaton && !e.dead && e.auto; if (!au) continue;
+      if (hyp(e.x - p.x, e.y - p.y) < A.bodyR * A.bombBody + p.r) return true;
+      for (const leg of au.legs) if (leg.out <= 0 && leg.z <= A.legs.hitZ && hyp(leg.fx - p.x, leg.fy - p.y) < fr) return true;
     }
     return false;
   },
