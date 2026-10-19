@@ -1099,7 +1099,7 @@ class PaintedArt extends AltarArt {
     // THE CHEER's rear (js/cheer.js `Cheer.rearK`): up on his hind hooves, turned about them, the front pawing the air
     const rk=game&&game.cheer&&game.cheer.kind==='rear'&&typeof Cheer!=='undefined'?Cheer.rearK(game.cheer):0;
     if(rk>0){const R=TUNING.cheer.rear,dx=Math.cos(g.facing),side=Math.abs(dx)>0.35?Math.sign(dx):0,heel=-side*R.heel,paw=Math.sin(game.cheer.t*R.paw*Math.PI*2)*0.06*rk;
-      ctx.translate(0,-R.lift*rk);
+      ctx.translate(0,-R.lift*rk-Cheer.rearHop(game.cheer));
       if(side){ctx.translate(heel,0);ctx.rotate(-side*(R.tilt*rk+paw));ctx.translate(-heel,0);}else ctx.scale(1-0.1*rk,1+R.tall*rk+paw);}
     const fx=game.stairFx,climb=fx?clamp(fx.dir>0?fx.t:1-fx.t,0,1):0;
     if(climb>0){ctx.translate(0,-TUNING.stairs.rise*climb);ctx.scale(1-0.22*climb,1-0.22*climb);ctx.globalAlpha=1-climb*0.55;}

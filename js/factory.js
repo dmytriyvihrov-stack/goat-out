@@ -483,7 +483,7 @@ const Cartridge = {
     if (e.state !== 'chase') return false;   // flung, floored, dazed: the ordinary branches
     if (g.dead) { e.vx = 0; e.vy = 0; return true; }
     if (sees && e.reload <= 0 && d < S.range * TILE && !game.hidden(e.x, e.y) && game.sees(e.x, e.y, g.x, g.y)) {
-      e.state = 'caim'; e.timer = S.aim * slow; e.vx = 0; e.vy = 0; e.facing = ang;
+      e.state = 'caim'; e.timer = S.aim * slow; e.caimMax = e.timer; e.vx = 0; e.vy = 0; e.facing = ang;
       if (!game.hidden(e.x, e.y)) game.audio.sfxCharged();
       return true;
     }
@@ -527,9 +527,11 @@ const Cartridge = {
     this.fire(e, game, B.n, Math.PI * 2 * (B.n - 1) / B.n, Math.random() * Math.PI * 2);
     if (game.scatter) game.scatter.breakUp(['fac-bit-plate', 'fac-bit-bolt', 'fac-bit-bolt', 'fac-bit-gear'], e.x, e.y, 10, 0, 0, 1.1);
   },
-  // The floor tell while it charges: the fan its volley will cover, amber cells filling out from its feet.
+  // The floor tell while it charges: the fan its volley will cover, amber cells filling out from its feet. Off since
+  // 19 Oct 2026 (the test lab: "no floor thing for the charge, it must read from the animation"; `look.floorTell`): the
+  // charge is the body's own (js/factory-pixels.js `drawCartridge`: it crouches, shakes harder, the muzzle crackles wider).
   drawTell(R, e) {
-    if (e.state !== 'caim' || e.dead) return;
+    if (e.state !== 'caim' || e.dead || !TUNING.cartridge.look.floorTell) return;
     const S = TUNING.cartridge, ctx = R.ctx, px = TUNING.effects.pixel * 2, p = R.windP(e, S.aim);
     const reach = S.range * TILE * 0.55 * p;
     ctx.save();
@@ -1589,8 +1591,26 @@ const FACTORY_MEN = ['sawbot', 'welder', 'automaton', 'arm', 'sweeper', 'shieldg
 // walks the row away from its room through the rock to the first floor; every tile it crossed is the duct (`nicheTiles`,
 // stone until the grille gives, as a wall that gives is), and the vent is a `secret` prop with `vent` on its own tile.
 // A row that meets no floor within `reach` tiles carves nothing.
+// A vent in a FAR wall (19 Oct 2026, the test lab: "the vent hangs over the wall; it must be in the wall and open a way into
+// another room, a secret one, from another position; like Deus Ex"): `{ tx, ty, to: { tx, ty } }`, each end a tile of a
+// room's far wall. A grille low on each face (`wallSide` 'up'); the duct goes up out of the first through the rock to the
+// row `rise` over the higher of the two, across, and down into the second. Either grille broken opens the whole duct
+// (both list it after their own tile), and the other end is a grille still to butt out of from inside it.
+function carveFaceVent(v, tiles, W, props, rise = 2) {
+  const a = v, b = v.to, top = Math.min(a.ty, b.ty) - rise, path = [], at = (x, y) => y * W + x;
+  for (let y = a.ty - 1; y >= top; y--) path.push(at(a.tx, y));
+  const dir = Math.sign(b.tx - a.tx);
+  for (let x = a.tx + dir; dir && x !== b.tx + dir; x += dir) path.push(at(x, top));
+  for (let y = top + 1; y < b.ty; y++) path.push(at(b.tx, y));
+  if (path.some((i) => tiles[i] !== T.WALL) || tiles[at(a.tx, a.ty)] !== T.WALL || tiles[at(b.tx, b.ty)] !== T.WALL) return false;
+  for (const i of path) tiles[i] = T.FLOOR;
+  for (const e of [a, b]) { tiles[at(e.tx, e.ty)] = T.FLOOR;
+    props.push({ x: (e.tx + 0.5) * TILE, y: (e.ty + 0.5) * TILE, kind: 'secret', vent: true, faceVent: true, nicheTiles: [at(e.tx, e.ty), ...path], wallSide: 'up' }); }
+  return true;
+}
 function carveFactoryVents(vents, tiles, W, props, reach = 8) {
   for (const v of vents || []) {
+    if (v.to) { carveFaceVent(v, tiles, W, props); continue; }
     const cut = [v.ty * W + v.tx]; let x = v.tx + v.dir, ok = false;
     for (let k = 0; k < reach; k++, x += v.dir) { const i = v.ty * W + x; if (tiles[i] === T.FLOOR) { ok = true; break; } if (tiles[i] !== T.WALL) break; cut.push(i); }
     if (!ok) continue;

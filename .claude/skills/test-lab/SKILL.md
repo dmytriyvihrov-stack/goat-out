@@ -15,6 +15,13 @@ Source: `output/test-lab-2026-10-16/`:
 **His rule: these rooms never go into the main build.** Nothing under `js/` loads testlab.js. Fixes he asks for
 in the doc go into the game's own code (`js/`, numbers in `TUNING`), never into the lab; the lab only shows them.
 
+## MANDATORY (19 Oct 2026, his rule, CLAUDE.md ground rule 10)
+
+Any session that adds a soul, talisman, cape, man, machine, trap, prop, room, modifier or look puts it in the lab
+the same sitting: a `LAB` entry + a card under «Новое», and republishes the lab when it deploys. Not done until then.
+`setup(g, at)` puts a worn thing on (`wear`, `cape`, `boon` helpers); `start(g, at)` plays a real floor instead
+(`g.startAtLevel(li, trip, dark)`); `R.layTpl(name)` lays a factory template whole.
+
 ## Reading his marks
 
 1. `ArtifactData list` on collection `marks` (doc id = the item id): `{ status: ok|wip|bad, checks, note }`.
@@ -24,7 +31,8 @@ in the doc go into the game's own code (`js/`, numbers in `TUNING`), never into 
 ## After the work: the list is always "what is left to test"
 
 - **Done is deleted** (his rule, 16 Oct 2026: "delete it if it is done, it is in the backlog anyway"): a card marked
-  `ok`, or whose ask was fixed, comes out of `GROUPS` entirely. No "accepted" list, no re-test card; the record is
+  `ok` comes out of `GROUPS` entirely. A card whose ask was fixed stays under «Поправлено по твоим заметкам: проверь»
+  with `was: [his words, what was done (BUILD)]` until he marks it (19 Oct 2026: "add what is untested"). No "accepted" list, no re-test card; the record is
   CHANGELOG.md / BACKLOG.md. Only an ask that needs his answer stays (group "Ждёт твоего слова").
 - Archive every handled mark so the card starts clean: one `ArtifactData batch`, for each doc
   `set marks-done/<id>-r<n>` (its data) + `delete marks/<id>` with `if_version`.

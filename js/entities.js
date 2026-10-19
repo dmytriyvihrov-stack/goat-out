@@ -1463,6 +1463,7 @@ class Prop {
     this.flame = !!(opts && opts.flame);   // a grate that is a burner (THE FACTORY's, `TUNING.prop.spike.flame`)
     this.gas = !!(opts && opts.gas);       // a crate that is a gas cylinder: it breaks in a shove (js/factory-props.js `gasBurst`)
     this.vent = !!(opts && opts.vent);     // a wall that gives that is a vent in THE FACTORY, its tunnel to the next room
+    this.faceVent = !!(opts && opts.faceVent);   // a vent in a far wall's face, its duct up through the rock (js/factory.js `carveFaceVent`)
     this.firstGrass = !!(opts && opts.firstGrass);   // THE ALTAR's grass in the corridor, the one that says GRASS HEALS
     this.spillCd = 0;                         // a brazier building its coals back after a spill
     this.axis = (opts && opts.axis) || 'h';   // which way a cage bar's rail runs
@@ -3407,9 +3408,12 @@ class Bullet {
         return;
       }
       for (const e of game.enemies) {
-        if (e.dead || e.held || e.ghosted || e === this.shooter || e.cartridge || e.automaton || e.statue) continue;
+        if (e.dead || e.held || e.ghosted || e === this.shooter || e.cartridge || e.statue) continue;
         if (hyp(e.x - this.x, e.y - this.y) >= e.r + S.r) continue;
         this.dead = true;
+        // the factory's iron drinks it (19 Oct 2026, the test lab: "a bolt into a robot or the automaton speeds it up"):
+        // overcharged `cartridge.boost.time` s, faster in everything (`Enemy.update`'s clock, `Enemy.overcharge`)
+        if (e.automaton || e.sawbot || e.welder || e.sweeper || e.arm) { e.overcharge(game); return; }
         const bl = hyp(this.vx, this.vy) || 1;
         if (e.shield && e.shieldCovers(this.x - this.vx / bl * TILE, this.y - this.vy / bl * TILE)) { e.shieldTakes(game, this.vx, this.vy); return; }
         // iron shorts out, flesh seizes: a daze either way, never a heart (the wall is what kills, pillar 3)

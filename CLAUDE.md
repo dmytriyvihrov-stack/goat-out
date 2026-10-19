@@ -80,6 +80,14 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
    And each floor's room there (8 Oct 2026, the user's rule) stands a still figure of every kind of man that
    floor can deal (its `encounters.kinds` and `introduce`, the pseudo-kinds too, and its rings' bosses), its
    name under it: a new kind, or a kind added to a floor, shows up in that floor's gallery on its own.
+10. **Everything new goes into THE TEST LAB the same day** (19 Oct 2026, the user's rule, said twice: "if a session adds a
+   new skill, an entity or anything else, it MUST be added to this test doc"). The lab is
+   https://claude.ai/artifact/VJ1HpXgbmYpW1z9nVrHSz5 (`output/test-lab-2026-10-16/`, the `test-lab` skill). A soul, a
+   talisman, a cape, a man, a machine, a trap, a prop, a room, a floor modifier, a look: a `LAB` entry in `testlab.js`
+   (one, two, three of it, with what it is tried on) and a card in `index.html` under «Новое», and the lab republished
+   with the deploy. A fix asked for in the lab stays as a card under «Поправлено» with `was` (his words, what was done)
+   until he marks it; only what he marks РАБОТАЕТ, or deletes, comes out. A session is not done until its new things
+   are in the lab.
 
 ---
 

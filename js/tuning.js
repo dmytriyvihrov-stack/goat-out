@@ -3,7 +3,7 @@ const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else, bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on. Counted 0.001, 0.002,
 // ... since 9 Oct 2026 (his word: "big numbers confuse me"); the line before it ended at 2.07.
-const BUILD = '0.038';
+const BUILD = '0.039';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -511,8 +511,9 @@ const TUNING = {
       // `look`: the shape drawn on him (`PIXEL_ART.hornShapeOf`, `hornLooks`): BIG a moose's palms, LONG a gazelle's (9 Oct 2026).
       big:    { name: 'BIG',    look: 'moose', note: 'A WIDE ARC. SLOW TO COME BACK. HOLD TO CHARGE', windup: 1.3, recovery: 2.1, lunge: 1.1, impulse: 1, reach: 0.35, cone: -0.2,
         charge: { time: 0.8, lunge: 0.6, impulse: 0.8, reach: 0.7 } },
-      long:   { name: 'LONG',   look: 'gazelle', note: 'TWO HORNS, STRAIGHT. THE TIPS HIT HARD. HOLD TO CHARGE', windup: 1.15, recovery: 1.65, lunge: 1.4, impulse: 1, reach: 1.0, cone: 0.5,
-        charge: { time: 0.8, lunge: 0.5, impulse: 0.7, reach: 1.1 },
+      long:   { name: 'LONG',   look: 'gazelle', note: 'TWO HORNS, STRAIGHT. THE TIPS HIT HARD. HOLD TO CHARGE', windup: 1.15, recovery: 1.65, lunge: 1.1, impulse: 1, reach: 1.0, cone: 0.5,
+        // 19 Oct 2026, the test lab ("too strong with the long horns, a bit less of your slide"): `lunge` 1.4 → 1.1, the charge's 0.5 → 0.3
+        charge: { time: 0.8, lunge: 0.3, impulse: 0.7, reach: 1.1 },
         rows: 2, rowGap: 0.4, rowW: 0.17, tip: 0.8, tipMul: 1.4, shaftMul: 0.5,
         // 9 Oct 2026 playtest ("the small area at the end is the damage area: small, red, and it damages; reward the
         // skill and the judged distance"): the tips are the last `1 - tip` of the reach only, and a man met there loses
@@ -1535,10 +1536,11 @@ const TUNING = {
     // with `gas`, `FACTORY_PROPS.gasBurst`): where it breaks, every man within `r` tiles is thrown away from it at `fling`
     // tiles/s (`edge` of that at the rim), dazed `daze` s; the shove's ring takes `ringFor` s to reach `r`. First guesses.
     // `burst` px of cold cloud where it goes off, the goat shoved `goat` tiles/s (no heart; 19 Oct 2026)
-    gas: { r: 2.8, fling: 15, edge: 0.45, daze: 0.8, ringFor: 0.35, burst: 30, goat: 9 },
+    // 19 Oct 2026, the test lab ("they should fly much harder"): `r` 2.8 → 3.6, `fling` 15 → 30, `edge` 0.45 → 0.6
+    gas: { r: 3.6, fling: 30, edge: 0.6, daze: 0.8, ringFor: 0.35, burst: 30, goat: 9 },
     // THE FACTORY's oil is in `TUNING.oil` (top level).
     // THE FACTORY's floor junk is dressing (his mark: "less visible, clearer that it is decoration"): drawn at this alpha.
-    junkAlpha: 0.55,
+    junkAlpha: 0.95,   // 19 Oct 2026, the test lab: 0.55 was not seen at all
     // `ring`: the lit fuse drawn as the blast's own reach on the floor (`Renderer.drawBombFuse`), a
     // yellow rim closing round from the top that is a whole circle the moment it goes off (playtest,
     // 25 Sep 2026: "it explodes when the circle is complete"). `cell` is its grid in world px, `track`
@@ -2252,7 +2254,10 @@ const TUNING = {
     bolt: { damage: 1, shock: 0.45, daze: 1.3, short: 1.8, r: 5, bounces: 1 },
     burst: { r: 2.2, daze: 1.1, shock: 0.5, n: 6 },
     immune: { fire: true, witch: true, poison: true, blunder: true },
-    look: { cell: 2, w: 10, hull: 11, base: 5, hop: 1, leg: 2, gun: 7 } },   // a head taller than first drawn: it stood small beside a sawbot
+    // `boost` (19 Oct 2026, the test lab: "an electric bolt hitting a robot or the automaton speeds it up"): the factory's iron
+    // a bolt meets is overcharged `time` s, its clock and stride × `mul`, and is not shorted; `floorTell` the old fan on the floor.
+    boost: { time: 3.5, mul: 1.6 },
+    look: { cell: 2, w: 10, hull: 11, base: 5, hop: 1, leg: 2, gun: 7, floorTell: false } },   // a head taller than first drawn: it stood small beside a sawbot
   // `run` (16 Oct 2026, his mark: "like the Pop in Arc Raiders, it gathers speed well but turns badly"): its pace climbs
   // at `accel` tiles/s² to `top` × a clubman's; it turns at `turn` rad/s standing and `turnTop` flat out; a turn sharper
   // than `brakeAt` rad brakes it at `brake` tiles/s²; driving into stone keeps `bump` of its pace. First guesses.
@@ -2362,7 +2367,8 @@ const TUNING = {
   // fuse): fire on an oiled tile burns it and the oiled tiles beside it catch `catch` s later, `burn` s of flame each.
   // First guesses.
   // `valveReach`: a far wall that many tiles north of a spill's spot leaks it from a valve on its face (`Oil.start`)
-  oil: { start: 3, max: 9, grow: 2.5, trail: 2, trailAmt: 0.7, burns: true, catch: 0.18, burn: 2, valveReach: 4 },
+  // `on` false (19 Oct 2026, his: "let us remove it altogether for now"): no spill is laid anywhere; the code and the templates' `K` stay.
+  oil: { on: false, start: 3, max: 9, grow: 2.5, trail: 2, trailAmt: 0.7, burns: true, catch: 0.18, burn: 2, valveReach: 4 },
   // THE FACTORY's traps (13 Oct 2026, js/machines.js, art in output/factory-art-2026-10-12), laid by hand (`level.machines`):
   // none is dealt by the generator yet. First guesses, his to tune.
   // THE PRESS: two jaws on rods closing on the line between them. Open `open` s, then `warn` s shaking `shake` px with the
@@ -2415,7 +2421,8 @@ const TUNING = {
     cell: 3,
     track: { stride: 13, side: 4, alpha: 0.65, wear: { at: [3, 8], r: [7, 11], alpha: 0.45 } },
     print: { goat: [2, 2], man: [2, 3], dog: [2, 2], big: [3, 4], roll: 9, flung: 6 },
-    flakes: { n: 40, fall: 38, drift: 14, big: 0.25, alpha: 0.7 },
+    flakes: { n: 110,   // 19 Oct 2026, the test lab ("more snowflakes"): 40 → 110
+    fall: 38, drift: 14, big: 0.25, alpha: 0.7 },
     // 17 Oct 2026, the heap: `texel` world px a cell (the props' grain), a pillow `heap` × the run long tall, `max` texels at
     // most, `dip` of the columns a texel lower, a `drip` under a lip, the face under it powdered `powder` texels deep at `dust`.
     // A cover `cover` of the drawing's height (`coverMin`..`coverMax` cells) on the top face from `under` px below its top
@@ -2928,7 +2935,10 @@ const TUNING = {
   // runner (6 s rooms) never sees a man. `band` of the screen's width at full; `ease` how fast the drawing follows.
   // 8 Oct 2026 playtest: "the chase goes a bit faster (3 times faster)": `fill` 34 → 11.3, a third, so the red
   // grows three times as fast; `perTile` is left as it was, so running pays it down no faster than before.
-  chase: { grace: 4, fill: 11.3, fightMul: 0.55, fightR: 9, perTile: 0.016, band: 0.2, ease: 2.5,
+  // 19 Oct 2026, the test lab ("it should follow the goat, hardly back off, press a little more; there is no feeling of a
+  // crush now"): `perTile` 0.016 → 0.007 (running pays it down at less than half), `fightMul` 0.55 → 0.8, `band` 0.2 → 0.28,
+  // and in `look` `clear` 4 → 2 tiles off him.
+  chase: { grace: 4, fill: 11.3, fightMul: 0.8, fightR: 9, perTile: 0.007, band: 0.28, ease: 2.5,
     // Men come out of it from `from` pressure: one every `gap[0]` s there, down to `gap[1]` s at full, with at
     // most `cap[0]`..`cap[1]` of them alive at once. A tile to stand one on: inside the band on screen (else the
     // floor behind him off it), `minR` tiles from the goat or more, `minD`..`maxD` tiles' walk from him, and at
@@ -2949,7 +2959,7 @@ const TUNING = {
     // 18 Oct 2026, the membrane (`Chase.flesh`): `lumps` cells of slow bulge on the edge, the flesh scrolled `drift` cells a
     // second, its veins pulsing at `pulse` rad/s, `spores` cells dithered out past the rim and `haze` of faint red past
     // those; the bottom `hudLow` px dark under the hearts when they stand there (`R.hudLow`).
-    look: { cell: 5, ragged: 2, lumps: 6, drift: 1.2, pulse: 3, spores: 3, haze: 6, hudLow: 70, rate: 7, alpha: 0.92, motes: 26, tint: 0.1, tintFrom: 0.6, hud: 38, clear: 4, back: 9 },
+    look: { cell: 5, ragged: 2, lumps: 6, drift: 1.2, pulse: 3, spores: 3, haze: 6, hudLow: 70, rate: 7, alpha: 0.92, motes: 26, tint: 0.1, tintFrom: 0.6, hud: 38, clear: 2, back: 9 },
   },
   // 9 Oct 2026 playtest: "after the third run on the 4th level you can show the mushrooms". Only on floors `from`..`upTo`
   // (THE ROAD), and only once this browser has walked onto that floor in `runs` runs (`Heaven.arrived`, `meta.arrived`).
@@ -3457,7 +3467,11 @@ const TUNING = {
   // between the banner and the gulp. `rear`: up in `up` s, down in `down`, turned `tilt` rad about the hind hooves (`heel` px
   // behind his middle), lifted `lift` px, `tall` stretch on a front or back view, the forelegs pawing at `paw` Hz.
   cheer: { on: true, only: 'rear', skip: 0.45,
-    rear: { time: 1.15, up: 0.22, down: 0.25, tilt: 0.72, heel: 7, lift: 3, tall: 0.18, paw: 9, sparks: 18 },
+    // 19 Oct 2026, the test lab ("a really spectacular animation, him going up on his hind legs"): held longer (`time` 1.15 →
+    // 1.7), up further (`tilt` 0.72 → 0.95, `lift` 3 → 6, `tall` 0.18 → 0.3), a hop at the top (`hop` px over `hopT` s), and at
+    // the top a burst: `burst` sparks, two rings out to `ring` tiles, a zoom punch `punch` and a hitstop of `stop` s.
+    rear: { time: 1.7, up: 0.26, down: 0.28, tilt: 0.95, heel: 7, lift: 6, tall: 0.3, paw: 7, sparks: 28,
+      hop: 7, hopT: 0.3, burst: 46, ring: 2.6, punch: 1.4, stop: 0.06 },
     banner: { time: 1.9, out: 0.3, slide: 0.22, rise: 0.4, band: 0.24, goat: 0.42, rear: 0.18, cell: 4, sparks: 26 },
     // `mouth` where the soul goes in, a share of his height right of and over his feet; `tilt` his head thrown back, `snap` forward
     gulp: { time: 2.0, out: 0.3, swallow: 0.85, goat: 0.55, tilt: 0.3, snap: 0.12, mouth: [0.2, 0.185], cell: 4, sparks: 40 } },

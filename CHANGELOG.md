@@ -5,6 +5,26 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 0.039, 19 Oct 2026: his marks in THE TEST LAB
+
+- **The vent is in the wall** (Deus Ex's): a grille low on a far wall's face; two blows open a duct up through the rock and
+  across into another room, out of a grille in its far wall, butted out from inside (`carveFaceVent`, js/factory.js;
+  `FACTORY_PROPS.drawVentFace`). The side-wall ducts stay as they were.
+- **THE CARTRIDGE**: no fan on the floor any more (`cartridge.look.floorTell` false); the charge reads off the body (it
+  crouches, shakes harder, the muzzle's crackle widens). Its bolt into the factory's iron (sawbot, welder, sweeper, THE ARM,
+  THE AUTOMATON) OVERCHARGES it: its clock and stride ×1.6 for 3.5 s (`cartridge.boost`, `Enemy.overcharge`).
+- **THE CHASE presses**: running pays it down at less than half (`perTile` 0.016 → 0.007), a fight fills it faster
+  (`fightMul` 0.8), the band is wider (0.28) and keeps 2 tiles off him (was 4).
+- **THE CHEER's rear is a show**: higher and held longer (1.7 s), a hop at the top, a burst of sparks, two rings, a zoom
+  punch and a beat of hitstop (`cheer.rear`, `Cheer.rearHop`).
+- **Numbers**: the gas cylinder throws twice as hard and further (`fling` 30, `r` 3.6); LONG's lunge 1.4 → 1.1 and its
+  charge's 0.5 → 0.3; snowflakes 40 → 110.
+- **Looks**: the valve stands at the foot of the wall; the gears are a bigger, lit heap with an outline at 0.95.
+- **Oil is off** (his: "let us remove it for now"): `TUNING.oil.on` false, nothing laid; the code and the templates' `K` stay.
+- **THE TEST LAB**: what he marked works is off it; what was fixed stays to be checked; new rooms for the mushrooms on THE
+  ROAD, THE TRIP, the mantle of changes, the table amulet, the comb of fate, the sandal and the gong, the hook over fire,
+  WEB SPIT, TELEKINESIS, the minimap and the three Gungeon rooms. CLAUDE.md ground rule 10: anything new goes in the lab.
+
 ## 0.038, 19 Oct 2026: the mushrooms back, from the first run
 
 - **THE TRIP is reachable again** (his: "bring the mushroom level back, show the mushrooms from the very start"): the tuft

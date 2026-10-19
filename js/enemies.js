@@ -121,6 +121,16 @@ class Enemy {
     this.rune = null;
   }
 
+  // A cartridge's bolt into the factory's iron (19 Oct 2026): `TUNING.cartridge.boost`, his clock (`update`'s `kdt`) and
+  // his stride × `mul` for `time` s, topped up by the next bolt, never stacked. OVERCHARGED in volt cells over him.
+  overcharge(game) {
+    const B = TUNING.cartridge.boost;
+    if (!(this.voltT > 0)) { this.speedVolt = this.speed; this.speed = this.speed * B.mul; }
+    this.voltT = B.time; this.flash = 0.18; this.aware = true;
+    game.particles(this.x, this.y - 10, 10, PALETTE.voltHi, 200);
+    game.floatText(this.x, this.y - 30, 'OVERCHARGED', PALETTE.volt);
+  }
+
   // BAAH does not call him in any more. It empties his head for a moment, wherever he was going.
   daze(game, t) {
     if (this.dead || this.held || this.ghosted) return;
@@ -865,7 +875,7 @@ class Enemy {
     if (this.endHold && EndBoss.hold(this, dt, game)) return;
     // THE ARM (js/factory.js): no perception, no beat of doubt and no club, its claw is all it does, so it steps here in
     // place of `act` (which would also set down what it holds, `Thrower.drop`, since its states are not the thrower's)
-    if (this.arm) Arm.step(this, dt, game, true);
+    if (this.arm) { const v = this.voltT > 0; if (v) this.voltT = Math.max(0, this.voltT - dt); Arm.step(this, v ? dt * TUNING.cartridge.boost.mul : dt, game, true); }
     else if (!GapCross.step(this, dt, game)) this.act(dt, game);   // over a drop, if it is his kind to (js/gapcross.js)
     if (this.stuck && !this.dead) this.stuckFire(dt, game);
     if (!sh) return;
@@ -1285,7 +1295,9 @@ class Enemy {
     const P = TUNING.status.poison, sick = this.poison > 0;
     // Alight and not blundering, the ogre and the butcher come at you harder rather than running.
     const rage = this.burning > 0 && !this.ghosted ? (this.champion ? TUNING.champion.rage : this.cfg.rage) : null;
-    const kdt = (sick ? dt * P.tempo : dt) * (rage ? rage.tempo : 1);
+    // overcharged by a cartridge's bolt (`overcharge`): his clock runs fast while it lasts, his stride with it
+    if (this.voltT > 0) { this.voltT -= dt; if (this.voltT <= 0) { this.voltT = 0; if (this.speedVolt) { this.speed = this.speedVolt; this.speedVolt = 0; } } }
+    const kdt = (sick ? dt * P.tempo : dt) * (rage ? rage.tempo : 1) * (this.voltT > 0 ? TUNING.cartridge.boost.mul : 1);
     if (this.state === 'flee' || this.state === 'decoyhit') Talisman.enemyState(this, kdt, game);
     else if (this.millRun && this.state === 'chase' && this.runAtWheel(kdt, game)) { /* running at the arm */ }
     else if (this.kind === 'bearer') this.updateBearer(kdt, game, sees);

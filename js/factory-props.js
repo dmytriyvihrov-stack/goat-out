@@ -34,7 +34,15 @@ const FACTORY_PROPS = (() => {
     return g.outline();
   }
   // ---------------------------------------------------------------- the junk: gears, small, flat and dull
-  function gears() { const g = new Grid(12, 9); g.ring(4, 4, 3, 3, 1, P.i2); for (const [x, y] of [[4, 0], [4, 8], [0, 4], [8, 4]]) g.set(x, y, P.i2); g.set(4, 4, P.i1); g.ring(9, 6, 2, 2, 1, P.i1); g.set(9, 3, P.i1); g.set(11, 6, P.i1); return g; }
+  // 19 Oct 2026, the test lab ("I did not see the junk and the gears"): a heap a size up, lit iron with an ink outline, so
+  // it reads on any factory floor; still flat and low, nothing anybody meets
+  function gears() {
+    const g = new Grid(20, 14), tooth = (cx, cy, r, n, col) => { for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; g.set(Math.round(cx + Math.cos(a) * (r + 1)), Math.round(cy + Math.sin(a) * (r + 1) * 0.8), col); } };
+    g.ell(6, 7, 5, 4, P.i2); g.ring(6, 7, 5, 4, 1, P.i3); tooth(6, 7, 5, 10, P.i3); g.ell(6, 7, 2, 2, P.i1); g.set(6, 7, P.i4); g.hl(3, 4, 3, P.i4);
+    g.ell(14, 9, 3, 2, P.i2); g.ring(14, 9, 3, 2, 1, P.i3); tooth(14, 9, 3, 7, P.i3); g.set(14, 9, P.i1); g.set(13, 7, P.i4);
+    g.rect(15, 3, 3, 2, P.i3); g.set(16, 3, P.i4);   // a loose nut
+    return g.outline();
+  }
   // ---------------------------------------------------------------- on the wall
   function valve() { const g = new Grid(13, 15); g.rect(5, 9, 3, 6, P.b2); g.vl(5, 9, 6, P.b3); g.vl(7, 9, 6, P.b0); g.ring(6, 6, 6, 6, 2, P.h2); g.line(6, 1, 6, 11, P.h2); g.line(1, 6, 11, 6, P.h2); g.ell(6, 6, 2, 2, P.h1); g.set(6, 6, P.i4); return g.outline(); }
   // A bulkhead lamp (16 Oct 2026, his mark "redo"): a round iron frame bolted to the wall, a cross guard over the glass,
@@ -223,7 +231,10 @@ const FACTORY_PROPS = (() => {
     const ctx = renderer.ctx, look = FIXES.includes(p.look) ? p.look : 'valve', k = TX;
     const name = look === 'lamp' ? 'fix-lamp' + ((Math.floor(t * 11 + p.phase) % 7) === 0 ? 1 : 0) : 'fix-' + look;
     const g = sprites[name]; if (!g) return;
-    ctx.save(); ctx.translate(p.x, p.y - TILE * 0.55); ctx.scale(1, 1 / TILT);
+    // the valve stands at the foot of the wall, its pipe to the floor (19 Oct 2026, the test lab: "it must sit by the floor,
+    // not hang as if from the ceiling"); the lamp and the vent stay up on the face
+    const up = look === 'valve' ? -(TILE * 0.5 - 1 - g.h * k / 2 / TILT) : TILE * 0.55;
+    ctx.save(); ctx.translate(p.x, p.y - up); ctx.scale(1, 1 / TILT);
     if (look === 'lamp' && !renderer.silPass) {
       // the pool of light: rings of cells thinning out from the lamp, dimmer on the flicker
       const dim = name === 'fix-lamp1' ? 0.5 : 1, C = 3;
@@ -243,11 +254,23 @@ const FACTORY_PROPS = (() => {
   // a `secret` prop with `vent`, js/factory.js `layFactoryRoom`): drawn as the wall it sits in, the factory's cap over its
   // tile, with a dull grille in it; once broken, the dark mouth of the duct.
   FP.drawVentWall = (renderer, p) => {
+    if (p.faceVent) return FP.drawVentFace(renderer, p);
     const ctx = renderer.ctx, name = p.broken ? 'vent-top-open' : 'vent-top', g = sprites[name]; if (!g) return;
     const wob = p.wobble > 0 ? Math.round(Math.sin(renderer.t * 60) * p.wobble * 2) : 0;
     PROP_PIXELS.draw(ctx, name, p.x - g.w * k2 / 2 + wob, p.y - g.h * k2 / 2, k2);
   };
   const k2 = 1.6;
+  // A vent in a far wall's face (19 Oct 2026, `carveFaceVent`): the grille low on the face, at the floor, as Deus Ex's; broken,
+  // the dark square of the duct with its bent slats at the sides. Wobbles under a blow as the side one does.
+  FP.drawVentFace = (renderer, p) => {
+    const ctx = renderer.ctx, g = sprites['fix-vent']; if (!g) return;
+    const wob = p.wobble > 0 ? Math.round(Math.sin(renderer.t * 60) * p.wobble * 2) : 0, k = TX;
+    const w = g.w * k, h = g.h * k, x0 = Math.round(p.x - w / 2 + wob), y0 = Math.round(p.y + TILE * 0.5 * TILT - h - 1);
+    ctx.save(); ctx.imageSmoothingEnabled = false;
+    if (!p.broken) PROP_PIXELS.draw(ctx, 'fix-vent', x0, y0, k);
+    else { ctx.fillStyle = '#08070a'; ctx.fillRect(x0, y0, w, h); ctx.fillStyle = '#34333b'; ctx.fillRect(x0, y0, w, k); ctx.fillRect(x0 - k, y0 + h - 2 * k, 2 * k, 2 * k); ctx.fillRect(x0 + w - k, y0 + 2 * k, 2 * k, 2 * k); }
+    ctx.restore();
+  };
   FP.draw = (renderer, p) => {
     if (p.kind === 'machine') FP.drawMachine(renderer, p);
     else if (p.kind === 'junk') FP.drawJunk(renderer, p);
@@ -268,7 +291,7 @@ const Oil = {
   start(game) {
     const O = TUNING.oil, L = game.level, w = game.world;
     game.oil = new Map(); game.oilSpills = []; game.oilCatch = new Map();
-    if (!L || !L.oil || !L.oil.length) return;
+    if (!O.on || !L || !L.oil || !L.oil.length) return;   // off since 19 Oct 2026 (the test lab: "let us remove it for now")
     for (const s of L.oil) {
       // where it comes from (19 Oct 2026 playtest: "oil is not clear yet; it could leak out of a valve in the wall"): a
       // far wall within `valveReach` tiles north of the spot gets a leaking valve on its face, and the spill starts at its foot

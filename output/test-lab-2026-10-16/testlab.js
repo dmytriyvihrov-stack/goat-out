@@ -90,9 +90,14 @@
     } },
     valve: { name: 'VALVE', fill: (R, k) => R.fixes(k, 'valve') },
     lamp: { name: 'LAMP (on the wall)', fill: (R, k) => R.fixes(k, 'lamp') },
-    vent: { name: 'VENT', size: [16, 13], fill: (R, k) => {
-      R.fixes(1, 'vent');
-      [R.iy + 1, R.iy + R.h - 2, R.iy + 3].slice(0, k).forEach((ty) => { R.vents.push({ tx: R.x + R.W - 1, ty, dir: 1 }); R.put('crate', R.ix + R.w - 1, ty); R.put('crate', R.ix + R.w - 2, ty); });
+    // 19 Oct 2026 (his: "in the wall, a secret way into another room from another position, like Deus Ex"): k grilles low on
+    // this room's far wall, each a duct up through the rock and back into the room before, out of a grille in its far wall
+    vent: { name: 'VENT', size: [16, 12], fill: (R, k) => {
+      for (let i = 0; i < k; i++) {
+        const tx = R.ix + 2 + i * 5, P0 = R.prev; if (!P0) continue;
+        R.vents.push({ tx, ty: R.y, to: { tx: P0.x + 2 + Math.min(i * 2, P0.w - 4), ty: P0.y } });
+        R.put('crate', tx + 1, R.iy);
+      }
     } },
   };
   // the factory's floors and walls: each room wears the look, with k sawbots and a crate to see it under them
@@ -125,13 +130,46 @@
       man1('bearer')(R, k); if (k > 1) R.man('dog', R.ix + R.w - 3, R.iy + R.h - 3); if (k > 2) R.man('seer', R.ix + R.w - 3, R.iy + 2);
     } },
     // CLOAK OF SIGNS (0.035): Q is a random safe tile of the room he stands in
-    blink: Object.assign(cult('CLOAK OF SIGNS · Q', 'bearer'), { setup: (g) => { g.cape = { id: 'symbols' }; g.levelCape = g.cape; g.applyBoons(); } }),
+    // 19 Oct 2026 (his: "more fire traps and spikes in the rooms, it is not clear yet"): most of the floor is grates, burners
+    // and braziers, so a blink that never lands in them can be seen to choose
+    blink: Object.assign(cult('CLOAK OF SIGNS · Q', 'bearer'), { size: [18, 12], fill: (R, k) => {
+      for (let y = R.iy + 1; y < R.iy + R.h - 1; y++) for (let x = R.ix + 3; x < R.ix + R.w - 1; x++) {
+        const h = (x * 7 + y * 13) % 5;
+        if (h === 0) R.mach({ kind: 'burner', tx: x, ty: y, phase: -(x + y) * 0.3 });
+        else if (h === 1 || (h === 3 && (x + y) % 2)) R.put('spike', x, y);
+      }
+      R.put('brazier', R.ix + 2, R.iy + 1); R.put('brazier', R.ix + 2, R.iy + R.h - 2);
+      man1('bearer')(R, k);
+    }, setup: (g) => { g.cape = { id: 'symbols' }; g.levelCape = g.cape; g.applyBoons(); } }),
     // THE CHEER (0.035): a soul's cards come up in each room; room 1 the BANNER, 2 the GULP, 3 the two in turn
-    cheer: Object.assign(cult('THE CHEER · TAKE A SOUL', 'bearer'), { setup: (g, at) => { TUNING.cheer.only = at === 1 ? 'banner' : at === 2 ? 'gulp' : null; setTimeout(() => { if (g.state === 'play') { g.openBoonChoice(); } }, 1200); } }),
+    cheer: Object.assign(cult('THE CHEER · TAKE A SOUL', 'bearer'), { setup: (g, at) => { TUNING.cheer.only = 'rear'; setTimeout(() => { if (g.state === 'play') { g.openBoonChoice(); } }, 1200); } }),
     // THE CHASE's new look (0.035): the red comes from the left at once, full early
     chase: Object.assign(cult('THE CHASE', 'bearer'), { setup: (g) => { Chase.start(g); if (g.chase) { g.chase.p = 0.35; } } }),
     // THE SNOW's overhang on the walls (0.035): the cult's rooms under snow
     snow: Object.assign(cult('SNOW ON THE WALLS', 'bearer'), { zone: { snow: true } }),
+  });
+  // 19 Oct 2026, his: "add everything not yet tested from the past sessions". A worn thing goes on in `setup`; `start(g, at)`
+  // plays a real floor instead of the lab's own (the mushrooms on THE ROAD, THE TRIP: the room number picks the seed).
+  const wear = (id) => (g) => { g.artifacts = [{ id, tier: 1 }]; g.levelArtifacts = g.artifacts.slice(); g.applyBoons(); };
+  const cape = (id) => (g) => { g.cape = { id }; g.levelCape = g.cape; g.applyBoons(); };
+  const tables = (R) => { for (const [dx, dy] of [[4, 2], [8, 6], [4, 8], [11, 3]]) R.put('table', R.ix + dx, R.iy + dy); };
+  Object.assign(LAB, {
+    morph: Object.assign(cult('MANTLE OF CHANGES · Q', 'bearer'), { setup: cape('morph') }),
+    tablecharm: Object.assign(cult('THE TABLE AMULET', 'bearer'), { size: [18, 12], fill: (R, k) => { tables(R); man1('bearer')(R, k); }, setup: wear('tablecharm') }),
+    fatecomb: Object.assign(cult('THE COMB OF FATE', 'champion'), { setup: (g) => { wear('fatecomb')(g); g.extraLives = 1; g.livesMax = 1; } }),
+    sandal: Object.assign(cult("PILGRIM'S SANDAL · THE GONG", 'bearer'), { fill: (R, k) => { R.put('bell', R.ix + 3, R.iy + 2); man1('bearer')(R, k); }, setup: wear('sandal') }),
+    hookfire: Object.assign(cult('THE HOOK OVER FIRE', 'champion'), { size: [20, 12], fill: (R, k) => {
+      for (let y = R.iy + 1; y < R.iy + R.h - 1; y++) R.mach({ kind: 'burner', tx: R.ix + 9, ty: y, phase: 0 });
+      R.put('brazier', R.ix + 2, R.iy + 1); man1('champion')(R, k);
+    } }),
+    webspit: Object.assign(cult('WEB SPIT · SPACE', 'bearer'), { fill: (R, k) => { R.put('brazier', R.ix + 2, R.iy + 1); man1('bearer')(R, k); if (k > 1) R.man('dog', R.ix + R.w - 3, R.iy + 2); }, setup: (g) => { boon('webspit')(g); g.applyBoons(); } }),
+    kinesis: Object.assign(cult('TELEKINESIS · GRAB HELD', 'bearer'), { fill: (R, k) => { for (const [dx, dy] of [[3, 2], [3, 8], [5, 5]]) R.put('crate', R.ix + dx, R.iy + dy); R.put('bomb', R.ix + 6, R.iy + 2); man1('bearer')(R, k); }, setup: (g) => { boon('kinesis')(g); g.applyBoons(); } }),
+    minimap: Object.assign(cult('THE MINIMAP', 'bearer'), { setup: (g) => { g.dev.minimap = true; } }),
+    // THE FACTORY's three rooms off Enter the Gungeon (0.024): room 1 THE GRIDIRON, 2 THE FLAME PIPES, 3 THE ISLAND
+    gungeon: { name: 'GUNGEON ROOMS', size: (k) => { const t = FACTORY_TEMPLATES.find((o) => o.name === ['gridiron', 'pipes', 'island'][k - 1]); return [t.rows[0].length - 2, t.rows.length - 2]; },
+      fill: (R, k) => R.layTpl(['gridiron', 'pipes', 'island'][k - 1]) },
+    shrooms: { name: 'MUSHROOMS ON THE ROAD', start: (g, at) => { g.startAtLevel(3); } },
+    trip: { name: 'THE TRIP', start: (g, at) => { g.startAtLevel(3, true); } },
   });
   // THE CHASE never runs on a test floor (`Chase.on` refuses THE SHOWROOM); here, for its own card only
   const chaseOn = Chase.on; Chase.on = (g) => CUR.id === 'chase' || chaseOn(g);
@@ -174,7 +212,7 @@
         for (let ty = r.y - 1; ty <= r.y + r.h; ty++) for (let tx = r.x - 1; tx <= r.x + r.w; tx++) zones[at(tx, ty)] = z;
       }
       const R = {
-        ix, iy, w: iw, h: ih, mid, x: r.x, W: r.w, oil, vents,
+        ix, iy, w: iw, h: ih, mid, x: r.x, y: r.y, W: r.w, oil, vents, prev: rooms[r.index - 1],
         put, label, mach: (m) => machines.push(m),
         man: (kind, tx, ty, o) => spawns.push(Object.assign(P(tx, ty), spawnKind(kind), { roomIndex: r.index }, o || {})),
         wall: (x0, y0, x1, y1) => fill(x0, y0, x1, y1, T.WALL), floor: (x0, y0, x1, y1) => fill(x0, y0, x1, y1, T.FLOOR),
@@ -187,6 +225,14 @@
           return out;
         },
         // k fixtures on the far wall's face, spread along it
+        // a factory template laid whole over the room (its own walls included), its men and machines with it
+        layTpl: (name) => { const tpl = FACTORY_TEMPLATES.find((o) => o.name === name); if (!tpl) return;
+          layFactoryRoom(tpl, r.x, r.y, { tiles, W, machines, chasms: [], gaps, room: r,
+            put: (kind, tx, ty, o) => put(kind, tx, ty, o), man: (kind, tx, ty, o) => spawns.push(Object.assign(P(tx, ty), spawnKind(kind), { roomIndex: r.index }, o || {})) });
+          // the way in from the room before goes back through its west wall, and the room wears the template's own look
+          for (const dy of [0, 1]) for (const dx of [0, 1]) if (dx === 0 || tiles[at(r.x + dx, mid + dy)] === T.WALL) tiles[at(r.x + dx, mid + dy)] = T.FLOOR;
+          const z = zoneDefs.length; zoneDefs.push(Object.assign({}, def, { flook: tpl.flook, wlook: tpl.wlook }));
+          for (let ty = r.y - 1; ty <= r.y + r.h; ty++) for (let tx = r.x - 1; tx <= r.x + r.w; tx++) zones[at(tx, ty)] = z; },
         fixes: (n, lk) => { for (let i = 0; i < n; i++) put('wallfix', ix + Math.round((i + 1) / (n + 1) * (iw - 1)), r.y, { look: lk }); },
       };
       label(ITEM.name + ' x' + k, ix + iw / 2 - 0.5, iy + 0.4, Math.min(iw - 1, 10), true);
@@ -217,7 +263,7 @@
     g.levelBoons = g.boons.slice();
     // what an earlier test put on (a horn, the cape) is taken off; this one's own `setup` puts its own on
     if (HORN0 === undefined) HORN0 = g.hornKind; g.hornKind = HORN0; g.cape = null; g.levelCape = null;
-    TUNING.cheer.only = null;
+    TUNING.cheer.only = 'rear';
     if (LAB[CUR.id].setup) LAB[CUR.id].setup(g, CUR.at);
     g.applyBoons();
   };
@@ -232,6 +278,7 @@
     const g = window.game; if (!g || !LAB[id]) return false;
     CUR.id = id; CUR.at = Math.max(1, Math.min(3, at || 1));
     g.autoPause = false;
+    if (LAB[id].start) { if (g.state !== 'title') g.quitToTitle && g.quitToTitle(); LAB[id].start(g, CUR.at); return true; }
     const cult = LAB[id].look === 'cult';
     g.startShowroom(!cult);
     if (cult) g.dev.god = false;   // THE SHOWROOM turns GOD on; a test is a fight to feel

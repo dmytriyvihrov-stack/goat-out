@@ -589,8 +589,10 @@ const FACTORY_PIXELS = (() => {
     if (!(Math.abs(ctx.shadowOffsetX || 0) > 1000)) { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(0, 0, W * c * 0.65, c * 2.2, 0, 0, Math.PI * 2); ctx.fill(); }
     ctx.save();
     ctx.translate(0, lift);
+    // the charge read off the body (19 Oct 2026): `ch` 0..1 through its windup, a crouch from the feet and a shake that grows
+    const ch = aim && e.caimMax ? Math.max(0, Math.min(1, 1 - e.timer / e.caimMax)) : 0;
     if (kick) { ctx.scale(1.1, 0.88); }
-    if (aim) ctx.translate(Math.round((Math.random() - 0.5) * 2) * (c / 2), 0);
+    if (aim) { ctx.scale(1 + 0.1 * ch, 1 - 0.14 * ch); ctx.translate(Math.round((Math.random() - 0.5) * (2 + 2 * ch)) * (c / 2), 0); }
     const x0 = -Math.floor(W / 2) * c, footY = -c, rimY = footY - LEG * c, baseY = rimY - (BASE - 1) * c, hullY = baseY - HULL * c;
     // the gun's line on the screen: the facing, its depth foreshortened as the floor is
     let ux = Math.cos(angle), uy = Math.sin(angle) * (typeof TILT === 'number' ? TILT : 0.86);
@@ -636,7 +638,11 @@ const FACTORY_PIXELS = (() => {
       cell(hx - c, hy - c, 2, 2, INK); cell(hx - c / 2, hy - c / 2, 1, 1, '#8a8894');
       // charging: sparks at the muzzle; the kick: a flash off it
       const [mx, my] = at(L + 0.5, -0.5);
-      if (aim) for (let k = 0; k < 4; k++) { const q = Math.floor(t * 30 + k * 5.3); cell(mx + ((q * 7) % 5 - 2) * c, my + ((q * 11) % 5 - 2) * c, 1, 1, k % 2 ? voltHi : volt); }
+      if (aim) {   // the crackle at the muzzle widens and thickens with the charge
+        const n = 4 + Math.round(10 * ch), sp = 5 + 2 * Math.round(3 * ch);
+        for (let k = 0; k < n; k++) { const q = Math.floor(t * 30 + k * 5.3); cell(mx + ((q * 7) % sp - (sp >> 1)) * c, my + ((q * 11) % sp - (sp >> 1)) * c, 1, 1, k % 2 ? voltHi : volt); }
+        if (ch > 0.6) { cell(mx - c, my - c, 3, 3, volt); cell(mx - c / 2, my - c / 2, 2, 2, voltHi); }
+      }
       if (kick) { cell(mx - c, my - c, 3, 3, volt); cell(mx - c / 2, my - c / 2, 2, 2, voltHi); }
     };
     if (gunBehind) gun();

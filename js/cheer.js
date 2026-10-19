@@ -21,10 +21,19 @@ const Cheer = {
   },
   // how far up he is, 0..1: up in `up` s, held with his forelegs pawing the air, down in the last `down` s
   rearK(c) { const R = TUNING.cheer.rear; return this.ease(c.t / R.up) * clamp((c.time - c.t) / R.down, 0, 1); },
+  // the hop at the top of the rear, px up: a jump off the hind legs as he gets there, 0 before and after
+  rearHop(c) { const R = TUNING.cheer.rear, u = (c.t - R.up) / R.hopT; return u > 0 && u < 1 ? R.hop * Math.sin(u * Math.PI) : 0; },
   update(game, dt) {
     const c = game.cheer, C = TUNING.cheer, I = game.input;
     c.t += dt;
-    if (c.kind === 'rear' && !c.bleat && c.t >= C.rear.up) { c.bleat = true; game.audio.sfxBleat && game.audio.sfxBleat(330, 0.16, 0.4); game.vibe && game.vibe(14); }
+    if (c.kind === 'rear' && !c.bleat && c.t >= C.rear.up) {
+      c.bleat = true; game.audio.sfxBleat && game.audio.sfxBleat(330, 0.16, 0.4); game.vibe && game.vibe(22);
+      // the top of it: a burst of the soul off him, two rings going out, the lens punched in, a beat held
+      const R = C.rear, g = game.goat;
+      if (g) { game.particles(g.x, g.y - 22, R.burst, PALETTE.witchHi, 260); game.particles(g.x, g.y - 22, R.burst >> 1, PALETTE.hit, 200);
+        game.ring(g.x, g.y, R.ring * TILE, PALETTE.witchHi, 0.5, 3); game.ring(g.x, g.y, R.ring * 0.6 * TILE, PALETTE.witch, 0.35, 2); }
+      game.zoomPunch && game.zoomPunch(R.punch); game.hitstop && game.hitstop(R.stop);
+    }
     if (c.kind === 'gulp' && !c.bleat && c.t >= C.gulp.swallow) { c.bleat = true; game.audio.sfxBleat && game.audio.sfxBleat(); game.vibe && game.vibe(18); }
     if (c.t >= c.time || (c.t >= C.skip && (I.lmbPressed || I.spacePressed || I.rollPressed))) game.cheer = null;
   },
