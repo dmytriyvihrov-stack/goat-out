@@ -1,0 +1,3062 @@
+{
+ "generator": "tools/godot-export/lines.js",
+ "sources": {
+  "HEAVEN_TALK": {
+   "count": 109,
+   "from": "js/heaven.js"
+  },
+  "SHEPHERD_TALK": {
+   "count": 31,
+   "from": "js/heaven.js"
+  },
+  "DEATH_TIPS": {
+   "count": 6,
+   "from": "js/heaven.js"
+  },
+  "BEAST_HELLO": {
+   "count": 21,
+   "from": "js/tuning.js"
+  },
+  "BEAST_ANSWER": {
+   "count": 7,
+   "from": "js/tuning.js"
+  },
+  "BEAST_CHAT": {
+   "count": 188,
+   "from": "js/tuning.js"
+  },
+  "HEAVEN_BANTER": {
+   "count": 20,
+   "from": "js/heaven-home.js"
+  },
+  "STAND_STORY": {
+   "count": 2,
+   "from": "js/heaven-home.js"
+  },
+  "BARKS": {
+   "count": 160,
+   "from": "js/tuning.js"
+  },
+  "BOSS_HINTS": {
+   "count": 45,
+   "from": "js/tuning.js"
+  },
+  "KILLED_BY": {
+   "count": 32,
+   "from": "js/tuning.js"
+  },
+  "CONTROL_LINES": {
+   "count": 38,
+   "from": "js/render.js"
+  },
+  "TEXT_EDITS": {
+   "count": 0,
+   "from": "js/text-edit.js"
+  },
+  "TUNING.prop": {
+   "count": 52,
+   "from": "js/tuning.js"
+  },
+  "TUNING.misc": {
+   "count": 28,
+   "from": "js/tuning.js"
+  }
+ },
+ "entries": {
+  "HEAVEN_TALK.intro": {
+   "speaker": "THE GOD",
+   "occasion": "THE FIRST VISIT EVER: GRAB at the god. Each line its own plate, in order. Then nothing else that visit.",
+   "value": [
+    "DO NOT CRY, LITTLE GOAT. NOT ALL IS LOST.",
+    "I AM THE GOAT GOD. THE ONE ABOVE.",
+    "I CANNOT BRING BACK YOUR EWE. BUT I CAN TURN BACK TIME.",
+    "AND I WILL HELP YOU GROW STRONGER ON YOUR WAY.",
+    "SACRIFICE TO ME 15 SOULS OF THOSE WHO WANTED TO SACRIFICE YOU, AND I WILL GIVE YOU MORE POWER.",
+    "WHEN YOU ARE READY, JUMP OFF THE EDGE OF THE CLOUD. BUTT FIRST. BEH."
+   ]
+  },
+  "HEAVEN_TALK.life": {
+   "speaker": "THE GOD",
+   "occasion": "Over the death card, the first death after a visit up here: his second chance (ONE MORE LIFE on every run from then on). Once.",
+   "value": [
+    "OH, I ALMOST FORGOT.",
+    "FROM NOW ON I GIVE YOU A SECOND CHANCE. YOU FELL ONCE. GET BACK UP.",
+    "DO NOT DISAPPOINT ME."
+   ]
+  },
+  "HEAVEN_TALK.gift": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk for a goat who met him before the gift existed (an old store with no `gift`).",
+   "value": [
+    "WAIT. I FORGOT SOMETHING. HOLD STILL. ...THERE. A LITTLE OF MY LIGHT, IN YOUR HORNS.",
+    "NOW EVERY MAN YOU PUT DOWN LEAVES A SMALL WHITE SOUL. WALK OUT OF THE ROOM AND THEY FOLLOW YOU. BRING THEM.",
+    "FIFTEEN. BRING ME FIFTEEN, AND I WILL REPAIR MY MIRROR FOR YOU."
+   ]
+  },
+  "HEAVEN_TALK.mend": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk once twenty souls are brought and the mirror is still broken; after it he mends the glass himself (GRAB at it).",
+   "value": [
+    "FIFTEEN. I COUNTED THEM. TWICE. ONE OF THEM WAS A DUCK, BUT I WILL ALLOW IT.",
+    "MY LIGHT IS IN YOUR HORNS NOW. GO TO MY MIRROR AND HOLD STILL BEFORE IT. POUR THE FIFTEEN INTO IT, AND IT WILL BE WHOLE.",
+    "WHOLE, IT TURNS WHAT YOU BRING ME INTO STRENGTH THAT OUTLIVES YOU. AND WHEN I HAVE ASKED MY LAST, IT SHOWS WHAT IT KEEPS AT THE BACK."
+   ]
+  },
+  "HEAVEN_TALK.animal": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk once the mirror is whole and no animal has been brought out of the compound yet (once).",
+   "value": [
+    "ONE MORE THING. THE CULT KEEPS ANIMALS DOWN THERE. FOR SUPPER. EVERY ONE HAS A STAND UP HERE, BY MY THRONE AND OVER MY BRIDGE.",
+    "THE TORTOISE'S STAND IS WHOLE: IT IS DOWN THERE ALREADY, WAITING FOR YOU. THE GOOSE'S AND THE HORSE'S ARE BROKEN. POUR SOULS INTO ONE, AND ITS ANIMAL WALKS YOUR RUNS. THE REST, LATER.",
+    "BRING ONE OUT ALIVE. IT WILL SIT UP HERE AND ASK SOMETHING OF YOU. HEAR IT OUT."
+   ]
+  },
+  "HEAVEN_TALK.horns": {
+   "speaker": "THE GOD",
+   "occasion": "Not at the god: said at the lip of the drop as he walks up to jump, the mirror whole and looked into (once).",
+   "value": [
+    "WAIT, LITTLE GOAT. I FORGOT TO TELL YOU.",
+    "IF YOU GATHER THIRTY SOULS AND GIVE THEM TO ME, MY HORNS ARE YOURS. NOT THESE: A WIDE PAIR, AND A LONG ONE. THEY LIE HERE BY THE EDGE.",
+    "BRING THEM, STAND BEFORE ME AND HOLD STILL, AND POUR. NOW GO ON. JUMP."
+   ]
+  },
+  "HEAVEN_TALK.hornsNow": {
+   "speaker": "THE GOD",
+   "occasion": "At the god, in place of the lip's ask, when the goat already carries the thirty for the horns (once).",
+   "value": [
+    "WAIT, LITTLE GOAT. YOU ALREADY CARRY THIRTY.",
+    "GIVE THEM TO ME AND MY HORNS ARE YOURS. NOT THESE: A WIDE PAIR, AND A LONG ONE. THEY LIE HERE BY THE EDGE.",
+    "STAND BEFORE ME, HOLD STILL, AND POUR. NOW."
+   ]
+  },
+  "HEAVEN_TALK.hornsDone": {
+   "speaker": "THE GOD",
+   "occasion": "Over the god as the fiftieth soul is poured into him (GRAB held at his cloud).",
+   "value": [
+    "THIRTY. THE HORNS BY THE EDGE ARE YOURS NOW. PICK A PAIR BEFORE YOU JUMP. AND THE LOCKS ARE OFF THE OTHER STANDS: POUR SOULS INTO ONE, AND ITS ANIMAL IS DOWN THERE FOR YOU."
+   ]
+  },
+  "HEAVEN_TALK.hornsShut": {
+   "speaker": "THE GOD",
+   "occasion": "GRAB on BIG or LONG at the edge before the fifty are given.",
+   "value": [
+    "NOT YET, LITTLE HORNS. THIRTY SOULS, GIVEN TO ME, AND THEY ARE YOURS.",
+    "THOSE ARE MINE UNTIL YOU BRING ME MY THIRTY."
+   ]
+  },
+  "HEAVEN_TALK.skills": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk once the horns are open (once).",
+   "value": [
+    "NOW THE LAST THING I WILL ASK OF YOU. SIXTY SOULS, GIVEN TO ME, AND ONE CORRUPTED SOUL, THE VIOLET KIND THE CULT KEEPS IN ITS BIG MEN.",
+    "BRING THEM, AND WHAT YOU DO DOWN THERE WILL GROW. UPGRADED SKILLS."
+   ]
+  },
+  "HEAVEN_TALK.skillsDone": {
+   "speaker": "THE GOD",
+   "occasion": "Over the god as the hundred and the corrupted soul are in.",
+   "value": [
+    "SIXTY, AND THE VIOLET ONE. YOUR SKILLS ARE UPGRADED."
+   ]
+  },
+  "HEAVEN_TALK.skillsSoul": {
+   "speaker": "THE GOD",
+   "occasion": "Over the god when the hundred are poured in but no corrupted soul has been brought up yet.",
+   "value": [
+    "SIXTY. NOW THE CORRUPTED ONE: TAKE A SOUL FROM ONE OF THEIR BIG MEN AND BRING IT UP."
+   ]
+  },
+  "HEAVEN_TALK.broken": {
+   "speaker": "THE GOD",
+   "occasion": "GRAB on the mirror before twenty souls are brought.",
+   "value": [
+    "BROKEN."
+   ]
+  },
+  "HEAVEN_TALK.killer.bearer": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after a death to BEARER.",
+   "value": [
+    "A MAN WITH A STICK. YOU HAVE TWO HORNS AND FOUR LEGS. DO THE ARITHMETIC."
+   ]
+  },
+  "HEAVEN_TALK.killer.brute": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after a death to BRUTE.",
+   "value": [
+    "THE BUTCHER THROWS HIS HOOK WHERE YOU ARE GOING, LITTLE HORNS. TURN AFTER IT LEAVES HIS HAND."
+   ]
+  },
+  "HEAVEN_TALK.killer.shield": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after a death to SHIELD.",
+   "value": [
+    "A MAN BEHIND A DOOR. HE TURNS LIKE A DOOR, TOO. SLOWLY. GO ROUND HIM, LITTLE HORNS."
+   ]
+  },
+  "HEAVEN_TALK.killer.butcher": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after a death to BUTCHER.",
+   "value": [
+    "THE OGRE. YOUR HORNS DO NOTHING TO HIM. FIRE DOES. BLADES DO.",
+    "YOUR HORNS DO NOTHING TO HIM. I SAY IT TWICE BECAUSE YOU FORGOT IT ONCE."
+   ]
+  },
+  "HEAVEN_TALK.killer.seer": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after a death to SEER.",
+   "value": [
+    "THE MAGE AND HIS PURPLE FIRE. WHEN THE FLOOR UNDER YOU GLOWS, THE FLOOR IS NOT YOUR FRIEND."
+   ]
+  },
+  "HEAVEN_TALK.killer.hunter": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after a death to HUNTER.",
+   "value": [
+    "A RIFLE. HE TAKES A MOMENT TO AIM. A GOAT TAKES A MOMENT TO LEAVE. RACE HIM."
+   ]
+  },
+  "HEAVEN_TALK.killer.rifle": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after a death to RIFLE.",
+   "value": [
+    "A RIFLE. HE TAKES A MOMENT TO AIM. A GOAT TAKES A MOMENT TO LEAVE. RACE HIM."
+   ]
+  },
+  "HEAVEN_TALK.killer.dog": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after a death to DOG.",
+   "value": [
+    "A HOUND. IT JUMPS AT YOU: PUT YOUR HORNS WHERE IT LANDS. I DO NOT CARE FOR DOGS EITHER."
+   ]
+  },
+  "HEAVEN_TALK.killer.shaman": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after a death to SHAMAN.",
+   "value": [
+    "THE SHAMAN CALLS, AND YOUR LEGS ANSWER HIM. STEP OUT OF HIS SIGHT, AND THEY ARE YOURS AGAIN."
+   ]
+  },
+  "HEAVEN_TALK.killer.thrower": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after a death to THROWER.",
+   "value": [
+    "THE THROWER. EVERYTHING IN HIS ROOM IS A STONE TO HIM. YOU TOO. ROLL WHEN THE ARM GOES BACK."
+   ]
+  },
+  "HEAVEN_TALK.killer.toss": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after a death to TOSS.",
+   "value": [
+    "HE THREW YOU AT A WALL. YOU KNOW WHAT WALLS DO TO MEN. THEY DO IT TO GOATS AS WELL."
+   ]
+  },
+  "HEAVEN_TALK.killer.altar": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after a death to ALTAR.",
+   "value": [
+    "THEIR ALTAR. I STOOD ON IT ONCE TOO. IT IS NOT FOR STANDING ON. IT IS FOR PUTTING THEM ON."
+   ]
+  },
+  "HEAVEN_TALK.killer.abandon": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after a death to ABANDON.",
+   "value": [
+    "YOU GAVE UP. ...I DID NOT KNOW A GOAT COULD. DO NOT LEARN IT."
+   ]
+  },
+  "HEAVEN_TALK.killer.wraith": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after a death to WRAITH.",
+   "value": [
+    "THE MIST. IT ONLY BECOMES A BODY BEHIND YOU. SO LOOK BEHIND YOU. CONSTANTLY. LIKE A GOAT."
+   ]
+  },
+  "HEAVEN_TALK.killer.ratogre": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after a death to RATOGRE.",
+   "value": [
+    "YOU ANGERED THE MOUSE. EVERYBODY KNOWS NOT TO ANGER THE MOUSE."
+   ]
+  },
+  "HEAVEN_TALK.killer.fire": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after a death to FIRE.",
+   "value": [
+    "YOU WALKED INTO FIRE. FIRE IS HOT. THAT IS THE WHOLE LESSON, AND YOU HAVE HAD IT."
+   ]
+  },
+  "HEAVEN_TALK.killer.witchfire": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after a death to WITCHFIRE.",
+   "value": [
+    "PURPLE FIRE. HOTTER THAN THE ORANGE KIND, AND FAR RUDER."
+   ]
+  },
+  "HEAVEN_TALK.killer.spike": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after a death to SPIKE.",
+   "value": [
+    "THE FLOOR BIT YOU. THE FLOOR IN THAT PLACE BITES. STEP OFF IT WHILE IT THINKS ABOUT IT."
+   ]
+  },
+  "HEAVEN_TALK.killer.spire": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after a death to SPIRE.",
+   "value": [
+    "THE STONE TEETH WERE THERE BEFORE YOU AND WILL BE THERE AFTER. WALK ROUND."
+   ]
+  },
+  "HEAVEN_TALK.killer.bomb": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after a death to BOMB.",
+   "value": [
+    "THE ROUND BLACK THING WITH THE SPARK. YOU HELD ON TO IT. WHY DID YOU HOLD ON TO IT."
+   ]
+  },
+  "HEAVEN_TALK.killer.powder": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after a death to POWDER.",
+   "value": [
+    "BLACK POWDER ON THE FLOOR AND A FLAME NEARBY. YOU DID THE ARITHMETIC TOO LATE."
+   ]
+  },
+  "HEAVEN_TALK.killer.chandelier": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after a death to CHANDELIER.",
+   "value": [
+    "A CHANDELIER. YOU PULLED THE ROPE AND STOOD UNDER IT. I HAVE SEEN THAT JOKE BEFORE. IT WAS NOT FUNNY THEN EITHER."
+   ]
+  },
+  "HEAVEN_TALK.killer.mill": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after a death to MILL.",
+   "value": [
+    "THE WHEEL GOES ROUND. THAT IS ALL IT DOES, AND IT IS VERY GOOD AT IT."
+   ]
+  },
+  "HEAVEN_TALK.killer.fall": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after a death to FALL.",
+   "value": [
+    "YOU FELL. GOATS ARE SUPPOSED TO BE GOOD AT HEIGHTS. I AM DISAPPOINTED ON BEHALF OF ALL GOATS."
+   ]
+  },
+  "HEAVEN_TALK.again": {
+   "speaker": "THE GOD",
+   "occasion": "Not said anywhere at the moment (kept for later).",
+   "value": [
+    "AGAIN, LITTLE HORNS?",
+    "BACK SO SOON?",
+    "BEH. HELLO AGAIN.",
+    "YOU AGAIN. GOOD.",
+    "SIT. NO. JUMP."
+   ]
+  },
+  "HEAVEN_TALK.deaths.3": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk once his tally of deaths reaches 3 (once).",
+   "value": [
+    "THIRD TIME. I HAVE STARTED A TALLY ON A CLOUD. IT IS A SMALL CLOUD."
+   ]
+  },
+  "HEAVEN_TALK.deaths.10": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk once his tally of deaths reaches 10 (once).",
+   "value": [
+    "TEN. THE TALLY HAS A NAME NOW. GERALD."
+   ]
+  },
+  "HEAVEN_TALK.deaths.25": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk once his tally of deaths reaches 25 (once).",
+   "value": [
+    "GERALD IS FULL. I HAVE STARTED ANOTHER CLOUD."
+   ]
+  },
+  "HEAVEN_TALK.deaths.50": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk once his tally of deaths reaches 50 (once).",
+   "value": [
+    "FIFTY. THE MOST DEVOTED CORPSE I HAVE EVER HAD. I AM ALMOST TOUCHED."
+   ]
+  },
+  "HEAVEN_TALK.deaths.100": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk once his tally of deaths reaches 100 (once).",
+   "value": [
+    "ONE HUNDRED. THE ANGELS ARE BETTING ON YOU. SO AM I. DO NOT TELL THEM."
+   ]
+  },
+  "HEAVEN_TALK.further": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after a run that got further than ever; the line is picked by the floor reached.",
+   "value": [
+    "{floor}. FURTHER THAN EVER. I MOVED MY SEAT TO THE EDGE TO WATCH.",
+    "YOU REACHED {floor}. THE CULT IS WORRIED. I CAN SMELL IT FROM HERE."
+   ]
+  },
+  "HEAVEN_TALK.saved": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after an animal was brought up for the first time ({animal} its name).",
+   "value": [
+    "GOOD GOAT. {animal} IS HOME."
+   ]
+  },
+  "HEAVEN_TALK.praise": {
+   "speaker": "THE GOD",
+   "occasion": "On its own, over him soon after he comes up, when an animal was brought up or freed this run.",
+   "value": [
+    "GOOD GOAT. {animal} IS HOME.",
+    "WELL DONE, LITTLE HORNS. {animal} THANKS YOU.",
+    "{animal}, UP HERE AT LAST. GOOD.",
+    "THAT WAS KIND. {animal} IS SAFE."
+   ]
+  },
+  "HEAVEN_TALK.mirror": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after a rank was bought on the mirror (once).",
+   "value": [
+    "YOU LOOKED INTO MY MIRROR, AND IT LOOKED BACK. IT LIKES YOU. IT DOES NOT LIKE MANY."
+   ]
+  },
+  "HEAVEN_TALK.combed": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after the shepherd combed him (once).",
+   "value": [
+    "THE OLD MAN COMBED YOU. YOU SMELL OF CLOUDS NOW. IT IS AN IMPROVEMENT."
+   ]
+  },
+  "HEAVEN_TALK.song": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk after the bells' song was played through (once).",
+   "value": [
+    "MARY HAD A LITTLE LAMB. ON MY BELLS. IN MY HEAVEN. ...FINE. THAT ONE IS ALLOWED."
+   ]
+  },
+  "HEAVEN_TALK.any": {
+   "speaker": "THE GOD",
+   "occasion": "The next talk when nothing above is due: each line once, in order, then one at random.",
+   "value": [
+    "THEY SACRIFICE GOATS TO THEIR GOD. I HAVE MET THEIR GOD. HE IS A SMALL MAN IN A LARGE HAT.",
+    "WHEN YOU FALL, FALL WITH DIGNITY. OR AT LEAST FALL ON A CULTIST.",
+    "A WALL IS A FRIEND WHO NEVER MOVES. INTRODUCE YOUR ENEMIES TO IT.",
+    "THE CLOUDS ARE NOT FOR EATING. I KNOW. I CHECKED. EXTENSIVELY.",
+    "HEADBUTT FIRST. ASK QUESTIONS NEVER. THAT IS THE WHOLE OF THE LAW.",
+    "BEH. THAT IS ALL. SOMETIMES A GOD ONLY WANTS TO SAY BEH.",
+    "THE ONES WITH THE STICKS SHOUT \"STOP THE GOAT\". NOBODY HAS EVER STOPPED A GOAT. IT IS NOT IN US.",
+    "I WAS ON THAT ALTAR TOO, ONCE. THE SAME KNIFE. I GOT BETTER. UP HERE. EVENTUALLY.",
+    "THE OLD MAN'S BELLS RANG UP HERE EVERY MORNING, ONCE. THE CULT TOOK THEM. BRING THEM BACK, AND I WILL PRETEND NOT TO BE MOVED.",
+    "GRASS HEALS. STANDING STILL IN IT HEALS. YOU NEVER STAND STILL. THAT IS YOUR PROBLEM.",
+    "THE ROLL IS FOR LEAVING. YOU ARE VERY GOOD AT ARRIVING. WORK ON THE LEAVING."
+   ]
+  },
+  "HEAVEN_TALK.bye": {
+   "speaker": "THE GOD",
+   "occasion": "GRAB at the god again on the same visit, once he has had his talk.",
+   "value": [
+    "GO. THE EDGE IS THAT WAY. BEH.",
+    "JUMP ALREADY.",
+    "STILL HERE? THE CULT WILL NOT BUTT ITSELF.",
+    "DOWN YOU GO, LITTLE HORNS."
+   ]
+  },
+  "HEAVEN_TALK.butted": {
+   "speaker": "THE GOD",
+   "occasion": "A headbutt on the god.",
+   "value": [
+    "DO NOT BUTT THE DIVINE.",
+    "THAT TICKLED. DO IT AGAIN AND I SEND YOU TO THE TRIP.",
+    "BEH!"
+   ]
+  },
+  "HEAVEN_TALK.answer": {
+   "speaker": "THE GOD",
+   "occasion": "A BAAH near the god.",
+   "value": [
+    "BEH.",
+    "BEEEH.",
+    "BEH BEH.",
+    "BAAH, YOURSELF."
+   ]
+  },
+  "HEAVEN_TALK.goOn": {
+   "speaker": "THE GOD",
+   "occasion": "A goat who has never jumped yet, dawdling up here for a while (before the arrows appear at the lip).",
+   "value": [
+    "WELL? JUMP. GO ON, DOWN YOU GO.",
+    "THE EDGE, LITTLE GOAT. JUMP."
+   ]
+  },
+  "HEAVEN_TALK.notYet": {
+   "speaker": "THE GOD",
+   "occasion": "Walking to the drop before ever looking into the mirror: he is put back a step and told.",
+   "value": [
+    "NOT YET, LITTLE GOAT. THE MIRROR FIRST.",
+    "THE MIRROR, UP THERE. LOOK INTO IT, THEN JUMP.",
+    "NO JUMPING BEFORE THE MIRROR."
+   ]
+  },
+  "HEAVEN_TALK.munch": {
+   "speaker": "THE GOD",
+   "occasion": "Over the goat's mouth while he grazes the gold grass.",
+   "value": [
+    "SWEET",
+    "HEAVENLY",
+    "MMM",
+    "TASTES OF SUNDAY",
+    "GOLDEN"
+   ]
+  },
+  "SHEPHERD_TALK.hello": {
+   "speaker": "THE SHEPHERD",
+   "occasion": "Walking up to the shepherd the first time this visit (the second line for a goat he has combed before).",
+   "value": [
+    "WHO IS THAT? A LITTLE KID. COME HERE, LET ME COMB YOU.",
+    "AH, THE LITTLE KID AGAIN. COME, COME."
+   ]
+  },
+  "SHEPHERD_TALK.comb": {
+   "speaker": "THE SHEPHERD",
+   "occasion": "During the comb, every few strokes.",
+   "value": [
+    "THERE. THERE.",
+    "SUCH KNOTS. WHERE HAVE YOU BEEN, LITTLE GOAT?",
+    "YOU SMELL OF SMOKE AND MEN.",
+    "YOUR HORNS HAVE GROWN. NOT SO LITTLE NOW.",
+    "I HAD A FLOCK ONCE. THEY CAME AT NIGHT, WITH CLOTH AND ROPE. I HEARD IT ALL.",
+    "MY WIFE DID THE COMBING. I ONLY COUNTED THEM.",
+    "SOFT AS A CLOUD NOW. SOFTER."
+   ]
+  },
+  "SHEPHERD_TALK.butted": {
+   "speaker": "THE SHEPHERD",
+   "occasion": "A headbutt on the shepherd.",
+   "value": [
+    "OH! STILL SOME SPIRIT IN YOU.",
+    "GENTLY, LITTLE GOAT. GENTLY."
+   ]
+  },
+  "SHEPHERD_TALK.bells": {
+   "speaker": "THE SHEPHERD",
+   "occasion": "A bell butted: he hears it and answers from where he stands.",
+   "value": [
+    "WHO IS AT THE BELLS? THE LITTLE KID?",
+    "NOT SO HARD. THEY ARE OLDER THAN I AM.",
+    "THAT ONE IS FLAT. IT ALWAYS WAS.",
+    "AH, I KNOW THAT ONE. HOW DOES IT GO ON?",
+    "MY WIFE RANG THEM LIKE THAT. EVERY MORNING.",
+    "SOFTLY. THE GOD IS DOZING.",
+    "GOATS DO NOT RING BELLS. OR DO THEY NOW?"
+   ]
+  },
+  "SHEPHERD_TALK.quest": {
+   "speaker": "THE SHEPHERD",
+   "occasion": "",
+   "value": "MY BELLS, LITTLE KID. THE CULT TOOK THEM THE NIGHT THEY TOOK THE FLOCK. ALL BUT THE SMALLEST. | THEIR BIG MEN WEAR THEM NOW, THE LAST MAN ON EVERY FLOOR. BEAT HIM, TAKE HIS BELL, HANG IT HERE. | ALL OF THEM HOME, AND I WILL PLAY YOU WHAT MY WIFE PLAYED."
+  },
+  "SHEPHERD_TALK.asleep": {
+   "speaker": "THE SHEPHERD",
+   "occasion": "An empty hook butted (a bell not won from its boss yet).",
+   "value": [
+    "NOTHING HANGS THERE YET. THE LAST BIG MAN OF A FLOOR HAS IT.",
+    "AN EMPTY HOOK. BEAT THE LAST MAN OF A FLOOR AND TAKE HIS BELL."
+   ]
+  },
+  "SHEPHERD_TALK.woke": {
+   "speaker": "THE SHEPHERD",
+   "occasion": "Coming up with a bell hung since the last visit.",
+   "value": [
+    "I HEARD THAT. ANOTHER ONE IS HOME.",
+    "ANOTHER BELL. YOU TOOK IT OFF ONE OF THEM, DID YOU NOT?"
+   ]
+  },
+  "SHEPHERD_TALK.song.come": {
+   "speaker": "THE SHEPHERD",
+   "occasion": "",
+   "value": "ALL OF THEM HOME. WAIT THERE. LET AN OLD MAN PLAY."
+  },
+  "SHEPHERD_TALK.song.listen": {
+   "speaker": "THE SHEPHERD",
+   "occasion": "",
+   "value": "LISTEN, LITTLE KID. THIS WAS HERS."
+  },
+  "SHEPHERD_TALK.song.you": {
+   "speaker": "THE SHEPHERD",
+   "occasion": "",
+   "value": "NOW YOU. WHEN THE LIGHT FALLS ON A BELL, RING IT."
+  },
+  "SHEPHERD_TALK.song.again": {
+   "speaker": "THE SHEPHERD",
+   "occasion": "",
+   "value": "AGAIN? FOLLOW THE LIGHTS, THEN."
+  },
+  "SHEPHERD_TALK.song.good": {
+   "speaker": "THE SHEPHERD",
+   "occasion": "",
+   "value": "HA! JUST SO. HEAR HOW THEY GO ON WITHOUT US."
+  },
+  "SHEPHERD_TALK.song.fair": {
+   "speaker": "THE SHEPHERD",
+   "occasion": "",
+   "value": "NOT BAD FOR HORNS. LISTEN, THEY GO ON BY THEMSELVES."
+  },
+  "SHEPHERD_TALK.song.poor": {
+   "speaker": "THE SHEPHERD",
+   "occasion": "",
+   "value": "NEVER MIND. THEY KNOW IT NOW. LISTEN."
+  },
+  "SHEPHERD_TALK.song.end": {
+   "speaker": "THE SHEPHERD",
+   "occasion": "",
+   "value": "THERE. BUTT ME AND WE PLAY IT AGAIN."
+  },
+  "DEATH_TIPS.any": {
+   "speaker": "A DEATH",
+   "occasion": "At the foot of a floor tried again after a death, a few seconds: one of these when the killer has no tips of his own.",
+   "value": [
+    "YOUR HORNS ONLY KNOCK A MAN DOWN. WHAT KILLS HIM IS THE WALL YOU AIM HIM AT.",
+    "A POISONED OR STUNNED MAN DIES ON A WALL FROM A SOFTER HIT.",
+    "RIGHT M. CLICK GRABS A THING. LET GO AND YOU THROW IT.",
+    "POISON SLOWS THE CULT AND BLINDS THE RIFLEMEN.",
+    "FIRE MAKES SOME OF THEM PANIC AND RUN. OTHERS COME AT YOU FASTER.",
+    "THE YELLOW ONES ARE CHAMPIONS: MORE HEARTS, AND HARDER TO PUSH."
+   ]
+  },
+  "BEAST_HELLO.chicken": {
+   "speaker": "CHICKEN",
+   "occasion": "The animal is let out of its coop: page 1 its sound, then its terms, then its reward hint (a box, a verb turns the page).",
+   "value": [
+    "CLUCK-CLUCK!",
+    "I'LL FOLLOW YOU. BUTT ME AT A MAN AND I FLY AT HIM.",
+    "GET ME UP THE STAIRS ALIVE AND I'LL LEND YOU A LITTLE HEART. I'VE GOT PLENTY."
+   ]
+  },
+  "BEAST_HELLO.tortoise": {
+   "speaker": "TORTOISE",
+   "occasion": "The animal is let out of its coop: page 1 its sound, then its terms, then its reward hint (a box, a verb turns the page).",
+   "value": [
+    "...?",
+    "I AM SLOW. CARRY ME IN YOUR TEETH, OR THROW ME AT THEM. MY SHELL TAKES ONE BLOW FOR YOU.",
+    "BRING ME OUT, AND ON EVERY FLOOR AFTER YOU WILL WEAR A SHELL OF YOUR OWN."
+   ]
+  },
+  "BEAST_HELLO.goose": {
+   "speaker": "GOOSE",
+   "occasion": "The animal is let out of its coop: page 1 its sound, then its terms, then its reward hint (a box, a verb turns the page).",
+   "value": [
+    "HONK-HONK!",
+    "I RUN AHEAD AND TELL THEM ALL WHERE YOU ARE. WE'RE HERE TO KICK THEIR ASS!!!",
+    "GET ME UP THE STAIRS AND I'LL TEACH YOU TO SHOUT. LOUDER, AND MORE OFTEN."
+   ]
+  },
+  "BEAST_HELLO.crow": {
+   "speaker": "CROW",
+   "occasion": "The animal is let out of its coop: page 1 its sound, then its terms, then its reward hint (a box, a verb turns the page).",
+   "value": [
+    "CAW.",
+    "I DO NOT FOLLOW YOU. I FOLLOW THE ROAD OF BODIES.",
+    "KEEP ME FED ALL THE WAY TO THE STAIRS, AND I'LL BRING YOU SOMETHING SHINY."
+   ]
+  },
+  "BEAST_HELLO.rabbit": {
+   "speaker": "RABBIT",
+   "occasion": "The animal is let out of its coop: page 1 its sound, then its terms, then its reward hint (a box, a verb turns the page).",
+   "value": [
+    "THUMP-THUMP.",
+    "LET ME TIE YOUR LEGS. NO RUNNING: YOUR ROLL IS YOUR HOP, WHERE YOU POINT. HORNS, VOICE AND TEETH STILL WORK.",
+    "HOP UP THE STAIRS WITH ME LIKE THAT, AND EVERY ROLL AFTER WILL COME BACK TO YOU QUICKER. SHALL I TIE THEM?"
+   ]
+  },
+  "BEAST_HELLO.husky": {
+   "speaker": "HUSKY",
+   "occasion": "The animal is let out of its coop: page 1 its sound, then its terms, then its reward hint (a box, a verb turns the page).",
+   "value": [
+    "AWOO!",
+    "I SING WAF-WOOO, YOU ANSWER WITH YOUR BAAH, ON THE BEAT. FIRST JUST US, THEN RIGHT IN THE MIDDLE OF A FIGHT.",
+    "SING WITH ME AND COME UP THE STAIRS, AND YOUR THROAT WILL BE A SINGER'S: IT NEVER RESTS FOR LONG. SING?"
+   ]
+  },
+  "BEAST_HELLO.fish": {
+   "speaker": "FISH",
+   "occasion": "The animal is let out of its coop: page 1 its sound, then its terms, then its reward hint (a box, a verb turns the page).",
+   "value": [
+    "BLUB.",
+    "BLUB BLUB.",
+    "...BLUB?"
+   ]
+  },
+  "BEAST_ANSWER.yes": {
+   "speaker": "THE GOAT / THE ANIMAL",
+   "occasion": "After an animal has said its terms: yes (BAAAH) or no (bah); refused, it goes its way and says one of `refused`.",
+   "value": "BAAAH!"
+  },
+  "BEAST_ANSWER.yesSay": {
+   "speaker": "THE GOAT / THE ANIMAL",
+   "occasion": "After an animal has said its terms: yes (BAAAH) or no (bah); refused, it goes its way and says one of `refused`.",
+   "value": "(yes)"
+  },
+  "BEAST_ANSWER.no": {
+   "speaker": "THE GOAT / THE ANIMAL",
+   "occasion": "After an animal has said its terms: yes (BAAAH) or no (bah); refused, it goes its way and says one of `refused`.",
+   "value": "bah."
+  },
+  "BEAST_ANSWER.noSay": {
+   "speaker": "THE GOAT / THE ANIMAL",
+   "occasion": "After an animal has said its terms: yes (BAAAH) or no (bah); refused, it goes its way and says one of `refused`.",
+   "value": "(no)"
+  },
+  "BEAST_ANSWER.refused": {
+   "speaker": "THE GOAT / THE ANIMAL",
+   "occasion": "After an animal has said its terms: yes (BAAAH) or no (bah); refused, it goes its way and says one of `refused`.",
+   "value": [
+    "SUIT YOURSELF.",
+    "FINE. BYE.",
+    "YOUR LOSS, GOAT."
+   ]
+  },
+  "BEAST_CHAT.chicken.kill": {
+   "speaker": "CHICKEN",
+   "occasion": "On the road, over the animal: a man is put down near it.",
+   "value": [
+    "CLUCK! GOOD ONE, DEAR!",
+    "THAT WILL TEACH HIM MANNERS.",
+    "OH! RIGHT IN THE APRON!"
+   ]
+  },
+  "BEAST_CHAT.chicken.big": {
+   "speaker": "CHICKEN",
+   "occasion": "On the road, over the animal: a boss or an ogre goes down.",
+   "value": [
+    "THE BIG ONE! I NEARLY LAID AN EGG."
+   ]
+  },
+  "BEAST_CHAT.chicken.clear": {
+   "speaker": "CHICKEN",
+   "occasion": "On the road, over the animal: the room's last man falls.",
+   "value": [
+    "IS IT SAFE? IT IS SAFE.",
+    "ALL GONE. NOW, SIT UP STRAIGHT."
+   ]
+  },
+  "BEAST_CHAT.chicken.fight": {
+   "speaker": "CHICKEN",
+   "occasion": "On the road, over the animal: the cult has seen him.",
+   "value": [
+    "MEN! MIND YOUR HEAD, DEAR!",
+    "BAWK! THERE, BY THE WALL!"
+   ]
+  },
+  "BEAST_CHAT.chicken.hurt": {
+   "speaker": "CHICKEN",
+   "occasion": "On the road, over the animal: he lost a heart.",
+   "value": [
+    "CAREFUL! YOU ONLY HAVE ONE HIDE!",
+    "OH, YOUR POOR FLEECE!"
+   ]
+  },
+  "BEAST_CHAT.chicken.last": {
+   "speaker": "CHICKEN",
+   "occasion": "On the road, over the animal: his last heart.",
+   "value": [
+    "ONE HEART LEFT! EAT SOMETHING GREEN!"
+   ]
+  },
+  "BEAST_CHAT.chicken.soul": {
+   "speaker": "CHICKEN",
+   "occasion": "On the road, over the animal: he swallowed a soul.",
+   "value": [
+    "OOH. DOES IT TASTE OF ANYTHING?"
+   ]
+  },
+  "BEAST_CHAT.chicken.stairs": {
+   "speaker": "CHICKEN",
+   "occasion": "On the road, over the animal: the last room, the stairs.",
+   "value": [
+    "STAIRS! MIND THE STEPS, DEAR."
+   ]
+  },
+  "BEAST_CHAT.chicken.idle": {
+   "speaker": "CHICKEN",
+   "occasion": "On the road, over the animal: he stands about with nobody after him.",
+   "value": [
+    "YOU LOOK THIN. ARE YOU GRAZING?",
+    "I COULD SIT ON AN EGG RIGHT NOW."
+   ]
+  },
+  "BEAST_CHAT.chicken.ouch": {
+   "speaker": "CHICKEN",
+   "occasion": "On the road, over the animal: it is hurt and alive.",
+   "value": [
+    "MY FEATHERS!",
+    "BAWK! THE NERVE!"
+   ]
+  },
+  "BEAST_CHAT.chicken.thrown": {
+   "speaker": "CHICKEN",
+   "occasion": "On the road, over the animal: it is thrown (the hen: kicked).",
+   "value": [
+    "AT HIM, AT HIM!",
+    "WHEEE! BAWK!"
+   ]
+  },
+  "BEAST_CHAT.chicken.stun": {
+   "speaker": "CHICKEN",
+   "occasion": "On the road, over the animal: it is butted.",
+   "value": [
+    "WHAT WAS THAT FOR?!"
+   ]
+  },
+  "BEAST_CHAT.chicken.poison": {
+   "speaker": "CHICKEN",
+   "occasion": "On the road, over the animal: it is poisoned.",
+   "value": [
+    "I FEEL ALL GREEN, DEAR."
+   ]
+  },
+  "BEAST_CHAT.chicken.stray": {
+   "speaker": "CHICKEN",
+   "occasion": "On the road, over the animal: left behind, it calls.",
+   "value": [
+    "WAIT FOR ME, DEAR!",
+    "CLUCK! DON'T LEAVE ME HERE!"
+   ]
+  },
+  "BEAST_CHAT.chicken.left": {
+   "speaker": "CHICKEN",
+   "occasion": "On the road, over the animal: its last word on the farewell plate when the clamp walls it in.",
+   "value": "GO ON WITHOUT ME, DEAR. EAT PROPERLY."
+  },
+  "BEAST_CHAT.chicken.again": {
+   "speaker": "CHICKEN",
+   "occasion": "On the road, over the animal: first page of its terms when it has been up in heaven before.",
+   "value": "CLUCK! IT'S YOU! YOU CAME BACK FOR ME!"
+  },
+  "BEAST_CHAT.tortoise.kill": {
+   "speaker": "TORTOISE",
+   "occasion": "On the road, over the animal: a man is put down near it.",
+   "value": [
+    "...GOOD.",
+    "HE WAS IN A HURRY. NOW HE IS NOT.",
+    "SLOW AND STEADY."
+   ]
+  },
+  "BEAST_CHAT.tortoise.big": {
+   "speaker": "TORTOISE",
+   "occasion": "On the road, over the animal: a boss or an ogre goes down.",
+   "value": [
+    "THE BIGGER THEY ARE, THE LONGER THEY LIE THERE."
+   ]
+  },
+  "BEAST_CHAT.tortoise.clear": {
+   "speaker": "TORTOISE",
+   "occasion": "On the road, over the animal: the room's last man falls.",
+   "value": [
+    "QUIET AGAIN. I LIKE QUIET.",
+    "WAKE ME AT THE STAIRS."
+   ]
+  },
+  "BEAST_CHAT.tortoise.fight": {
+   "speaker": "TORTOISE",
+   "occasion": "On the road, over the animal: the cult has seen him.",
+   "value": [
+    "HERE THEY COME. SLOWLY, I HOPE.",
+    "I WILL BE IN MY SHELL."
+   ]
+  },
+  "BEAST_CHAT.tortoise.hurt": {
+   "speaker": "TORTOISE",
+   "occasion": "On the road, over the animal: he lost a heart.",
+   "value": [
+    "TUCK YOUR HEAD IN, GOAT.",
+    "YOU NEED A SHELL."
+   ]
+  },
+  "BEAST_CHAT.tortoise.last": {
+   "speaker": "TORTOISE",
+   "occasion": "On the road, over the animal: his last heart.",
+   "value": [
+    "ONE HEART. GRAZE, YOUNG ONE."
+   ]
+  },
+  "BEAST_CHAT.tortoise.soul": {
+   "speaker": "TORTOISE",
+   "occasion": "On the road, over the animal: he swallowed a soul.",
+   "value": [
+    "I HAVE SEEN A HUNDRED OF THOSE. NEVER ATE ONE."
+   ]
+  },
+  "BEAST_CHAT.tortoise.stairs": {
+   "speaker": "TORTOISE",
+   "occasion": "On the road, over the animal: the last room, the stairs.",
+   "value": [
+    "STAIRS. MY OLD ENEMY."
+   ]
+  },
+  "BEAST_CHAT.tortoise.idle": {
+   "speaker": "TORTOISE",
+   "occasion": "On the road, over the animal: he stands about with nobody after him.",
+   "value": [
+    "A FINE TIME FOR A NAP.",
+    "I REMEMBER WHEN ALL THIS WAS GRASS."
+   ]
+  },
+  "BEAST_CHAT.tortoise.ouch": {
+   "speaker": "TORTOISE",
+   "occasion": "On the road, over the animal: it is hurt and alive.",
+   "value": [
+    "...OW.",
+    "THAT WAS MY GOOD SIDE."
+   ]
+  },
+  "BEAST_CHAT.tortoise.carried": {
+   "speaker": "TORTOISE",
+   "occasion": "On the road, over the animal: it is carried.",
+   "value": [
+    "MIND THE TEETH.",
+    "AH. FIRST CLASS.",
+    "NOT SO TIGHT."
+   ]
+  },
+  "BEAST_CHAT.tortoise.thrown": {
+   "speaker": "TORTOISE",
+   "occasion": "On the road, over the animal: it is thrown (the hen: kicked).",
+   "value": [
+    "WHEEEEE.",
+    "I DID NOT AGREE TO THIS.",
+    "AGAIN, BUT GENTLER."
+   ]
+  },
+  "BEAST_CHAT.tortoise.stun": {
+   "speaker": "TORTOISE",
+   "occasion": "On the road, over the animal: it is butted.",
+   "value": [
+    "...RUDE."
+   ]
+  },
+  "BEAST_CHAT.tortoise.poison": {
+   "speaker": "TORTOISE",
+   "occasion": "On the road, over the animal: it is poisoned.",
+   "value": [
+    "I TASTE GREEN."
+   ]
+  },
+  "BEAST_CHAT.tortoise.stray": {
+   "speaker": "TORTOISE",
+   "occasion": "On the road, over the animal: left behind, it calls.",
+   "value": [
+    "BRING ME WITH YOU!",
+    "I AM STILL HERE. SLOWLY."
+   ]
+  },
+  "BEAST_CHAT.tortoise.left": {
+   "speaker": "TORTOISE",
+   "occasion": "On the road, over the animal: its last word on the farewell plate when the clamp walls it in.",
+   "value": "I WILL CATCH UP. ONE DAY."
+  },
+  "BEAST_CHAT.tortoise.again": {
+   "speaker": "TORTOISE",
+   "occasion": "On the road, over the animal: first page of its terms when it has been up in heaven before.",
+   "value": "...YOU AGAIN. GOOD. PICK ME UP, THEN."
+  },
+  "BEAST_CHAT.goose.kill": {
+   "speaker": "GOOSE",
+   "occasion": "On the road, over the animal: a man is put down near it.",
+   "value": [
+    "HONK! ANOTHER ONE!",
+    "YES! STOMP HIM!",
+    "THAT IS HOW WE DO IT!"
+   ]
+  },
+  "BEAST_CHAT.goose.big": {
+   "speaker": "GOOSE",
+   "occasion": "On the road, over the animal: a boss or an ogre goes down.",
+   "value": [
+    "HONK HONK HONK!!!"
+   ]
+  },
+  "BEAST_CHAT.goose.clear": {
+   "speaker": "GOOSE",
+   "occasion": "On the road, over the animal: the room's last man falls.",
+   "value": [
+    "WHO IS NEXT?!",
+    "MORE! I WANT MORE!"
+   ]
+  },
+  "BEAST_CHAT.goose.fight": {
+   "speaker": "GOOSE",
+   "occasion": "On the road, over the animal: the cult has seen him.",
+   "value": [
+    "THERE! GET HIM!",
+    "HEY, YOU! YES, YOU!"
+   ]
+  },
+  "BEAST_CHAT.goose.hurt": {
+   "speaker": "GOOSE",
+   "occasion": "On the road, over the animal: he lost a heart.",
+   "value": [
+    "HIT HIM BACK!",
+    "NOBODY TOUCHES MY GOAT!"
+   ]
+  },
+  "BEAST_CHAT.goose.last": {
+   "speaker": "GOOSE",
+   "occasion": "On the road, over the animal: his last heart.",
+   "value": [
+    "DON'T YOU DARE DIE ON ME!"
+   ]
+  },
+  "BEAST_CHAT.goose.soul": {
+   "speaker": "GOOSE",
+   "occasion": "On the road, over the animal: he swallowed a soul.",
+   "value": [
+    "WHAT IS THAT? CAN I BITE IT?"
+   ]
+  },
+  "BEAST_CHAT.goose.stairs": {
+   "speaker": "GOOSE",
+   "occasion": "On the road, over the animal: the last room, the stairs.",
+   "value": [
+    "UP! MORE OF THEM UPSTAIRS!"
+   ]
+  },
+  "BEAST_CHAT.goose.idle": {
+   "speaker": "GOOSE",
+   "occasion": "On the road, over the animal: he stands about with nobody after him.",
+   "value": [
+    "WHY ARE WE STOPPING?!",
+    "BORED! LET'S FIND SOMEONE!"
+   ]
+  },
+  "BEAST_CHAT.goose.ouch": {
+   "speaker": "GOOSE",
+   "occasion": "On the road, over the animal: it is hurt and alive.",
+   "value": [
+    "YOU'LL PAY FOR THAT!",
+    "HISSSS!"
+   ]
+  },
+  "BEAST_CHAT.goose.stun": {
+   "speaker": "GOOSE",
+   "occasion": "On the road, over the animal: it is butted.",
+   "value": [
+    "DID YOU JUST?! HISSSS."
+   ]
+  },
+  "BEAST_CHAT.goose.poison": {
+   "speaker": "GOOSE",
+   "occasion": "On the road, over the animal: it is poisoned.",
+   "value": [
+    "WHO POISONED ME? I'LL BITE HIM!"
+   ]
+  },
+  "BEAST_CHAT.goose.left": {
+   "speaker": "GOOSE",
+   "occasion": "On the road, over the animal: its last word on the farewell plate when the clamp walls it in.",
+   "value": "COWARD! COME BACK AND FIGHT!"
+  },
+  "BEAST_CHAT.goose.again": {
+   "speaker": "GOOSE",
+   "occasion": "On the road, over the animal: first page of its terms when it has been up in heaven before.",
+   "value": "HONK! IT'S YOU! ROUND TWO!"
+  },
+  "BEAST_CHAT.crow.kill": {
+   "speaker": "CROW",
+   "occasion": "On the road, over the animal: a man is put down near it.",
+   "value": [
+    "DINNER.",
+    "ANOTHER FOR THE ROAD.",
+    "HE WILL KEEP."
+   ]
+  },
+  "BEAST_CHAT.crow.big": {
+   "speaker": "CROW",
+   "occasion": "On the road, over the animal: a boss or an ogre goes down.",
+   "value": [
+    "NOW THAT IS A FEAST."
+   ]
+  },
+  "BEAST_CHAT.crow.clear": {
+   "speaker": "CROW",
+   "occasion": "On the road, over the animal: the room's last man falls.",
+   "value": [
+    "A FULL TABLE.",
+    "TAKE YOUR TIME. I WILL."
+   ]
+  },
+  "BEAST_CHAT.crow.fight": {
+   "speaker": "CROW",
+   "occasion": "On the road, over the animal: the cult has seen him.",
+   "value": [
+    "GO ON. MAKE MORE.",
+    "I WILL WATCH."
+   ]
+  },
+  "BEAST_CHAT.crow.hurt": {
+   "speaker": "CROW",
+   "occasion": "On the road, over the animal: he lost a heart.",
+   "value": [
+    "CAREFUL. YOU ARE NOT ON THE MENU.",
+    "DO NOT BECOME DINNER, GOAT."
+   ]
+  },
+  "BEAST_CHAT.crow.last": {
+   "speaker": "CROW",
+   "occasion": "On the road, over the animal: his last heart.",
+   "value": [
+    "I HAVE ALREADY PICKED A SPOT ON YOU."
+   ]
+  },
+  "BEAST_CHAT.crow.soul": {
+   "speaker": "CROW",
+   "occasion": "On the road, over the animal: he swallowed a soul.",
+   "value": [
+    "THE SHINY PART. THEY ALWAYS LEAVE THE SHINY PART."
+   ]
+  },
+  "BEAST_CHAT.crow.stairs": {
+   "speaker": "CROW",
+   "occasion": "On the road, over the animal: the last room, the stairs.",
+   "value": [
+    "UPSTAIRS. FRESH MEAT UPSTAIRS."
+   ]
+  },
+  "BEAST_CHAT.crow.idle": {
+   "speaker": "CROW",
+   "occasion": "On the road, over the animal: he stands about with nobody after him.",
+   "value": [
+    "NOTHING DEAD HERE. HOW DULL."
+   ]
+  },
+  "BEAST_CHAT.crow.ouch": {
+   "speaker": "CROW",
+   "occasion": "On the road, over the animal: it is hurt and alive.",
+   "value": [
+    "CAW! MY FEATHERS."
+   ]
+  },
+  "BEAST_CHAT.crow.stun": {
+   "speaker": "CROW",
+   "occasion": "On the road, over the animal: it is butted.",
+   "value": [
+    "CAW. NOTED."
+   ]
+  },
+  "BEAST_CHAT.crow.poison": {
+   "speaker": "CROW",
+   "occasion": "On the road, over the animal: it is poisoned.",
+   "value": [
+    "BAD MEAT. I KNOW THE TASTE."
+   ]
+  },
+  "BEAST_CHAT.crow.stray": {
+   "speaker": "CROW",
+   "occasion": "On the road, over the animal: left behind, it calls.",
+   "value": [
+    "I AM STILL EATING.",
+    "CAW. WAIT."
+   ]
+  },
+  "BEAST_CHAT.crow.left": {
+   "speaker": "CROW",
+   "occasion": "On the road, over the animal: its last word on the farewell plate when the clamp walls it in.",
+   "value": "NO MATTER. I WILL FOLLOW THE BODIES."
+  },
+  "BEAST_CHAT.crow.again": {
+   "speaker": "CROW",
+   "occasion": "On the road, over the animal: first page of its terms when it has been up in heaven before.",
+   "value": "CAW. YOU AGAIN. YOU LEAVE A GOOD TABLE."
+  },
+  "BEAST_CHAT.horse.kill": {
+   "speaker": "HORSE",
+   "occasion": "On the road, over the animal: a man is put down near it.",
+   "value": [
+    "NOT BAD. FOR A GOAT.",
+    "SLOW KICK. IT LANDED."
+   ]
+  },
+  "BEAST_CHAT.horse.big": {
+   "speaker": "HORSE",
+   "occasion": "On the road, over the animal: a boss or an ogre goes down.",
+   "value": [
+    "I COULD HAVE KICKED HIM FASTER."
+   ]
+  },
+  "BEAST_CHAT.horse.clear": {
+   "speaker": "HORSE",
+   "occasion": "On the road, over the animal: the room's last man falls.",
+   "value": [
+    "DONE? THEN RUN!"
+   ]
+  },
+  "BEAST_CHAT.horse.fight": {
+   "speaker": "HORSE",
+   "occasion": "On the road, over the animal: the cult has seen him.",
+   "value": [
+    "OUT OF MY WAY, CULT!"
+   ]
+  },
+  "BEAST_CHAT.horse.hurt": {
+   "speaker": "HORSE",
+   "occasion": "On the road, over the animal: he lost a heart.",
+   "value": [
+    "KEEP YOUR FEET, GOAT."
+   ]
+  },
+  "BEAST_CHAT.horse.last": {
+   "speaker": "HORSE",
+   "occasion": "On the road, over the animal: his last heart.",
+   "value": [
+    "DON'T DIE. I NEED SOMEONE TO BEAT."
+   ]
+  },
+  "BEAST_CHAT.horse.soul": {
+   "speaker": "HORSE",
+   "occasion": "On the road, over the animal: he swallowed a soul.",
+   "value": [
+    "GRAB YOUR SHINY. I AM AHEAD."
+   ]
+  },
+  "BEAST_CHAT.horse.stairs": {
+   "speaker": "HORSE",
+   "occasion": "On the road, over the animal: the last room, the stairs.",
+   "value": [
+    "THE STAIRS ARE MINE!"
+   ]
+  },
+  "BEAST_CHAT.horse.idle": {
+   "speaker": "HORSE",
+   "occasion": "On the road, over the animal: he stands about with nobody after him.",
+   "value": [
+    "STANDING STILL? I AM WINNING."
+   ]
+  },
+  "BEAST_CHAT.horse.ouch": {
+   "speaker": "HORSE",
+   "occasion": "On the road, over the animal: it is hurt and alive.",
+   "value": [
+    "NEIGH! MY MANE!",
+    "WATCH THE COAT!"
+   ]
+  },
+  "BEAST_CHAT.horse.stun": {
+   "speaker": "HORSE",
+   "occasion": "On the road, over the animal: it is butted.",
+   "value": [
+    "FOUL! FOUL!"
+   ]
+  },
+  "BEAST_CHAT.horse.poison": {
+   "speaker": "HORSE",
+   "occasion": "On the road, over the animal: it is poisoned.",
+   "value": [
+    "SOMETHING IS IN MY OATS."
+   ]
+  },
+  "BEAST_CHAT.horse.stray": {
+   "speaker": "HORSE",
+   "occasion": "On the road, over the animal: left behind, it calls.",
+   "value": [
+    "HEY! THE RACE IS THIS WAY!"
+   ]
+  },
+  "BEAST_CHAT.horse.left": {
+   "speaker": "HORSE",
+   "occasion": "On the road, over the animal: its last word on the farewell plate when the clamp walls it in.",
+   "value": "I WIN BY DEFAULT. HOLLOW."
+  },
+  "BEAST_CHAT.horse.again": {
+   "speaker": "HORSE",
+   "occasion": "On the road, over the animal: first page of its terms when it has been up in heaven before.",
+   "value": "NEIGH! YOU AGAIN? THIS TIME I WIN."
+  },
+  "BEAST_CHAT.pig.kill": {
+   "speaker": "PIG",
+   "occasion": "On the road, over the animal: a man is put down near it.",
+   "value": [
+    "SQUEAL! NICE ONE!",
+    "HE SMELLED OF BACON. RUDE."
+   ]
+  },
+  "BEAST_CHAT.pig.big": {
+   "speaker": "PIG",
+   "occasion": "On the road, over the animal: a boss or an ogre goes down.",
+   "value": [
+    "THAT ONE COULD FEED A VILLAGE."
+   ]
+  },
+  "BEAST_CHAT.pig.clear": {
+   "speaker": "PIG",
+   "occasion": "On the road, over the animal: the room's last man falls.",
+   "value": [
+    "SNACK BREAK?",
+    "ANY GRASS IN HERE?"
+   ]
+  },
+  "BEAST_CHAT.pig.fight": {
+   "speaker": "PIG",
+   "occasion": "On the road, over the animal: the cult has seen him.",
+   "value": [
+    "THEY HAVE APRONS! I HATE APRONS!",
+    "OINK! KNIVES!"
+   ]
+  },
+  "BEAST_CHAT.pig.hurt": {
+   "speaker": "PIG",
+   "occasion": "On the road, over the animal: he lost a heart.",
+   "value": [
+    "EAT SOMETHING. YOU LOOK PALE."
+   ]
+  },
+  "BEAST_CHAT.pig.last": {
+   "speaker": "PIG",
+   "occasion": "On the road, over the animal: his last heart.",
+   "value": [
+    "GRAZE! GRAZE! I WON'T EVEN WATCH."
+   ]
+  },
+  "BEAST_CHAT.pig.soul": {
+   "speaker": "PIG",
+   "occasion": "On the road, over the animal: he swallowed a soul.",
+   "value": [
+    "CAN YOU EAT THOSE? WHAT DO THEY TASTE OF?"
+   ]
+  },
+  "BEAST_CHAT.pig.stairs": {
+   "speaker": "PIG",
+   "occasion": "On the road, over the animal: the last room, the stairs.",
+   "value": [
+    "IS THERE FOOD UPSTAIRS?"
+   ]
+  },
+  "BEAST_CHAT.pig.idle": {
+   "speaker": "PIG",
+   "occasion": "On the road, over the animal: he stands about with nobody after him.",
+   "value": [
+    "MY TUMMY IS TALKING.",
+    "SMELL THAT? ...NO, THAT WAS ME."
+   ]
+  },
+  "BEAST_CHAT.pig.ouch": {
+   "speaker": "PIG",
+   "occasion": "On the road, over the animal: it is hurt and alive.",
+   "value": [
+    "SQUEEE!",
+    "NOT THE HAM!"
+   ]
+  },
+  "BEAST_CHAT.pig.stun": {
+   "speaker": "PIG",
+   "occasion": "On the road, over the animal: it is butted.",
+   "value": [
+    "WHY?! I HAVE DONE NOTHING!"
+   ]
+  },
+  "BEAST_CHAT.pig.poison": {
+   "speaker": "PIG",
+   "occasion": "On the road, over the animal: it is poisoned.",
+   "value": [
+    "THAT GRASS WAS OFF."
+   ]
+  },
+  "BEAST_CHAT.pig.stray": {
+   "speaker": "PIG",
+   "occasion": "On the road, over the animal: left behind, it calls.",
+   "value": [
+    "WAIT! I HAVE SHORT LEGS!",
+    "OINK! OVER HERE!"
+   ]
+  },
+  "BEAST_CHAT.pig.left": {
+   "speaker": "PIG",
+   "occasion": "On the road, over the animal: its last word on the farewell plate when the clamp walls it in.",
+   "value": "WAIT! I AM STILL HUNGRY!"
+  },
+  "BEAST_CHAT.pig.again": {
+   "speaker": "PIG",
+   "occasion": "On the road, over the animal: first page of its terms when it has been up in heaven before.",
+   "value": "OINK! YOU! THE ONE WITH THE GRASS!"
+  },
+  "BEAST_CHAT.rabbit.kill": {
+   "speaker": "RABBIT",
+   "occasion": "On the road, over the animal: a man is put down near it.",
+   "value": [
+    "THUMP-THUMP! HE IS DOWN!",
+    "OH. OH NO. OH GOOD."
+   ]
+  },
+  "BEAST_CHAT.rabbit.big": {
+   "speaker": "RABBIT",
+   "occasion": "On the road, over the animal: a boss or an ogre goes down.",
+   "value": [
+    "I CAN'T LOOK. DID WE WIN?"
+   ]
+  },
+  "BEAST_CHAT.rabbit.clear": {
+   "speaker": "RABBIT",
+   "occasion": "On the road, over the animal: the room's last man falls.",
+   "value": [
+    "ARE THEY GONE? ALL OF THEM?",
+    "HEART STILL GOING. FAST."
+   ]
+  },
+  "BEAST_CHAT.rabbit.fight": {
+   "speaker": "RABBIT",
+   "occasion": "On the road, over the animal: the cult has seen him.",
+   "value": [
+    "MEN MEN MEN MEN!",
+    "HOP! HOP AWAY!"
+   ]
+  },
+  "BEAST_CHAT.rabbit.hurt": {
+   "speaker": "RABBIT",
+   "occasion": "On the road, over the animal: he lost a heart.",
+   "value": [
+    "HOP FASTER!",
+    "OW OW OW, FOR YOU."
+   ]
+  },
+  "BEAST_CHAT.rabbit.last": {
+   "speaker": "RABBIT",
+   "occasion": "On the road, over the animal: his last heart.",
+   "value": [
+    "ONE HEART?! MINE IS GOING FOR BOTH OF US."
+   ]
+  },
+  "BEAST_CHAT.rabbit.soul": {
+   "speaker": "RABBIT",
+   "occasion": "On the road, over the animal: he swallowed a soul.",
+   "value": [
+    "WHAT IS IT? IS IT SAFE? IS IT A CARROT?"
+   ]
+  },
+  "BEAST_CHAT.rabbit.stairs": {
+   "speaker": "RABBIT",
+   "occasion": "On the road, over the animal: the last room, the stairs.",
+   "value": [
+    "UP! UP! UP!"
+   ]
+  },
+  "BEAST_CHAT.rabbit.idle": {
+   "speaker": "RABBIT",
+   "occasion": "On the road, over the animal: he stands about with nobody after him.",
+   "value": [
+    "DON'T STOP. STOPPING IS HOW THEY GET YOU."
+   ]
+  },
+  "BEAST_CHAT.rabbit.ouch": {
+   "speaker": "RABBIT",
+   "occasion": "On the road, over the animal: it is hurt and alive.",
+   "value": [
+    "EEP!",
+    "MY EARS!"
+   ]
+  },
+  "BEAST_CHAT.rabbit.stun": {
+   "speaker": "RABBIT",
+   "occasion": "On the road, over the animal: it is butted.",
+   "value": [
+    "WHY?! WHY ME?!"
+   ]
+  },
+  "BEAST_CHAT.rabbit.poison": {
+   "speaker": "RABBIT",
+   "occasion": "On the road, over the animal: it is poisoned.",
+   "value": [
+    "I KNEW IT. I KNEW SOMETHING WOULD."
+   ]
+  },
+  "BEAST_CHAT.rabbit.stray": {
+   "speaker": "RABBIT",
+   "occasion": "On the road, over the animal: left behind, it calls.",
+   "value": [
+    "DON'T LEAVE ME! THUMP!"
+   ]
+  },
+  "BEAST_CHAT.rabbit.left": {
+   "speaker": "RABBIT",
+   "occasion": "On the road, over the animal: its last word on the farewell plate when the clamp walls it in.",
+   "value": "DON'T LEAVE ME WITH THEM!"
+  },
+  "BEAST_CHAT.rabbit.again": {
+   "speaker": "RABBIT",
+   "occasion": "On the road, over the animal: first page of its terms when it has been up in heaven before.",
+   "value": "THUMP! YOU! YOU GOT ME OUT ONCE!"
+  },
+  "BEAST_CHAT.husky.kill": {
+   "speaker": "HUSKY",
+   "occasion": "On the road, over the animal: a man is put down near it.",
+   "value": [
+    "AWOO! WHAT A FINISH!",
+    "BRAVO! ENCORE!"
+   ]
+  },
+  "BEAST_CHAT.husky.big": {
+   "speaker": "HUSKY",
+   "occasion": "On the road, over the animal: a boss or an ogre goes down.",
+   "value": [
+    "A SHOWSTOPPER! AWOOOO!"
+   ]
+  },
+  "BEAST_CHAT.husky.clear": {
+   "speaker": "HUSKY",
+   "occasion": "On the road, over the animal: the room's last man falls.",
+   "value": [
+    "AND... SCENE.",
+    "HOLD FOR APPLAUSE."
+   ]
+  },
+  "BEAST_CHAT.husky.fight": {
+   "speaker": "HUSKY",
+   "occasion": "On the road, over the animal: the cult has seen him.",
+   "value": [
+    "AN AUDIENCE! AWOO!",
+    "FROM THE TOP!"
+   ]
+  },
+  "BEAST_CHAT.husky.hurt": {
+   "speaker": "HUSKY",
+   "occasion": "On the road, over the animal: he lost a heart.",
+   "value": [
+    "YOU MISSED A BEAT."
+   ]
+  },
+  "BEAST_CHAT.husky.last": {
+   "speaker": "HUSKY",
+   "occasion": "On the road, over the animal: his last heart.",
+   "value": [
+    "THIS IS THE SAD VERSE. NOT THE LAST ONE."
+   ]
+  },
+  "BEAST_CHAT.husky.soul": {
+   "speaker": "HUSKY",
+   "occasion": "On the road, over the animal: he swallowed a soul.",
+   "value": [
+    "WHAT A HIGH NOTE."
+   ]
+  },
+  "BEAST_CHAT.husky.stairs": {
+   "speaker": "HUSKY",
+   "occasion": "On the road, over the animal: the last room, the stairs.",
+   "value": [
+    "TAKE IT UP AN OCTAVE!"
+   ]
+  },
+  "BEAST_CHAT.husky.idle": {
+   "speaker": "HUSKY",
+   "occasion": "On the road, over the animal: he stands about with nobody after him.",
+   "value": [
+    "WAF... WAF... WARMING UP."
+   ]
+  },
+  "BEAST_CHAT.husky.ouch": {
+   "speaker": "HUSKY",
+   "occasion": "On the road, over the animal: it is hurt and alive.",
+   "value": [
+    "YIPE!",
+    "NOT THE VOICE!"
+   ]
+  },
+  "BEAST_CHAT.husky.stun": {
+   "speaker": "HUSKY",
+   "occasion": "On the road, over the animal: it is butted.",
+   "value": [
+    "YOU STEPPED ON MY SOLO."
+   ]
+  },
+  "BEAST_CHAT.husky.poison": {
+   "speaker": "HUSKY",
+   "occasion": "On the road, over the animal: it is poisoned.",
+   "value": [
+    "MY THROAT! MY INSTRUMENT!"
+   ]
+  },
+  "BEAST_CHAT.husky.stray": {
+   "speaker": "HUSKY",
+   "occasion": "On the road, over the animal: left behind, it calls.",
+   "value": [
+    "AWOO? THE STAGE IS THIS WAY!"
+   ]
+  },
+  "BEAST_CHAT.husky.left": {
+   "speaker": "HUSKY",
+   "occasion": "On the road, over the animal: its last word on the farewell plate when the clamp walls it in.",
+   "value": "A SOLO, THEN."
+  },
+  "BEAST_CHAT.husky.again": {
+   "speaker": "HUSKY",
+   "occasion": "On the road, over the animal: first page of its terms when it has been up in heaven before.",
+   "value": "AWOO! MY DUET PARTNER! FROM THE TOP!"
+  },
+  "BEAST_CHAT.fish.kill": {
+   "speaker": "FISH",
+   "occasion": "On the road, over the animal: a man is put down near it.",
+   "value": [
+    "BLUB!",
+    "BLUB BLUB!"
+   ]
+  },
+  "BEAST_CHAT.fish.big": {
+   "speaker": "FISH",
+   "occasion": "On the road, over the animal: a boss or an ogre goes down.",
+   "value": [
+    "BLUB BLUB BLUB!!!"
+   ]
+  },
+  "BEAST_CHAT.fish.fight": {
+   "speaker": "FISH",
+   "occasion": "On the road, over the animal: the cult has seen him.",
+   "value": [
+    "BLUB?!"
+   ]
+  },
+  "BEAST_CHAT.fish.hurt": {
+   "speaker": "FISH",
+   "occasion": "On the road, over the animal: he lost a heart.",
+   "value": [
+    "blub..."
+   ]
+  },
+  "BEAST_CHAT.fish.last": {
+   "speaker": "FISH",
+   "occasion": "On the road, over the animal: his last heart.",
+   "value": [
+    "...blub."
+   ]
+  },
+  "BEAST_CHAT.fish.soul": {
+   "speaker": "FISH",
+   "occasion": "On the road, over the animal: he swallowed a soul.",
+   "value": [
+    "BLUUUB."
+   ]
+  },
+  "BEAST_CHAT.fish.stairs": {
+   "speaker": "FISH",
+   "occasion": "On the road, over the animal: the last room, the stairs.",
+   "value": [
+    "BLUB! BLUB!"
+   ]
+  },
+  "BEAST_CHAT.fish.idle": {
+   "speaker": "FISH",
+   "occasion": "On the road, over the animal: he stands about with nobody after him.",
+   "value": [
+    "blub. blub."
+   ]
+  },
+  "BEAST_CHAT.fish.carried": {
+   "speaker": "FISH",
+   "occasion": "On the road, over the animal: it is carried.",
+   "value": [
+    "BLUB?",
+    "blub!"
+   ]
+  },
+  "BEAST_CHAT.fish.thrown": {
+   "speaker": "FISH",
+   "occasion": "On the road, over the animal: it is thrown (the hen: kicked).",
+   "value": [
+    "BLUUUUB!"
+   ]
+  },
+  "BEAST_CHAT.fish.stray": {
+   "speaker": "FISH",
+   "occasion": "On the road, over the animal: left behind, it calls.",
+   "value": [
+    "BLUB! BLUB! BLUB!"
+   ]
+  },
+  "BEAST_CHAT.fish.left": {
+   "speaker": "FISH",
+   "occasion": "On the road, over the animal: its last word on the farewell plate when the clamp walls it in.",
+   "value": "...blub?"
+  },
+  "BEAST_CHAT.fish.again": {
+   "speaker": "FISH",
+   "occasion": "On the road, over the animal: first page of its terms when it has been up in heaven before.",
+   "value": "BLUB! (IT KNOWS YOU.)"
+  },
+  "HEAVEN_BANTER.goose|tortoise.0": {
+   "speaker": "GOOSE + TORTOISE",
+   "occasion": "Up in heaven, two free animals talk to each other while the goat is near (a pair of lines, first speaker first).",
+   "value": [
+    "HONK! RACE YOU TO THE EDGE!",
+    "...YOU GO AHEAD. I WILL BE THERE BY SPRING."
+   ]
+  },
+  "HEAVEN_BANTER.goose|tortoise.1": {
+   "speaker": "GOOSE + TORTOISE",
+   "occasion": "Up in heaven, two free animals talk to each other while the goat is near (a pair of lines, first speaker first).",
+   "value": [
+    "WHY ARE YOU SO SLOW?!",
+    "WHY ARE YOU SO LOUD?"
+   ]
+  },
+  "HEAVEN_BANTER.goose|tortoise.2": {
+   "speaker": "GOOSE + TORTOISE",
+   "occasion": "Up in heaven, two free animals talk to each other while the goat is near (a pair of lines, first speaker first).",
+   "value": [
+    "I LED HIM THROUGH A WHOLE FLOOR! HONK!",
+    "HE CARRIED ME THROUGH ONE. IN HIS TEETH. VERY COMFORTABLE."
+   ]
+  },
+  "HEAVEN_BANTER.goose|tortoise.3": {
+   "speaker": "GOOSE + TORTOISE",
+   "occasion": "Up in heaven, two free animals talk to each other while the goat is near (a pair of lines, first speaker first).",
+   "value": [
+    "HONK. HONK HONK. HONK?",
+    "...I AGREE."
+   ]
+  },
+  "HEAVEN_BANTER.horse|tortoise.0": {
+   "speaker": "HORSE + TORTOISE",
+   "occasion": "Up in heaven, two free animals talk to each other while the goat is near (a pair of lines, first speaker first).",
+   "value": [
+    "WANT A RIDE, OLD SHELL?",
+    "I HAVE SEEN WHERE YOU PUT YOUR FEET. NO."
+   ]
+  },
+  "HEAVEN_BANTER.horse|tortoise.1": {
+   "speaker": "HORSE + TORTOISE",
+   "occasion": "Up in heaven, two free animals talk to each other while the goat is near (a pair of lines, first speaker first).",
+   "value": [
+    "YOU WOULD NEVER WIN A RACE.",
+    "I HAVE NEVER LOST ONE. I NEVER ENTER."
+   ]
+  },
+  "HEAVEN_BANTER.horse|tortoise.2": {
+   "speaker": "HORSE + TORTOISE",
+   "occasion": "Up in heaven, two free animals talk to each other while the goat is near (a pair of lines, first speaker first).",
+   "value": [
+    "THE GOAT RAN HIS LEGS OFF FOR ME.",
+    "HE WALKED. I WAS IN HIS MOUTH. IT WAS SLOWER."
+   ]
+  },
+  "HEAVEN_BANTER.goose|horse.0": {
+   "speaker": "GOOSE + HORSE",
+   "occasion": "Up in heaven, two free animals talk to each other while the goat is near (a pair of lines, first speaker first).",
+   "value": [
+    "HONK! I COULD BEAT YOU UP THERE!",
+    "YOU HAVE WINGS. THAT IS CHEATING."
+   ]
+  },
+  "HEAVEN_BANTER.goose|horse.1": {
+   "speaker": "GOOSE + HORSE",
+   "occasion": "Up in heaven, two free animals talk to each other while the goat is near (a pair of lines, first speaker first).",
+   "value": [
+    "THE CULT WAS SCARED OF ME!",
+    "THE CULT WAS STEPPED ON BY ME."
+   ]
+  },
+  "HEAVEN_BANTER.goose|horse.2": {
+   "speaker": "GOOSE + HORSE",
+   "occasion": "Up in heaven, two free animals talk to each other while the goat is near (a pair of lines, first speaker first).",
+   "value": [
+    "HONK HONK HONK!",
+    "YES. VERY LOUD. WELL DONE."
+   ]
+  },
+  "STAND_STORY.goose": {
+   "speaker": "THE GOD",
+   "occasion": "A broken animal stand, on the pointer: what broke it.",
+   "value": "BROKEN. THE GOOSE HONKED IN THE PRIEST'S FACE. THEY SMASHED ITS STAND FOR THAT. MEND IT, AND THE GOOSE IS DOWN THERE IN YOUR RUNS."
+  },
+  "STAND_STORY.horse": {
+   "speaker": "THE GOD",
+   "occasion": "A broken animal stand, on the pointer: what broke it.",
+   "value": "BROKEN. THEY TOOK THE HORSE TO TURN THEIR WHEEL AND KICKED ITS STAND TO PIECES. MEND IT, AND THE HORSE RACES YOU DOWN THERE."
+  },
+  "BARKS.spot.bearer": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "first sight of the goat",
+   "value": [
+    "THE GOAT!",
+    "IT IS AWAKE",
+    "THERE! THERE!",
+    "GET THE ROPE",
+    "IT IS LOOSE",
+    "BLESSED MEAT"
+   ]
+  },
+  "BARKS.spot.hunter": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "first sight of the goat",
+   "value": [
+    "CLEAR SHOT",
+    "HOLD STILL",
+    "I SEE IT",
+    "IN THE OPEN"
+   ]
+  },
+  "BARKS.spot.seer": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "first sight of the goat",
+   "value": [
+    "THE LAMB RUNS",
+    "I MARK YOU",
+    "THE GROUND WILL EAT IT",
+    "STAND THERE"
+   ]
+  },
+  "BARKS.spot.butcher": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "first sight of the goat",
+   "value": [
+    "MINE",
+    "COME TO THE BLOCK",
+    "LITTLE GOAT",
+    "NO FURTHER"
+   ]
+  },
+  "BARKS.coward.beg": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "THE COWARD (js/coward.js, `TUNING.coward`): `beg` in his corner with the goat near, `flinch` when he is right on him, `thanks` as the goat walks on and leaves him be, `hit` when the goat throws or butts him after all; the one he spared, met again with a tuft laid before him: `gift`, `ate` once it is grazed, `betray` if he is hit anyway.",
+   "value": [
+    "PLEASE, NOT ME",
+    "I NEVER WANTED THIS",
+    "DON'T HIT ME",
+    "I HAVE A MOTHER",
+    "THEY MADE ME WEAR IT",
+    "I WON'T TELL",
+    "MERCY, LITTLE GOAT",
+    "I DIDN'T EVEN SWING"
+   ]
+  },
+  "BARKS.coward.flinch": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "THE COWARD (js/coward.js, `TUNING.coward`): `beg` in his corner with the goat near, `flinch` when he is right on him, `thanks` as the goat walks on and leaves him be, `hit` when the goat throws or butts him after all; the one he spared, met again with a tuft laid before him: `gift`, `ate` once it is grazed, `betray` if he is hit anyway.",
+   "value": [
+    "AAH!",
+    "NOT THE HORNS",
+    "PLEASE PLEASE",
+    "I'M NOBODY"
+   ]
+  },
+  "BARKS.coward.thanks": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "THE COWARD (js/coward.js, `TUNING.coward`): `beg` in his corner with the goat near, `flinch` when he is right on him, `thanks` as the goat walks on and leaves him be, `hit` when the goat throws or butts him after all; the one he spared, met again with a tuft laid before him: `gift`, `ate` once it is grazed, `betray` if he is hit anyway.",
+   "value": [
+    "THANK YOU... THANK YOU",
+    "I WON'T FORGET THIS",
+    "GO, GO, I SAW NOTHING"
+   ]
+  },
+  "BARKS.coward.hit": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "THE COWARD (js/coward.js, `TUNING.coward`): `beg` in his corner with the goat near, `flinch` when he is right on him, `thanks` as the goat walks on and leaves him be, `hit` when the goat throws or butts him after all; the one he spared, met again with a tuft laid before him: `gift`, `ate` once it is grazed, `betray` if he is hit anyway.",
+   "value": [
+    "WHY?!",
+    "I SAID PLEASE",
+    "I KNEW IT"
+   ]
+  },
+  "BARKS.coward.gift": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "THE COWARD (js/coward.js, `TUNING.coward`): `beg` in his corner with the goat near, `flinch` when he is right on him, `thanks` as the goat walks on and leaves him be, `hit` when the goat throws or butts him after all; the one he spared, met again with a tuft laid before him: `gift`, `ate` once it is grazed, `betray` if he is hit anyway.",
+   "value": [
+    "YOU SPARED ME. EAT.",
+    "FOR YOU, GOAT. I PICKED IT",
+    "I KEPT THIS FOR YOU",
+    "IT'S GOOD GRASS, I CHECKED"
+   ]
+  },
+  "BARKS.coward.ate": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "THE COWARD (js/coward.js, `TUNING.coward`): `beg` in his corner with the goat near, `flinch` when he is right on him, `thanks` as the goat walks on and leaves him be, `hit` when the goat throws or butts him after all; the one he spared, met again with a tuft laid before him: `gift`, `ate` once it is grazed, `betray` if he is hit anyway.",
+   "value": [
+    "GO, BEFORE THEY SEE",
+    "NOW WE'RE EVEN",
+    "RUN, GOAT. RUN FAR"
+   ]
+  },
+  "BARKS.coward.betray": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "THE COWARD (js/coward.js, `TUNING.coward`): `beg` in his corner with the goat near, `flinch` when he is right on him, `thanks` as the goat walks on and leaves him be, `hit` when the goat throws or butts him after all; the one he spared, met again with a tuft laid before him: `gift`, `ate` once it is grazed, `betray` if he is hit anyway.",
+   "value": [
+    "I BROUGHT YOU GRASS!",
+    "AFTER ALL THAT?",
+    "THEY WERE RIGHT ABOUT YOU"
+   ]
+  },
+  "BARKS.crowd": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "the shaman and the mage standing side by side, one elbowing the other (`TUNING.links`, js/shaman.js `crowd`)",
+   "value": [
+    "MOVE OVER",
+    "YOU ARE IN MY LIGHT",
+    "MIND MY STAFF",
+    "ELBOWS!",
+    "GIVE ME ROOM"
+   ]
+  },
+  "BARKS.fall": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "a clubman tired of standing at a drop tries it anyway (js/gapcross.js)",
+   "value": [
+    "I CAN MAKE IT",
+    "HOLD MY CLUB",
+    "FOR THE ALTAR",
+    "IT IS NOT THAT WIDE"
+   ]
+  },
+  "BARKS.search": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "something was heard, or a scream pulled him",
+   "value": [
+    "WHO OPENED THE PEN",
+    "SOMETHING MOVED",
+    "HOOVES",
+    "DID YOU HEAR IT",
+    "OVER THERE",
+    "SPREAD OUT",
+    "THAT WAY"
+   ]
+  },
+  "BARKS.near": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "the goat is close and he has not seen it yet",
+   "value": [
+    "SOMETHING BREATHES",
+    "SMELL THAT?",
+    "CLOSE NOW",
+    "QUIET"
+   ]
+  },
+  "BARKS.panic": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "a man goes down in front of him",
+   "value": [
+    "IT KILLED HIM",
+    "THE PRIEST LIED",
+    "RUN",
+    "MERCY"
+   ]
+  },
+  "BARKS.friendlyFire.hunter": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "the one who is actually responsible, said by him and nobody else: a Hunter whose shot found a man of his own, or a Seer whose fire spread to one. Guaranteed rather than left to `panic`'s own roll, because the man who did it having nothing to say about it read as the game not noticing.",
+   "value": [
+    "NOT ME",
+    "WRONG MARK",
+    "HOLD YOUR LINE"
+   ]
+  },
+  "BARKS.friendlyFire.seer": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "the one who is actually responsible, said by him and nobody else: a Hunter whose shot found a man of his own, or a Seer whose fire spread to one. Guaranteed rather than left to `panic`'s own roll, because the man who did it having nothing to say about it read as the game not noticing.",
+   "value": [
+    "WHO DID IT?",
+    "NOT MY FLAME",
+    "WATCH THE GROUND"
+   ]
+  },
+  "BARKS.attack": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "committing to a swing",
+   "value": [
+    "HOLD IT DOWN",
+    "FOR THE ALTAR",
+    "BLEED",
+    "STAY STILL"
+   ]
+  },
+  "BARKS.fire": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "walking into flame is for the goat, not for him",
+   "value": [
+    "FIRE!",
+    "GO ROUND",
+    "IT BURNS",
+    "THE HAY!"
+   ]
+  },
+  "BARKS.intro.ewe": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "the two who come for her in the opening scene",
+   "value": "THE EWE FIRST"
+  },
+  "BARKS.intro.take": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "the two who come for her in the opening scene",
+   "value": "COME, LITTLE ONE"
+  },
+  "BARKS.intro.turn": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "the two who come for her in the opening scene",
+   "value": "YOUR TURN COMES"
+  },
+  "BARKS.bless.hold": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "The mage at the first gate (`TUNING.bless`): to the man he leaves there, and that man's answer.",
+   "value": "KEEP THE GOAT HERE."
+  },
+  "BARKS.bless.give": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "The mage at the first gate (`TUNING.bless`): to the man he leaves there, and that man's answer.",
+   "value": "TAKE MY STRENGTH."
+  },
+  "BARKS.bless.keep": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "The mage at the first gate (`TUNING.bless`): to the man he leaves there, and that man's answer.",
+   "value": "COME, GOAT."
+  },
+  "BARKS.trap": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "the Mill, a lit brazier, a rune about to go off: everything else in the room that kills",
+   "value": [
+    "THE WHEEL!",
+    "MIND THE ARMS",
+    "NOT THAT WAY",
+    "GO ROUND IT",
+    "STEP BACK"
+   ]
+  },
+  "BARKS.block": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "a shieldman whose board just took a blow (`Enemy.shieldTakes`)",
+   "value": [
+    "HA!",
+    "NOT THROUGH THIS",
+    "KNOCK KNOCK",
+    "TRY AGAIN, GOAT",
+    "GOOD BONE"
+   ]
+  },
+  "BARKS.spiked": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "a shieldman whose spikes just took the goat's horns",
+   "value": [
+    "HA! POINTY!",
+    "MIND THE HORNS",
+    "THAT ONE WAS MY UNCLE",
+    "BIG BONED!",
+    "TONIGHT WE DINE ON GOAT"
+   ]
+  },
+  "BARKS.bash": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "the shieldman: going for the leap, bowling one of his own, hitting stone, butted from behind, his skulls gone",
+   "value": [
+    "HUP!",
+    "BELLY FIRST!",
+    "HERE COMES PAPA",
+    "SQUASH!"
+   ]
+  },
+  "BARKS.sorry": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "",
+   "value": [
+    "SORRY, BROTHER",
+    "MY BAD",
+    "YOU WERE IN THE WAY",
+    "NOT ME"
+   ]
+  },
+  "BARKS.bonk": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "",
+   "value": [
+    "OW",
+    "WHO PUT THAT THERE",
+    "I MEANT THAT",
+    "MY HEAD"
+   ]
+  },
+  "BARKS.back": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "",
+   "value": [
+    "NOT FAIR!",
+    "NOT FROM THERE!",
+    "MY BACK!",
+    "COWARD!"
+   ]
+  },
+  "BARKS.shattered": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "",
+   "value": [
+    "MY SKULLS!",
+    "THAT WAS GRANDPA",
+    "I HAD THOSE YEARS"
+   ]
+  },
+  "BARKS.shove": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "the butcher or a man with a soul in him, butted once too often, shoving the goat off (`Enemy.shoveBack`)",
+   "value": [
+    "GET OFF",
+    "ENOUGH!",
+    "OFF ME, BEAST",
+    "BACK!",
+    "NOT AGAIN"
+   ]
+  },
+  "BARKS.hound": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "a hound has the goat and the men know what that is worth",
+   "value": [
+    "THE HOUNDS HAVE IT",
+    "LET THEM WORK",
+    "GOOD DOG",
+    "HOLD IT, DOG"
+   ]
+  },
+  "BARKS.wraith": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "something they buried has just become solid an arm's length away",
+   "value": [
+    "IT IS UP",
+    "DO NOT LOOK AT IT",
+    "THE DEAD WALK",
+    "COLD! COLD!",
+    "WE BURIED THAT"
+   ]
+  },
+  "BARKS.lift": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "the thrower (`TUNING.thrower`): lifting something, throwing it, the goat over his head, a load dropped on himself",
+   "value": [
+    "HEAVE!",
+    "UP YOU GO",
+    "CATCH!",
+    "FETCH, GOAT",
+    "HOLD STILL, BROTHER"
+   ]
+  },
+  "BARKS.toss": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "",
+   "value": [
+    "FLY, LITTLE GOAT",
+    "OVER YOU GO",
+    "MIND THE HOLE",
+    "WHEEE",
+    "BACK TO THE PEN"
+   ]
+  },
+  "BARKS.drop": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "",
+   "value": [
+    "MY BACK",
+    "TOO HEAVY",
+    "OOF",
+    "WHO PUSHED"
+   ]
+  },
+  "BARKS.spirit": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "the shaman (`TUNING.shaman`): the spirit going into his men, and the call on the goat",
+   "value": [
+    "RISE, BROTHERS",
+    "THE STAG RUNS IN YOU",
+    "HORNS OF THE OLD ONES",
+    "FEEL IT"
+   ]
+  },
+  "BARKS.call": {
+   "speaker": "THE CULT (per kind where nested)",
+   "occasion": "",
+   "value": [
+    "COME, LITTLE GOAT",
+    "TO ME",
+    "YOUR LEGS ARE MINE",
+    "COME HOME"
+   ]
+  },
+  "BOSS_HINTS.bearer.name": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's name of that kind.",
+   "value": "THE CLUBMAN"
+  },
+  "BOSS_HINTS.bearer.hint": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's one line the fight turns on, shown a few seconds once a floor per man.",
+   "value": "READ THE SWING · PUT HIM INTO THE WALL"
+  },
+  "BOSS_HINTS.champion.name": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's name of that kind.",
+   "value": "THE BUTCHER"
+  },
+  "BOSS_HINTS.champion.hint": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's one line the fight turns on, shown a few seconds once a floor per man.",
+   "value": "THE HOOK: TURN OR ROLL · TOO BIG TO LIFT"
+  },
+  "BOSS_HINTS.seer.name": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's name of that kind.",
+   "value": "THE MAGE"
+  },
+  "BOSS_HINTS.seer.hint": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's one line the fight turns on, shown a few seconds once a floor per man.",
+   "value": "STEP OFF THE RUNE · HIT, HE BLINKS AWAY"
+  },
+  "BOSS_HINTS.butcher.name": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's name of that kind.",
+   "value": "THE OGRE"
+  },
+  "BOSS_HINTS.butcher.hint": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's one line the fight turns on, shown a few seconds once a floor per man.",
+   "value": "THE HORNS DO NOTHING · BLADES, FIRE, BODIES"
+  },
+  "BOSS_HINTS.hunter.name": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's name of that kind.",
+   "value": "THE RIFLEMAN"
+  },
+  "BOSS_HINTS.hunter.hint": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's one line the fight turns on, shown a few seconds once a floor per man.",
+   "value": "BREAK HIS LINE · CLOSE THE DISTANCE"
+  },
+  "BOSS_HINTS.dog.name": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's name of that kind.",
+   "value": "THE HOUND"
+  },
+  "BOSS_HINTS.dog.hint": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's one line the fight turns on, shown a few seconds once a floor per man.",
+   "value": "MEET THE DART WITH THE HORNS"
+  },
+  "BOSS_HINTS.wraith.name": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's name of that kind.",
+   "value": "THE WRAITH"
+  },
+  "BOSS_HINTS.wraith.hint": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's one line the fight turns on, shown a few seconds once a floor per man.",
+   "value": "IT COMES FROM BEHIND · STRIKE IT SOLID"
+  },
+  "BOSS_HINTS.shield.name": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's name of that kind.",
+   "value": "THE SHIELDMAN"
+  },
+  "BOSS_HINTS.shield.hint": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's one line the fight turns on, shown a few seconds once a floor per man.",
+   "value": "THE BOARD TURNS HORNS · GO ROUND IT"
+  },
+  "BOSS_HINTS.thrower.name": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's name of that kind.",
+   "value": "BANE"
+  },
+  "BOSS_HINTS.thrower.hint": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's one line the fight turns on, shown a few seconds once a floor per man.",
+   "value": "HIT HIM WHILE HE CATCHES HIS BREATH · KEEP OUT OF THE RING"
+  },
+  "BOSS_HINTS.shaman.name": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's name of that kind.",
+   "value": "THE SHAMAN"
+  },
+  "BOSS_HINTS.shaman.hint": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's one line the fight turns on, shown a few seconds once a floor per man.",
+   "value": "HIS MEN CARRY HIS SPIRIT · GET TO HIM"
+  },
+  "BOSS_HINTS.ratogre.name": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's name of that kind.",
+   "value": "THE RAT OGRE"
+  },
+  "BOSS_HINTS.ratogre.hint": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's one line the fight turns on, shown a few seconds once a floor per man.",
+   "value": "HURT ONLY DOWN: A CRATE, A BLADE, THE WHEEL"
+  },
+  "BOSS_HINTS.warden.name": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's name of that kind.",
+   "value": "THE WARDEN"
+  },
+  "BOSS_HINTS.warden.hint": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's one line the fight turns on, shown a few seconds once a floor per man.",
+   "value": "THE BOARD TURNS HORNS · HIS BACK IS OPEN"
+  },
+  "BOSS_HINTS.flayed.name": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's name of that kind.",
+   "value": "THE FLAYED"
+  },
+  "BOSS_HINTS.flayed.hint": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's one line the fight turns on, shown a few seconds once a floor per man.",
+   "value": "THE HORNS DO NOTHING · BLADES, FIRE, BODIES"
+  },
+  "BOSS_HINTS.keeper.hint": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's one line the fight turns on, shown a few seconds once a floor per man.",
+   "value": "HIS SWING LIGHTS WITCHFIRE · HE WALKS INTO IT"
+  },
+  "BOSS_HINTS.sawbot.name": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's name of that kind.",
+   "value": "THE SAWBOT"
+  },
+  "BOSS_HINTS.sawbot.hint": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's one line the fight turns on, shown a few seconds once a floor per man.",
+   "value": "FIRE HEATS IT RED · POISON, THEN FIRE: IT BLOWS"
+  },
+  "BOSS_HINTS.sweeper.name": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's name of that kind.",
+   "value": "THE SWEEPER"
+  },
+  "BOSS_HINTS.sweeper.hint": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's one line the fight turns on, shown a few seconds once a floor per man.",
+   "value": "THE SAWS ARE IN FRONT · STEP ASIDE, BUTT IT INTO A WALL"
+  },
+  "BOSS_HINTS.cartridge.name": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's name of that kind.",
+   "value": "THE CARTRIDGE"
+  },
+  "BOSS_HINTS.cartridge.hint": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's one line the fight turns on, shown a few seconds once a floor per man.",
+   "value": "ITS BOLTS SEIZE WHATEVER THEY MEET · PUT ITS OWN IRON IN THE LINE · BUTT IT INTO THEM"
+  },
+  "BOSS_HINTS.shieldgen.name": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's name of that kind.",
+   "value": "THE SHIELD GENERATOR"
+  },
+  "BOSS_HINTS.shieldgen.hint": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's one line the fight turns on, shown a few seconds once a floor per man.",
+   "value": "IT HOLDS THE DOME OVER THE MACHINES · BREAK IT FIRST"
+  },
+  "BOSS_HINTS.arm.name": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's name of that kind.",
+   "value": "THE ARM"
+  },
+  "BOSS_HINTS.arm.hint": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's one line the fight turns on, shown a few seconds once a floor per man.",
+   "value": "INSIDE THE RING IT HAS YOU · ROLL OUT · BUTT IT WHILE IT CHARGES"
+  },
+  "BOSS_HINTS.welder.name": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's name of that kind.",
+   "value": "THE WELDER"
+  },
+  "BOSS_HINTS.welder.hint": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's one line the fight turns on, shown a few seconds once a floor per man.",
+   "value": "IT DRIVES ONE LINE · STEP OFF IT, COME AT ITS SIDE"
+  },
+  "BOSS_HINTS.automaton.name": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's name of that kind.",
+   "value": "THE AUTOMATON"
+  },
+  "BOSS_HINTS.automaton.hint": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's one line the fight turns on, shown a few seconds once a floor per man.",
+   "value": "TWO LEGS OUT, OR A BOMB · THEN THE MEAT"
+  },
+  "BOSS_HINTS.tags.soul": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's one line the fight turns on, shown a few seconds once a floor per man.",
+   "value": ""
+  },
+  "BOSS_HINTS.tags.keeper": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's one line the fight turns on, shown a few seconds once a floor per man.",
+   "value": "KEEPER OF THE GATE"
+  },
+  "BOSS_HINTS.tags.champion": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's one line the fight turns on, shown a few seconds once a floor per man.",
+   "value": "CHAMPION"
+  },
+  "BOSS_HINTS.tags.down": {
+   "speaker": "HUD",
+   "occasion": "The boss bar's one line the fight turns on, shown a few seconds once a floor per man.",
+   "value": "DOWN"
+  },
+  "KILLED_BY.hunter": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "RIFLEMAN"
+  },
+  "KILLED_BY.dog": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "HOUND"
+  },
+  "KILLED_BY.seer": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "MAGE"
+  },
+  "KILLED_BY.butcher": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "OGRE"
+  },
+  "KILLED_BY.wraith": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "WRAITH"
+  },
+  "KILLED_BY.ratogre": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "RAT OGRE"
+  },
+  "KILLED_BY.fire": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "FIRE"
+  },
+  "KILLED_BY.witchfire": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "WITCHFIRE"
+  },
+  "KILLED_BY.spike": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "THE GRATING"
+  },
+  "KILLED_BY.bomb": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "A BOMB"
+  },
+  "KILLED_BY.mill": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "THE WHEEL"
+  },
+  "KILLED_BY.thrower": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "BANE"
+  },
+  "KILLED_BY.toss": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "BANE"
+  },
+  "KILLED_BY.shaman": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "THE SHAMAN"
+  },
+  "KILLED_BY.fall": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "THE DROP"
+  },
+  "KILLED_BY.rifle": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "A STRAY BULLET"
+  },
+  "KILLED_BY.spire": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "THE ROCK"
+  },
+  "KILLED_BY.chandelier": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "A CHANDELIER"
+  },
+  "KILLED_BY.powder": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "SPILT POWDER"
+  },
+  "KILLED_BY.abandon": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "GIVING UP"
+  },
+  "KILLED_BY.altar": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "THE ALTAR"
+  },
+  "KILLED_BY.sawbot": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "SAWBOT"
+  },
+  "KILLED_BY.welder": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "THE WELDER"
+  },
+  "KILLED_BY.automaton": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "THE AUTOMATON"
+  },
+  "KILLED_BY.stomp": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "THE AUTOMATON"
+  },
+  "KILLED_BY.crush": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "THE AUTOMATON"
+  },
+  "KILLED_BY.arm": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "THE ARM"
+  },
+  "KILLED_BY.sweeper": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "THE SWEEPER"
+  },
+  "KILLED_BY.shieldgen": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "THE SHIELD GENERATOR"
+  },
+  "KILLED_BY.press": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "THE PRESS"
+  },
+  "KILLED_BY.cartridge": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "THE CARTRIDGE"
+  },
+  "KILLED_BY.bolt": {
+   "speaker": "HUD",
+   "occasion": "The killer named on the death card and the run, keyed by the run code token.",
+   "value": "A STRAY BOLT"
+  },
+  "CONTROL_LINES.key.0": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": [
+    "WASD - MOVE"
+   ]
+  },
+  "CONTROL_LINES.key.1": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": [
+    "RIGHT M. CLICK - GRAB",
+    "RELEASE - THROW"
+   ]
+  },
+  "CONTROL_LINES.key.2": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": [
+    "LEFT M. CLICK - HEADBUTT",
+    "HE DIES WHEN HE HITS SOMETHING"
+   ]
+  },
+  "CONTROL_LINES.key.3": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": [
+    "E - ROLL"
+   ]
+  },
+  "CONTROL_LINES.key.4": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": [
+    "SPACE - BAAH",
+    "IT BREAKS A SWING"
+   ]
+  },
+  "CONTROL_LINES.key.5": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": [
+    "E - ROLL"
+   ]
+  },
+  "CONTROL_LINES.key.6": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": [
+    "ALT - STEALTH MODE"
+   ]
+  },
+  "CONTROL_LINES.touch.0": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": [
+    "LEFT THUMB - MOVE"
+   ]
+  },
+  "CONTROL_LINES.touch.1": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": [
+    "GRAB - HOLD TO CARRY",
+    "RELEASE - THROW"
+   ]
+  },
+  "CONTROL_LINES.touch.2": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": [
+    "BUTT - HEADBUTT",
+    "HE DIES WHEN HE HITS SOMETHING"
+   ]
+  },
+  "CONTROL_LINES.touch.3": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": [
+    "ROLL"
+   ]
+  },
+  "CONTROL_LINES.touch.4": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": [
+    "BAAH",
+    "IT BREAKS A SWING"
+   ]
+  },
+  "CONTROL_LINES.touch.5": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": [
+    "ROLL"
+   ]
+  },
+  "CONTROL_LINES.touch.6": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": []
+  },
+  "CONTROL_LINES.pad.0": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": [
+    "LEFT STICK - MOVE"
+   ]
+  },
+  "CONTROL_LINES.pad.1": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": [
+    "HOLD LT - GRAB",
+    "RELEASE - THROW"
+   ]
+  },
+  "CONTROL_LINES.pad.2": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": [
+    "RT - HEADBUTT",
+    "HE DIES WHEN HE HITS SOMETHING"
+   ]
+  },
+  "CONTROL_LINES.pad.3": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": [
+    "A - ROLL"
+   ]
+  },
+  "CONTROL_LINES.pad.4": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": [
+    "B - BAAH",
+    "IT BREAKS A SWING"
+   ]
+  },
+  "CONTROL_LINES.pad.5": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": [
+    "A - ROLL"
+   ]
+  },
+  "CONTROL_LINES.pad.6": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": []
+  },
+  "CONTROL_LINES.keys.0": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": [
+    "WASD - RUN AND AIM"
+   ]
+  },
+  "CONTROL_LINES.keys.1": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": [
+    "HOLD K - GRAB",
+    "RELEASE - THROW"
+   ]
+  },
+  "CONTROL_LINES.keys.2": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": [
+    "J - HEADBUTT",
+    "HE DIES WHEN HE HITS SOMETHING"
+   ]
+  },
+  "CONTROL_LINES.keys.3": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": [
+    "L - ROLL"
+   ]
+  },
+  "CONTROL_LINES.keys.4": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": [
+    "SPACE - BAAH",
+    "IT BREAKS A SWING"
+   ]
+  },
+  "CONTROL_LINES.keys.5": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": [
+    "L - ROLL"
+   ]
+  },
+  "CONTROL_LINES.keys.6": {
+   "speaker": "FLOOR WORDS",
+   "occasion": " Key lists: index = block (0 move in the pen, 1 grab/throw in the ambush, 2 headbutt at the sentry, 3 roll, 4 BAAH in THE YARD, 5 roll over the chasm, 6 stealth in THE YARD).",
+   "value": [
+    "ALT - STEALTH MODE"
+   ]
+  },
+  "TUNING.prop.trophy.lines": {
+   "speaker": "THE STAG",
+   "occasion": "TUNING.prop.trophy.lines (over the head, by event)",
+   "value": [
+    "HANGING AROUND",
+    "STAG PARTY",
+    "JUST HANGING",
+    "ANTLER-ED",
+    "NICE VIEW"
+   ]
+  },
+  "TUNING.prop.mouse.lines": {
+   "speaker": "THE MOUSE",
+   "occasion": "TUNING.prop.mouse.lines (over the head, by event)",
+   "value": [
+    "PLEASE. NOT THAT.",
+    "ONCE MORE AND YOU WILL SEE."
+   ]
+  },
+  "TUNING.prop.mouse.thanks": {
+   "speaker": "THE MOUSE",
+   "occasion": "TUNING.prop.mouse.thanks",
+   "value": "GO ON, THEN. THE DOOR IS OPEN."
+  },
+  "TUNING.prop.crow.lines": {
+   "speaker": "CROW",
+   "occasion": "TUNING.prop.crow.lines (over the head, by event)",
+   "value": [
+    "FRESHLY COOKED",
+    "TASTY",
+    "STILL WARM",
+    "MINE"
+   ]
+  },
+  "TUNING.prop.horse.lines.won": {
+   "speaker": "HORSE",
+   "occasion": "TUNING.prop.horse.lines.won (over the head, by event)",
+   "value": "TOO SLOW, GOAT!"
+  },
+  "TUNING.prop.horse.lines.lost": {
+   "speaker": "HORSE",
+   "occasion": "TUNING.prop.horse.lines.lost (over the head, by event)",
+   "value": "YOU CHEATED"
+  },
+  "TUNING.prop.horse.lines.mine": {
+   "speaker": "HORSE",
+   "occasion": "TUNING.prop.horse.lines.mine (over the head, by event)",
+   "value": "TAKE THE SOUL. I WAIT"
+  },
+  "TUNING.prop.horse.lines.yours": {
+   "speaker": "HORSE",
+   "occasion": "TUNING.prop.horse.lines.yours (over the head, by event)",
+   "value": "FINE. MY LEGS ARE YOURS"
+  },
+  "TUNING.prop.horse.lines.pay": {
+   "speaker": "HORSE",
+   "occasion": "TUNING.prop.horse.lines.pay (over the head, by event)",
+   "value": "A BET IS A BET. RUN ON MY LEGS"
+  },
+  "TUNING.prop.horse.lines.none": {
+   "speaker": "HORSE",
+   "occasion": "TUNING.prop.horse.lines.none (over the head, by event)",
+   "value": "NOT ONE WIN. NO PAY"
+  },
+  "TUNING.prop.horse.lines.left": {
+   "speaker": "HORSE",
+   "occasion": "TUNING.prop.horse.lines.left (over the head, by event)",
+   "value": "LAST TRY: THE STAIRS"
+  },
+  "TUNING.prop.horse.lines.taunt": {
+   "speaker": "HORSE",
+   "occasion": "TUNING.prop.horse.lines.taunt (over the head, by event)",
+   "value": [
+    "HOW SLOW YOU ARE",
+    "IS THAT A GALLOP?",
+    "I COULD GRAZE HERE",
+    "KEEP UP, GOAT",
+    "ARE YOU WALKING?"
+   ]
+  },
+  "TUNING.prop.horse.talk.race": {
+   "speaker": "HORSE",
+   "occasion": "TUNING.prop.horse.talk.race (the animal box, a page a line)",
+   "value": [
+    "NEIGH! RACE YOU TO THE LOCKED DOOR WITH THE SOUL BEHIND IT.",
+    "{tries}: THAT DOOR, THEN THE STAIRS. BEAT ME ONCE AND YOU CAN KEEP MY LEGS. YOU WON'T."
+   ]
+  },
+  "TUNING.prop.horse.talk.raceOne": {
+   "speaker": "HORSE",
+   "occasion": "TUNING.prop.horse.talk.raceOne (the animal box, a page a line)",
+   "value": [
+    "NEIGH! RACE YOU TO THE STAIRS.",
+    "ONE TRY. BEAT ME AND YOU CAN KEEP MY LEGS. YOU WON'T."
+   ]
+  },
+  "TUNING.prop.horse.talk.beaten": {
+   "speaker": "HORSE",
+   "occasion": "TUNING.prop.horse.talk.beaten (the animal box, a page a line)",
+   "value": [
+    "YOU OUTRAN ME. ME!",
+    "A BET IS A BET. MY LEGS ARE YOURS NOW, ALL THE WAY OUT."
+   ]
+  },
+  "TUNING.prop.horse.talk.cheated": {
+   "speaker": "HORSE",
+   "occasion": "TUNING.prop.horse.talk.cheated (the animal box, a page a line)",
+   "value": [
+    "THAT WAS A FOUL! CHEAT! CHEAT!",
+    "BUT A WIN IS A WIN, I SUPPOSE. TAKE MY LEGS, YOU DIRTY GOAT."
+   ]
+  },
+  "TUNING.prop.pig.spite.say": {
+   "speaker": "PIG",
+   "occasion": "TUNING.prop.pig.spite.say",
+   "value": [
+    "THEN I'LL EAT IT ANYWAY.",
+    "NO? FINE. ALL OF IT IS MINE, THEN."
+   ]
+  },
+  "TUNING.prop.pig.spite.munch": {
+   "speaker": "PIG",
+   "occasion": "TUNING.prop.pig.spite.munch",
+   "value": [
+    "MINE.",
+    "HA. CRUNCH.",
+    "TOO SLOW, GOAT."
+   ]
+  },
+  "TUNING.prop.pig.lines.munch": {
+   "speaker": "PIG",
+   "occasion": "TUNING.prop.pig.lines.munch (over the head, by event)",
+   "value": [
+    "MMM.",
+    "CRUNCH",
+    "MORE?",
+    "GRASS!"
+   ]
+  },
+  "TUNING.prop.pig.lines.left": {
+   "speaker": "PIG",
+   "occasion": "TUNING.prop.pig.lines.left (over the head, by event)",
+   "value": [
+    "{n} MORE",
+    "ONLY {n} MORE"
+   ]
+  },
+  "TUNING.prop.pig.talk.hello": {
+   "speaker": "PIG",
+   "occasion": "TUNING.prop.pig.talk.hello (the animal box, a page a line)",
+   "value": [
+    "OINK.",
+    "I'M NOT RACING ANYBODY. I'M JUST HUNGRY.",
+    "SPARE ME {n} OF YOUR GRASSES. A FED PIG NEVER FORGETS WHERE THE GOOD GRASS GROWS."
+   ]
+  },
+  "TUNING.prop.pig.talk.full": {
+   "speaker": "PIG",
+   "occasion": "TUNING.prop.pig.talk.full (the animal box, a page a line)",
+   "value": [
+    "OINK! OINK!",
+    "THAT'S ME FULL. THANK YOU, GOAT.",
+    "YOU GET TO THE STAIRS, AND I'LL SNIFF YOU OUT A LITTLE EXTRA ON EVERY FLOOR AHEAD."
+   ]
+  },
+  "TUNING.prop.husky.practice.say": {
+   "speaker": "HUSKY",
+   "occasion": "TUNING.prop.husky.practice.say",
+   "value": "JUST US FIRST: BAAH AS YOUR NOTE CROSSES THE LINE"
+  },
+  "TUNING.prop.husky.practice.good": {
+   "speaker": "HUSKY",
+   "occasion": "TUNING.prop.husky.practice.good",
+   "value": "YES! NOW FOR REAL. FOLLOW ME!"
+  },
+  "TUNING.prop.husky.practice.go": {
+   "speaker": "HUSKY",
+   "occasion": "TUNING.prop.husky.practice.go",
+   "value": "NO MATTER. NOW FOR REAL!"
+  },
+  "TUNING.misc.endBoss.mage.wardenLine": {
+   "speaker": "SCENE",
+   "occasion": "TUNING.endBoss.mage.wardenLine",
+   "value": "MINE NOW, GOAT. COME AND TAKE HER."
+  },
+  "TUNING.misc.endBoss.hunter.scene.line": {
+   "speaker": "SCENE",
+   "occasion": "TUNING.endBoss.hunter.scene.line",
+   "value": "RUN, GOAT. THEY LIKE A RUNNER."
+  },
+  "TUNING.misc.endBoss.champion.line": {
+   "speaker": "SCENE",
+   "occasion": "TUNING.endBoss.champion.line",
+   "value": "FRESH MEAT FOR THE HOOK."
+  },
+  "TUNING.misc.endBoss.clubman.line": {
+   "speaker": "SCENE",
+   "occasion": "TUNING.endBoss.clubman.line",
+   "value": "BACK TO THE PEN, GOAT."
+  },
+  "TUNING.misc.endBoss.glimpse.line": {
+   "speaker": "SCENE",
+   "occasion": "TUNING.endBoss.glimpse.line",
+   "value": "STILL COMING, GOAT? SHE IS KEPT FOR THE TABLE."
+  },
+  "TUNING.misc.endBoss.supper.scene.lines": {
+   "speaker": "SCENE",
+   "occasion": "TUNING.endBoss.supper.scene.lines",
+   "value": [
+    "YOUR BELOVED AND I HAVE BEEN WAITING FOR YOU, LITTLE GOAT.",
+    "COME IN. SIT. EAT WITH US."
+   ]
+  },
+  "TUNING.misc.endBoss.supper.lines": {
+   "speaker": "SCENE",
+   "occasion": "TUNING.endBoss.supper.lines",
+   "value": [
+    "SIT.",
+    "EAT.",
+    "SHE IS WARM STILL."
+   ]
+  },
+  "TUNING.misc.endBoss.supper.laugh": {
+   "speaker": "SCENE",
+   "occasion": "TUNING.endBoss.supper.laugh",
+   "value": "NOT YET."
+  },
+  "TUNING.misc.endBoss.supper.laughs": {
+   "speaker": "SCENE",
+   "occasion": "TUNING.endBoss.supper.laughs",
+   "value": [
+    "HA HA HA!",
+    "HAAA HA HA!",
+    "HEH HEH HEH."
+   ]
+  },
+  "TUNING.misc.endBoss.supper.drop.lines": {
+   "speaker": "SCENE",
+   "occasion": "TUNING.endBoss.supper.drop.lines",
+   "value": [
+    "GOOD, LITTLE ONE. NOW, LET'S DANCE."
+   ]
+  },
+  "TUNING.misc.endBoss.supper.knock.lines": {
+   "speaker": "SCENE",
+   "occasion": "TUNING.endBoss.supper.knock.lines",
+   "value": [
+    "BAAH. BAAH.",
+    "(I AM THE DANGER. I AM THE ONE WHO KNOCKS.)"
+   ]
+  },
+  "TUNING.misc.warden.turn.lines": {
+   "speaker": "SCENE",
+   "occasion": "TUNING.warden.turn.lines",
+   "value": [
+    "SO YOU ARE A STUBBORN ONE, IT TURNS OUT...",
+    "NO MATTER. WE WILL FIX THAT."
+   ]
+  },
+  "TUNING.misc.warden.gloat.laugh": {
+   "speaker": "SCENE",
+   "occasion": "TUNING.warden.gloat.laugh",
+   "value": "HA HA HA HA!"
+  },
+  "TUNING.misc.warden.gloat.line": {
+   "speaker": "SCENE",
+   "occasion": "TUNING.warden.gloat.line",
+   "value": "YOU WERE NOT AS TOUGH AS I THOUGHT."
+  },
+  "TUNING.misc.thrower.pant.word": {
+   "speaker": "SCENE",
+   "occasion": "TUNING.thrower.pant.word",
+   "value": "HUFF... HUFF"
+  },
+  "TUNING.misc.thanks.lines": {
+   "speaker": "SCENE",
+   "occasion": "TUNING.thanks.lines",
+   "value": [
+    "Thank you for playing, little goat. Please spread the word near and far,",
+    "so that no other goat is ever led to the altar."
+   ]
+  },
+  "TUNING.misc.shroom.phase.text": {
+   "speaker": "SCENE",
+   "occasion": "TUNING.shroom.phase.text",
+   "value": "OH, I WAS ACTUALLY OVER HERE"
+  },
+  "TUNING.misc.shroom.banner.text": {
+   "speaker": "SCENE",
+   "occasion": "TUNING.shroom.banner.text",
+   "value": "WHOOOOAAA, YOU ARE ON MUSHROOOOMS..."
+  },
+  "TUNING.misc.shroom.back.text": {
+   "speaker": "SCENE",
+   "occasion": "TUNING.shroom.back.text",
+   "value": "YOUR HOOVES ARE YOUR OWN AGAIN"
+  },
+  "TUNING.misc.stealth.denyText": {
+   "speaker": "SCENE",
+   "occasion": "TUNING.stealth.denyText",
+   "value": "NOT IN A FIGHT"
+  }
+ }
+}
