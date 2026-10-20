@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="EnemyAnimTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/enemy_anim_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+windup = {"back": 3.2, "tilt": 0.17, "squat": 0.08, "wide": 0.06, "shakeFrom": 0.72, "shake": 0.7}
+swing = {"lunge": 4.5, "tilt": 0.21, "stretch": 0.13}
+recover = {"settle": 0.4, "slump": 0.07}
+smear = {"inner": 0.8, "trail": 0.95, "fade": 0.16, "alpha": 0.9}
+recoil = {"kick": 4, "tilt": 0.14, "time": 0.22}
+cast = {"lift": 2.5, "stretch": 0.06, "shakeFrom": 0.75, "shake": 0.6}
+down = {"time": 0.14, "lie": 0.7, "over": 0.95, "squash": 0.18, "up": 0.2, "crouch": 0.12}
+flung = {"stretch": 0.3, "per": 900, "hit": 0.22}
+rocked = {"back": 5, "tilt": 0.12, "shake": 1.6, "shakeFor": 0.45}
+run = {"stride": 30, "fast": 80, "bob": 1.6, "tilt": 0.07, "lean": 0.12, "lift": 6, "swing": 5, "side": 3, "steps": 12, "centre": 0.3, "whole": true, "stretch": 0, "pairW": 10, "units": ["clubman", "brute", "hunter", "mage", "butcher", "ratogre", "hound"], "per": {"hound": {"stride": 44, "bob": 1.6, "tilt": 0, "lean": 0.08, "stretch": 0.07, "lift": 5, "swing": 7, "centre": 0.6}, "mage": {"bob": 1.2, "tilt": 0.05}, "ratogre": {"stride": 52, "bob": 3, "tilt": 0.05, "lift": 8, "swing": 8}, "butcher": {"stride": 36, "bob": 2.2}}}

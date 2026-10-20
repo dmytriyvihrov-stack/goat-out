@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="KeysTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/keys_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+drop = 0.35
+r = 12.0
+pickR = 24.0
+start = 0.0
+spare = 1.0
+iron = {"from": 1, "chance": 1, "pair": [2.2, 5.5], "readR": 7, "sayR": 2.4, "sayGap": 3.2, "r": 26}

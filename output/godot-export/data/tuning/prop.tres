@@ -1,0 +1,46 @@
+[gd_resource type="Resource" script_class="PropTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/prop_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+door = {"r": 29, "thick": 16, "reachSlack": 12, "openPressure": 0.9, "smashSpeed": 192, "clockHold": 0.92, "clockBack": 1.6, "hits": 1, "ironHits": 3, "vaultHits": 4, "stairHits": 3, "clockFor": 12, "clockEase": 0.5, "clockReach": 30}
+cleat = {"r": 9, "hit": 96, "burn": 0.5}
+armor = {"r": 10, "foot": 2, "chance": 0.25, "perLevel": 2, "armory": 3, "from": 1, "halberds": 1, "hit": 128, "near": 12, "slow": 0.75, "texel": 1.35, "out": 70, "pieces": [["helm", 28, 0], ["pauldron", 21, -8], ["pauldron", 21, 8], ["plate", 13, 0]]}
+suit = {"r": 11, "texel": 1.35, "armory": 2, "chance": 0.16, "perLevel": 1, "from": 2, "pieces": [["helm", 40, 0], ["pauldron", 32, -9], ["pauldron", 32, 9], ["plate", 22, 0]]}
+trophy = {"r": 8, "chance": 0.4, "perLevel": 2, "from": 1, "big": 0.25, "hit": 96, "hitR": 28, "reach": 5, "time": 2.6, "free": 0.5, "lift": 20, "texel": 1.4, "drip": 9, "sway": {"amp": 0.16, "rate": 0.9, "settle": 6, "rest": 0.025}, "lines": ["HANGING AROUND", "STAG PARTY", "JUST HANGING", "ANTLER-ED", "NICE VIEW"]}
+poster = {"r": 8, "chance": 0.5, "perLevel": 1, "from": 1, "near": 12, "bits": 9, "texel": 1.35, "flat": 0.75, "unfold": 0.45, "underTable": 0.5, "first": "breeds", "looks": ["breeds", "cuts"]}
+table = {"r": 21, "drag": 4.5, "killSpeed": 160, "pushSpeed": 70.4, "squeeze": 8, "flip": {"chance": 0.5, "wall": 96, "r": 26, "hits": 3, "push": 38.4}}
+lamp = {"r": 9, "poolRadius": 1.2, "knock": 128}
+brazier = {"r": 13, "behind": 3, "roastR": 9, "spillAt": 1.1, "spill": 1.05, "spillTime": 1.7, "spillCd": 3, "roast": 0.02, "roastTurn": 0.8, "roastThin": 0.45, "into": 0.55, "touch": 3}
+heal = {"r": 12, "pickupR": 22, "every": 4.5, "gapMax": 4, "grazeTime": 1.4, "grazeSpeed": 30, "bigGain": 2, "firstClear": 2.4}
+spire = {"r": 11}
+bell = {"r": 14, "buff": 12, "speedMul": 1.5, "cooldownMul": 1.5}
+crate = {"r": 10, "stun": 2.8, "burstTime": 6.5, "burnFor": 3}
+throwHit = 9.0
+clutter = {"max": 4, "edge": 2}
+powder = {"tiles": 4, "fuse": 0.45, "chain": 0.14, "r": 1.1, "damage": 1, "grains": 30, "cell": 3}
+barrel = {"r": 12, "roll": 512, "drag": 0.55, "fling": 1.35, "keep": 0.8, "knockSpeed": 96, "wallStep": 0.6, "breakSpeed": 192, "stopSpeed": 19.2, "knock": 160, "pass": 0.8, "daze": 1.8, "fuse": 1.6, "chain": 0.35, "burst": 2.1, "burstTime": 7, "fuseDraw": 8, "spinEvery": 0.55, "staveEvery": 2, "draw": 26, "stagger": 0.3, "rebound": 0.2, "side": 0.35, "venom": {"chance": 0.3, "tiles": 6}}
+rock = {"r": 14, "hits": 2}
+machine = {"hit": 128}
+gas = {"r": 3.6, "fling": 30, "edge": 0.6, "daze": 0.8, "ringFor": 0.35, "burst": 30, "goat": 9}
+junkAlpha = 0.95
+bomb = {"r": 11, "fuse": 2.1, "chain": 0.3, "blastR": 48, "nearR": 17.92, "dmgNear": 2, "dmgFar": 1, "impulse": 640, "chance": 0.45, "ring": {"cell": 2, "track": 0.16, "rim": 0.9, "blink": 30}, "hit": {"speed": 192, "arm": 0.06}}
+weapon = {"r": 11, "standR": 13, "throwMul": 1.35, "drag": 1.4, "restSpeed": 96, "stickImpact": 192, "shieldBounce": 0.6, "shieldStun": 2.8, "uses": {"sword": 1, "shield": 2, "halberd": 1}, "cutGap": 0.35, "swordShare": 0.3, "shieldScale": 1.45, "coverR": 38, "coverArc": 3, "parry": 0.45, "parryPush": 3, "stick": {"k": 0.9, "depth": 5, "lift": 0.5, "max": 3, "fan": 0.35, "out": 0.44, "fire": {"for": 6, "gap": 0.8}}}
+cage = {"r": 10, "halfW": 2.1, "halfH": 1.6, "spacing": 26, "height": 30, "hits": 7, "stunAt": [3, 6], "stun": 1, "strain": ["NNGH", "IT HOLDS", "MMMAAAH", "IT BENDS", "NNNGH", "BAAAAH", "OUT"], "againHits": 2, "againStrain": ["NNGH", "OUT"]}
+deadCage = {"halfW": 1.15, "halfH": 0.9, "dx": 3.7, "dy": -2.5, "hits": 3, "strain": ["NNGH", "IT GIVES", "OPEN"], "done": "TOO LATE"}
+spike = {"r": 16, "arm": 0.5, "armMan": 0.1, "up": 0.95, "down": 0.4, "rest": 1.7, "restMan": 0.25, "lead": 0.3, "damage": 1, "run": [9, 15], "flame": {"burn": 0.5}, "hidden": {"cover": 0.35, "barrel": 0.3, "armoryCrate": 0.5, "armoryStand": 0.2, "armoryMax": 3}}
+secret = {"hits": 2}
+coop = {"r": 26, "hits": 1}
+stall = {"w": 3, "h": 2, "hits": 2, "clear": 1, "mouth": 2.5, "pace": 10}
+mouse = {"r": 9, "lines": ["PLEASE. NOT THAT.", "ONCE MORE AND YOU WILL SEE."], "thanks": "GO ON, THEN. THE DOOR IS OPEN.", "lookUp": 0.34}
+ware = {"r": 10, "readR": 70.4}
+chicken = {"r": 11, "followSpeed": 147, "followAt": 1.6, "followFar": 3.2, "wander": 0.5, "launchSpeed": 760, "drag": 0.35, "turn": 7.5, "seekRange": 15, "seekArc": 2.35619449019234, "stunned": 0.9, "life": 4, "look": 2, "detourFor": 0.5, "saveR": 8, "saveHearts": 1, "hp": 5, "shyMul": 1.5, "shyAll": true}
+tortoise = {"r": 13, "speed": 29.4, "followAt": 1.4, "throwSpeed": 520, "drag": 2.6, "tuck": 4, "cool": 4, "guardR": 6, "saveR": 8, "saveArmour": 1, "armour": {"cell": 0.910714285714286, "band": [-22, -6], "low": 8, "wide": 12, "head": 5, "headFront": 2.5, "seam": 4, "plate": 9, "dark": "#4a5059", "mid": "#78808b", "lit": "#a3abb5", "rim": "#1c1f24", "alpha": 0.95}}
+goose = {"r": 12, "speed": 140, "hurry": 1.35, "seeR": 12, "honkGap": 1.5, "balks": false, "balkStun": 0.5, "blowGap": 0.35, "lead": 10, "callR": 16, "saveR": 8, "saveScreamRange": 1.2}
+crow = {"r": 11, "speed": 161, "perch": 1.1, "markFor": 14, "markR": 13, "flySpeed": 392, "feedFor": 2.5, "lines": ["FRESHLY COOKED", "TASTY", "STILL WARM", "MINE"], "late": 1, "catchUp": 9, "catchFly": 0.8, "waitAt": 5, "saveR": 8, "saveRooms": 1, "giftTier": 2, "giftLeave": 12, "giftRise": 90, "giftGone": 1.3}
+horse = {"r": 13, "speed": 113.8816, "hp": 9, "taunt": {"gap": [5, 8], "ahead": 5, "hold": 1.8, "say": 2.4}, "kickWind": 0.28, "kickGap": 0.42, "bowl": 224, "daze": 1.2, "slow": 0.55, "slowFor": 0.35, "stuckFor": 0.8, "sideFor": 0.45, "ready": 1.8, "homeR": 2.5, "tellR": 5, "lines": {"won": "TOO SLOW, GOAT!", "lost": "YOU CHEATED", "mine": "TAKE THE SOUL. I WAIT", "yours": "FINE. MY LEGS ARE YOURS", "pay": "A BET IS A BET. RUN ON MY LEGS", "none": "NOT ONE WIN. NO PAY", "left": "LAST TRY: THE STAIRS", "taunt": ["HOW SLOW YOU ARE", "IS THAT A GALLOP?", "I COULD GRAZE HERE", "KEEP UP, GOAT", "ARE YOU WALKING?"]}, "saveR": 8, "saveSpeed": 1.1, "talk": {"race": ["NEIGH! RACE YOU TO THE LOCKED DOOR WITH THE SOUL BEHIND IT.", "{tries}: THAT DOOR, THEN THE STAIRS. BEAT ME ONCE AND YOU CAN KEEP MY LEGS. YOU WON'T."], "raceOne": ["NEIGH! RACE YOU TO THE STAIRS.", "ONE TRY. BEAT ME AND YOU CAN KEEP MY LEGS. YOU WON'T."], "beaten": ["YOU OUTRAN ME. ME!", "A BET IS A BET. MY LEGS ARE YOURS NOW, ALL THE WAY OUT."], "cheated": ["THAT WAS A FOUL! CHEAT! CHEAT!", "BUT A WIN IS A WIN, I SUPPOSE. TAKE MY LEGS, YOU DIRTY GOAT."]}}
+pig = {"r": 12, "speed": 101.024, "followAt": 1.8, "faceDead": 8, "catchFar": 7, "catchUp": 1.6, "hp": 7, "smell": 6, "eatR": 0.75, "eatTime": 1.8, "full": 3, "saveR": 8, "saveHeals": [1, 2], "spite": {"speed": 110.208, "smell": 9, "say": ["THEN I'LL EAT IT ANYWAY.", "NO? FINE. ALL OF IT IS MINE, THEN."], "munch": ["MINE.", "HA. CRUNCH.", "TOO SLOW, GOAT."]}, "lines": {"munch": ["MMM.", "CRUNCH", "MORE?", "GRASS!"], "left": ["{n} MORE", "ONLY {n} MORE"]}, "talk": {"hello": ["OINK.", "I'M NOT RACING ANYBODY. I'M JUST HUNGRY.", "SPARE ME {n} OF YOUR GRASSES. A FED PIG NEVER FORGETS WHERE THE GOOD GRASS GROWS."], "full": ["OINK! OINK!", "THAT'S ME FULL. THANK YOU, GOAT.", "YOU GET TO THE STAIRS, AND I'LL SNIFF YOU OUT A LITTLE EXTRA ON EVERY FLOOR AHEAD."]}}
+rabbit = {"r": 8, "speed": 174.496, "followAt": 1.6, "catchFar": 7, "catchUp": 1.8, "hp": 3, "hop": 0.42, "hopH": 6, "saveR": 8, "hopShare": 0.6, "hopSpeed": 1.6, "faceDead": 6, "tied": {"rollCd": 0.45, "rollDist": 1.15}, "saveRollCd": 0.85}
+husky = {"r": 11, "speed": 266.336, "followAt": 2, "catchFar": 7, "catchUp": 1.7, "hp": 4, "saveR": 8, "ahead": 2, "extra": 2, "leadIn": 1.2, "flash": 0.5, "miss": 0.6, "endShow": 1.4, "endLost": 2, "leadEvery": 1, "giveUp": 1.8, "cycle": 6, "her": [0, 1], "you": 2.8, "lead": 2.3, "window": 0.45, "need": 2, "time": 70, "after": 2, "saveScreamCd": 0.85, "cdGap": 1.4, "judge": {"perfect": 0.12, "good": 0.26, "off": 1.2, "words": {"perfect": "PERFECT!", "good": "GOOD!", "early": "A BIT EARLY", "late": "A BIT LATE", "off": "OFF THE BEAT", "miss": "YOU MISSED"}}, "grade": {"perfect": "AWOOOOOOO! PERFECT!", "good": "AWOOOOO! WE SANG!", "rough": "ROUGH, BUT WE SANG.", "lost": "awoo... you lost the beat."}, "wooRing": 1.6, "beh": [330, 0.22, 0.34], "view": {"lane": 44, "gap": 6, "tall": 170, "icon": 34, "goat": 44, "foot": 18}, "won": ["AWOOOOOOO! WE SANG!", "TAKE ME TO THE STAIRS", "AND YOUR VOICE COMES BACK SOONER"], "wonFor": 3.2, "practice": {"need": 2, "near": 6, "time": 40, "say": "JUST US FIRST: BAAH AS YOUR NOTE CROSSES THE LINE", "good": "YES! NOW FOR REAL. FOLLOW ME!", "go": "NO MATTER. NOW FOR REAL!"}}
+fish = {"r": 11, "hp": 1, "carry": 0.6, "throwTiles": 2.2, "throwSpeed": 380, "blub": [2.5, 5.5], "hearR": 9, "saveR": 8, "saveWet": 1}

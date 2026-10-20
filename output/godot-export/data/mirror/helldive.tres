@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="MirrorData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/mirror_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "helldive"
+name_ = "HELLDIVE"
+names = ["HELLDIVE", "SUPER HELLDIVE"]
+costs = [150, 320]
+souls = [1, 4]
+params = {"hurt": [0.75, 2], "stun": [3, 3]}
+glyph = "dive"
+opens = 4.0
+hint = "How you come back from a fall: you steer where you land and crash down on the enemies."
+needs = "revive"

@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="EffectsTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/effects_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+propCull = 6.0
+floatLife = 1.2
+quiet = {"r": 70, "dy": 16, "gap": 0.6, "words": ["AAAAH", "COALS", "IT GOES OFF", "POISONED", "SHOCK", "SCALDED", "BURNING", "LIT", "CLANG", "BONNNG", "OIL", "IT GOES UP", "POISON", "GROUND", "IT SPREADS", "WITCHFIRE", "FLATTENED", "NOTCHED", "CLICK", "RRAF", "HNNGH", "RRAAGH", "MISS", "STUCK"]}
+pit = {"lip": 4, "face": 12, "rim": 4, "edge": "rgba(236,214,170,0.55)", "sheet": 144, "spikeGap": 24, "spikeSkip": 0.4, "spikeH": 13, "stakeW": 4, "stakeTaper": 1.7, "stakeTip": "#d8cbae", "veil": 0.38, "dirt": "#120f0d", "stake": "#9a8b70", "stakeShade": "#4a3f33", "blood": "#5a1212", "sky": "#1d3160", "cloud": "rgba(150,170,214,0.3)", "snow": {"cell": 2, "lip": 3, "rag": 3, "ink": "#1c1f2a", "faceH": 12, "face": ["#8fa3b8", "#4d5d70", "#232a36"]}}
+scrap = {"headScale": 1.5, "headLift": 2.1, "headSpeed": 90, "headSpin": 4, "sawbot": {"head": [40, 38, 20, 13], "pieces": [[13, 60, 26, 16], [29, 49, 19, 12], [48, 49, 19, 12], [32, 61, 16, 13], [48, 61, 16, 13]]}, "welder": {"head": [39, 21, 15, 13], "pieces": [[28, 34, 20, 16], [48, 34, 22, 16], [26, 50, 22, 14], [48, 50, 22, 14], [30, 63, 18, 11], [48, 63, 18, 11]]}}
+maxAir = 220.0
+maxGround = 180.0
+maxBursts = 24.0
+spareCanvases = 48.0
+stainTile = 256.0
+maxStainTiles = 96.0
+gravity = 460.0
+drag = 2.8
+lift = 145.0
+fragmentSpeed = 145.0
+bloodSpeed = 210.0
+maxFlight = 2.0
+burstLife = 0.7
+bloodLife = 0.32
+fireFps = 12.0
+doorPieces = 15.0
+cratePieces = 11.0
+corpse = {"carry": 0.35, "keep": 0.6, "friction": 320, "smear": 3, "lie": 0, "settle": 0.22, "dark": 0.3, "grey": 0.8, "shade": 0.5, "twitches": 2, "twitchBy": 1.3, "pool": 14, "big": 19, "delay": 0.3, "time": 2.6, "colors": ["#2e0a08", "#471210", "#7a1f18"]}
+goreCut = 2.0
+pixel = 1.0
+snowTell = {"ink": 0.55, "fill": [0.18, 0.3]}
+flame = {"scale": 1, "wide": 1.5, "tall": 2.3, "frames": 8, "sparks": 3}
+shell = {"w": 2, "h": 4, "speed": 150, "back": 0.3, "lift": 120}
+blast = {"scale": 0.85, "dustScale": 0.8, "frames": 12, "bloodFrames": 6, "fade": 0.62, "dustAlpha": 0.85, "light": 3.2, "lightFor": 0.28, "ringOut": 1.1, "ringFor": 0.3, "flashTo": 0.17, "fireTo": 0.6, "rim": true, "stamp": {"time": 0.24, "alpha": 0.5}, "ringW": 4, "debris": 7, "embers": 16, "flash": 0.22, "punch": 1.3, "soot": 0.75, "sootAfter": 0.3, "sootLife": 1.3}
+bloodScale = 0.6
+omens = {"chance": 0.4, "large": 0.6, "wall": 0.25, "alpha": [0.3, 0.42], "wallAlpha": 0.5, "texel": {"floor-small": 0.8, "floor-medium": 0.95, "floor-large": 1.9, "wall-watcher": 0.8}}

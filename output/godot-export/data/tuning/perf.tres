@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="PerfTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/perf_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+adapt = {"on": true, "slow": 15, "fast": 9, "wait": 3, "waitUp": 5, "step": 0.15, "min": 0.55, "gain": 0.1, "settle": 4}

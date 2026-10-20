@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="GlobalsTable" format=3]
+
+[ext_resource type="Script" path="res://data/classes/globals_table.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+tile = 32.0
+tilt = 0.86
+slow = 0.7
+goat_cd = 1.2
+pace = 183.68
+cult_pace = 173.5776
+boon_cards = 2.0
+build = "0.041"

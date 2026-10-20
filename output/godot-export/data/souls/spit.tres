@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="SoulData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/soul_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "spit"
+skill = "scream"
+active = true
+emoji = "🫧"
+minLevel = 0.0
+name_ = "VENOM SPIT"
+desc = "BAAH spits a ball of poison that makes a puddle."
+params = {"cooldown": 5.4}
+element = "poison"
+synergy = ["kindling"]

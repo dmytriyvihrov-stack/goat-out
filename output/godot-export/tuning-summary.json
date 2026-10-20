@@ -1,0 +1,21 @@
+{
+ "blocks": 104,
+ "scalars": [
+  "permadeath",
+  "cageThought",
+  "boonArm"
+ ],
+ "tables": 25,
+ "souls": 33,
+ "talismans": 21,
+ "capes": 6,
+ "mirror": 6,
+ "levels": 11,
+ "kinds": 17,
+ "getters": 233,
+ "files": 224,
+ "warnings": [
+  "duplicate soul id hooves -> hooves_2",
+  "no ENCOUNTER weight: butcher"
+ ]
+}

@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="IntroTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/intro_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+zoom = 1.4
+zoomPush = 1.58
+huddle = 6.4
+gate = 0.8
+gateHold = 0.45
+fade = 3.4
+black = 2.9
+wake = 2.2
+walk = 98.0
+run = 148.0
+shiver = 0.7
+fear = 1.5
+bleatEvery = 1.25
+stars = 3.2
+skipAfter = 0.8
+duck = 0.12
+push = 12.0
+arrive = 1.4
+lunge = 0.45
+club = {"knock": 224, "slow": 0.8, "hitstop": 0.12}
+prologue = {"meadow": 11, "meet": 4.2, "answer": 0.5, "road": 7, "dark": 3.4, "cloth": 1, "bleat": {"meadow": 2.4, "road": 1.4, "dark": 0.62}, "roadSpeed": 420, "bounce": 2.2, "zoom": 1.35, "walk": 46, "graze": [0.7, 1.8], "roam": {"goat": [-104, 8], "ewe": [104, -4], "rx": 40, "ry": 26}, "meetAt": 20, "heartIn": 0.5, "wheelSpin": 9, "titleCard": 2.6, "cell": 0.6, "tufts": 90, "flowers": 36, "stars": 70, "treeline": 0.22, "verge": 0.6, "clouds": 7}

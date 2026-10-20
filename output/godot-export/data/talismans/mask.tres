@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="TalismanData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/talisman_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "mask"
+name_ = "SCARY MASK"
+rarity = 1.0
+color = "#efe6d0"
+tiers = [{"params": {"r": 4, "flee": 1.5, "drop": true, "blind": false, "cd": 4}}]
+tag = "ai"

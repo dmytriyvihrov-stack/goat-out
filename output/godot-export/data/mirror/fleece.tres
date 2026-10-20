@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="MirrorData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/mirror_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "fleece"
+name_ = "THICK FLEECE"
+costs = [40, 120]
+souls = [0, 3]
+params = {"hearts": [1, 2]}
+glyph = "heart"
+opens = 0.0
+hint = "Hearts added to your maximum, every run."

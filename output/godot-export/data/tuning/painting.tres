@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="PaintingTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/painting_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+saveButton = false
+px = 11.0
+maxRows = 4.0
+cutLook = 0.25
+aspect = 1.75
+gap = 3.0
+pad = 3.0
+oneRow = 40.0
+floorAlt = 35.0
+grass = 0.55
+unseen = 0.6
+trail = {"w": 2, "alpha": 0.85}
+glyphCell = 2.0
+reveal = 1.6
+ghost = 0.16
+arm = 1.2
+fit = {"w": 0.9, "h": 0.6, "top": 0.17}
+export = 2.0
+band = {"big": 0.03, "small": 0.015}
+route = {"w": 0.74, "max": 780, "cell": 2, "move": 1.3, "after": 0.9}
+death = {"at": 0.6, "fade": 0.9, "h": 0.56, "top": 0.07, "late": 1.4, "lateRuns": 4, "oneRow": 14}

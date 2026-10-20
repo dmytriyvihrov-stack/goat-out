@@ -1,0 +1,63 @@
+[gd_resource type="Resource" script_class="HeavenTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/heaven_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+tables = {"odds": [0.4, 0.6], "gap": [8, 16], "crowd": 2, "hurt": 2, "z": 700, "grav": 1100, "lock": 0.3, "killR": 30}
+arrive = {"flash": 0.9, "rise": 1.1, "title": 3.4, "tallyAfter": 1.3, "tallyTime": 1.6}
+pay = {"kill": 1, "floor": 10}
+gift = {"mend": 15, "horns": 30, "skills": 60, "skillsSouls": 1}
+bellDrop = {"apart": 2.6, "fly": 0.55, "z": 30, "near": 2.6}
+motes = {"near": 1, "rise": 26, "riseT": 1.3, "bob": 2, "bobRate": 1.1, "sway": 1.5, "alpha": 0.7, "delay": 0.55, "wait": 1.5, "ghostFor": 2.4, "speed": 120, "accel": 900, "max": 520, "catchR": 12, "cell": 2, "stagger": 0.07, "per": {"champion": 2, "seer": 2, "hunter": 2, "shield": 2, "thrower": 2, "butcher": 3, "ratogre": 3, "boss": 1, "welder": 2, "automaton": 4}, "spread": 9}
+second = {"hearts": 2, "invuln": 2.2, "push": 3.2, "daze": 1.6, "fling": 6, "time": 1.9}
+dive = {"up": 0.7, "aim": 1.9, "fall": 0.32, "height": 420, "accel": 16, "speed": 5.2, "drag": 1.4, "reach": 7, "hurt": [0.75, 2], "stun": [3, 3], "room": [false, true], "daze": 2.2, "cell": 3}
+extraLife = {"on": true, "lives": 1, "hearts": 0.5}
+rebirth = {"on": true, "after": 500, "costs": [100, 200], "hearts": 0.5}
+ascent = {"time": 1.75, "rise": 150, "lift": 0.2, "beam": 26, "sway": 4}
+speed = 1.5
+talkR = 2.3
+hearR = 7.0
+answer = 0.6
+callAfter = 1.5
+type = 44.0
+talkArm = 0.3
+talkOut = 0.28
+plate = 3.2
+holdGap = 2.4
+hornsEdge = 1.6
+marks = {"cell": 2.5, "lift": {"god": 128, "shepherd": 66, "mirror": 84, "seat": 64, "horse": 84, "bells": 56, "tower": 150}, "bob": {"rate": 2.6, "amp": 2}, "glyph": [".###.", "#...#", "....#", "...#.", "..#..", ".....", "..#.."], "rim": "#3a2c4e", "fill": "#f7d774", "lit": "#fff4c2", "smile": [".....", ".#.#.", ".#.#.", ".....", "#...#", ".###.", "....."], "glad": "#9fd84a", "dare": {"cell": 2, "big": 6, "alert": 5, "grow": 0.5, "blink": 2.5}}
+comb = {"snap": 26, "walk": 110, "stroke": 0.42, "time": 3.6}
+graze = {"r": 22, "time": 1.1}
+edgeGate = {"cell": 3, "h": 54, "gap": 15, "gateW": 60, "alpha": 0.16, "hot": 0.55, "fade": 0.6, "iron": "#3a2c4e", "lock": "#b07a1e"}
+arrows = {"say": 50, "after": 25, "n": 4, "cell": 4, "bob": {"rate": 3.2, "amp": 5}, "fade": 0.8, "glyph": [".###.", ".###.", ".###.", "#####", ".###.", "..#.."], "fill": "#f7d774", "lit": "#fff4c2", "rim": "#3a2c4e"}
+mirrorFlash = 0.35
+mirrorBack = 7.0
+mirrorDaze = 0.7
+panelArm = 0.25
+buy = {"hold": 0.85, "tick": 0.1, "shake": 2.5, "glint": 0.7}
+bells = [262, 294, 330, 392, 440, 523, 587, 659]
+bellSwing = 0.55
+bellDamp = 3.5
+bellGlow = 0.8
+bellWake = 1.8
+bellSong = {"bpm": 84, "after": 4, "walk": 70, "count": 4, "lead": 1.5, "fall": 64, "window": 0.24, "auto": 60, "intro": [[0, 0], [1, 0], [2, 0], [3, 2], [4, 1], [5, 1], [6, 1], [7, 3], [8, 2], [9, 2], [10, 4], [11, 3], [12, 2], [13, 1], [14, 0]], "loop": [[0, 0], [0.5, 0], [1, 0], [2, 0], [2.5, 0], [3, 2], [4, 1], [4.5, 1], [5, 1], [6, 1], [6.5, 1], [7, 3], [8, 2], [8.5, 2], [9, 4], [10, 3], [10.5, 2], [11, 1], [12, 0], [13, 4], [13.5, 5], [14, 4], [15, 0], [16, 5], [16.5, 5], [17, 5], [18, 7], [18.5, 6], [19, 5], [20, 4], [20.5, 4], [21, 4], [22, 6], [22.5, 5], [23, 4], [24, 3], [24.5, 3], [25, 2], [26, 1], [26.5, 0], [27, 1], [28, 0], [29, 0], [30, 0], [30.5, 0], [31, 0]], "loopBeats": 32}
+buttRecovery = 0.05
+buttWindup = 0.5
+shepBells = {"every": 3, "chance": 0.6, "gap": 7}
+music = {"every": 4, "octave": 1, "pluck": 0.024, "pad": 0.038}
+jump = {"time": 1.5, "speed": 150, "fade": 0.4, "turns": 1.1, "flips": 1.5, "hop": 0.32, "hopH": 18, "crouch": 0.3, "fall": 150, "small": 0.12, "puff": 16, "motes": 30, "beat": 0.35}
+drop = {"time": 0.75, "height": 230, "lead": 0.45, "turns": 1.25, "flips": 2, "ko": 1.3, "getup": 0.35, "besidePen": 1.4, "stretch": 0.45, "motes": 40, "ring": 38, "burst": 12, "shaft": {"w": 14, "over": 260, "fade": 0.6, "alpha": 0.22, "color": "#fff4d6"}}
+bodyR = {"hseat": 16, "hshep": 15, "hmirror": 17, "hbell": 8, "htower": 18, "hhorn": 12}
+towerAt = [59.6, 9.4]
+towerScale = 1.4
+quests = {"offer": 6, "postAt": [36.6, 18.4], "postR": 9, "tortoise": {"floors": 1, "floor": 1, "speed": 0.4, "near": 7, "done": 40}, "goose": {"floors": 1, "floor": 2, "done": 40}, "horse": {"floors": 2, "chance": 0.6, "pay": 15, "done": 40}}
+home = {"pour": {"rate": 14, "fly": 0.45}, "tower": {"cost": 30}, "stands": {"open": ["tortoise"], "cost": {"goose": 25, "horse": 40}, "later": 40, "inRing": 26}, "paddock": {"x0": 21.2, "x1": 26.6, "y0": 20.8, "y1": 24, "post": 0.6, "postR": 7, "come": 2.6}, "roam": {"tortoise": {"speed": 7}, "goose": {"speed": 55, "honk": [7, 15], "fly": [22, 40], "flyFor": 11, "flock": 6}, "horse": {"speed": 165, "graze": [2, 5]}}, "banter": {"near": 4.5, "watch": 7, "reply": 2.2, "life": 3.6, "gap": 16, "first": 6}, "horns": {"at": [40.4, 17.6], "gap": 1.8}}
+mirrorAt = [35.7, 12.2]
+shepAt = [41, 12.2]
+godTexel = 1.55
+seaDepth = 0.55
+seaDrift = 5.0
+earthDepth = 0.2
+wispDepth = 0.45
+ritual = {"men": 8, "at": [27, 27], "ring": [20, 14], "candleRing": [11, 8], "candles": 10, "candleGap": 0.55, "walk": 9, "pace": 0.09, "step": 2.2, "bow": 5, "wave": 0.3, "bowFor": 1.6, "raise": 4, "sway": 0.5, "mageAt": 5, "mageBeat": 1.6, "fireSize": 3, "fireAt": 9, "glowR": 22, "glow": [0.18, 0.1], "flickerFps": 7, "candleR": 4, "candleGlow": 0.14, "candleFps": 9, "dusk": 0.75}

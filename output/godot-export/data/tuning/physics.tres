@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PhysicsTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/physics_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+wedge = {"after": 0.3, "moved": 0.6, "reach": 4, "clear": 6}
+splatSpeed = 352.0
+flungDrag = 3.5
+flungFloorSpeed = 112.0
+knockHitSpeed = 224.0
+bodyKillSpeed = 320.0
+bodyBothSpeed = 1024.0
+thrownKill = 256.0

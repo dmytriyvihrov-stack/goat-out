@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="ListsTable" format=3]
+
+[ext_resource type="Script" path="res://data/classes/lists_table.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+boon_first = ["butt", "scream"]
+rarity = [{"name": "COMMON", "color": "#f2ece0", "dim": "rgba(242,236,224,0.55)"}, {"name": "RARE", "color": "#6fd36a", "dim": "rgba(111,211,106,0.55)"}, {"name": "EPIC", "color": "#c77dff", "dim": "rgba(199,125,255,0.55)"}]
+retired_canons = ["open", "funnel"]
+boon_off = ["ricochet", "leapfrog", "hocks"]

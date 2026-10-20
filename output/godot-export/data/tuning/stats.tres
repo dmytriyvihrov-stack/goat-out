@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="StatsTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/stats_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+url = "https://goat-stats.dimache.workers.dev"
+keep = 40.0
+sendDev = false
+askDev = true
+reach = [4, 8]
+roomCap = 40.0
+pathCap = 80.0
+fight = 0.5
+live = {"gap": 20}
+burst = 8.0
+title = "HELP THE GOAT?"
+ask = ["Can we anonymously send info about your run?", "No name, email or other personal data."]
+later = "You can change this any time in SETTINGS."

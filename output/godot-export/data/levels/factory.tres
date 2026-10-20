@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="LevelData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/level_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+index = -1.0
+name_ = "THE FACTORY"
+sub = "Dev · test"
+rooms = 14.0
+canon = {"id": "factory", "name": "IRON", "idea": "Plate floors, presses and belts. The cult's machines, with meat in them."}
+theme = "The works under the compound, where the cult builds what it cannot breed."
+decor = "Riveted plate, grating, boilers, belts, the welders' torches."
+arenas = [{"at": 13, "boss": "automaton", "with": ["sawbot", "sawbot"]}]
+gates = []
+rests = []
+heals = 0.0
+souls = 0.0
+racks = 0.0
+traps = 0.0
+crates = 0.0
+encounters = {"kinds": ["sawbot", "welder", "arm", "sweeper", "shieldgen", "cartridge"], "introduce": [], "from": 4, "to": 8, "ease": 1.5}
+floor = "#6a6a70"
+floorAlt = "#62626a"
+wall = "#2a2a33"
+wallTop = "#55555f"
+fog = "#09090d"
+hint = null
+barrels = 0.0
+hintKey = null
+factory = true
+showroom = true

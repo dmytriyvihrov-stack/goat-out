@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="HintsTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/hints_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+rollInset = 2.2
+rollRun = 4.0
+rollWalk = 12.0

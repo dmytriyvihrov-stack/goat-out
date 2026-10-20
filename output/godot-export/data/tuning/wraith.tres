@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="WraithTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/wraith_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+radius = 12.0
+speed = 139.9035456
+sight = 17.0
+cone = 6.28318530717959
+reach = 34.56
+windup = 0.52
+swing = 0.14
+damage = 1.0
+knock = 38.4
+hp = 1.0
+flooredTime = 0.6
+windupPull = 26.0
+standoff = 1.15
+behind = 1.15
+flank = 0.2
+lurk = 0.24
+manifest = 0.26
+solidAfter = 0.8
+fadeCd = 1.5
+bossFade = 2.2
+driftWobble = 0.7
+trapSense = 1.0
+immune = {"fire": true, "stun": true, "grab": true}
+hide = {"start": 0.4, "again": 0.35, "minDist": 5, "springR": 2.6, "touchR": 0.9, "springWind": 0.58, "milk": 0.4, "door": 0.2, "doorTell": 6, "doorBreath": 3.5}

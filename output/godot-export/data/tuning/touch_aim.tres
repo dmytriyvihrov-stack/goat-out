@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="TouchAimTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/touch_aim_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+reach = 5.2
+cone = 0.95

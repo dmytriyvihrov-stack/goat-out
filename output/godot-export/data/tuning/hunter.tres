@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="HunterTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/hunter_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+radius = 11.0
+speed = 138.86208
+sight = 10.0
+cone = 1.5707963267949
+calmSight = 0.6
+keepMin = 5.0
+keepMax = 8.0
+backoffDist = 4.0
+aimTime = 0.88
+reload = 1.35
+gapReach = 1.5
+heldShots = [2, 3]
+watchSight = 8.0
+bulletSpeed = 608.0
+damage = 1.0
+wildNear = 2.0
+wildChance = 0.5
+wildSpread = 0.7
+cockHear = 16.0
+friendClear = 2.0
+stepOff = 0.45

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="MillTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/mill_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+hubR = 26.0
+armLen = 65.6
+armHalfWidth = 0.2
+innerR = 20.0
+grass = {"chance": 0.5, "at": 0.8, "clear": 0.9}
+speed = 0.82
+impulse = 960.0
+damage = 1.0
+hitCooldown = 1.15
+goatKnock = 0.3
+clear = 1.2
+knockCd = 0.8

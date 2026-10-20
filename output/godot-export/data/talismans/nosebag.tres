@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="TalismanData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/talisman_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "nosebag"
+name_ = "NOSEBAG"
+rarity = 1.0
+color = "#8a6238"
+tiers = [{"params": {"hold": 2, "chew": 1}}]
+tag = "heal"

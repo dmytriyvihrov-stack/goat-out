@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="RoomsTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/rooms_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+crateWant = [1, 3]
+bossShut = {"on": true, "inset": 1.2}
+armory = {"chance": 0.5, "from": 2, "crates": 1}
+flank = {"chance": 0.6, "from": 2}
+firstMeet = {"kinds": ["dog"], "crates": 1, "tables": 1, "drop": ["chandelier", "cleat", "armor", "trophy", "suit", "barrel", "bomb", "weapon"]}
+arena = {"vary": 0.7, "from": 1, "fromOf": {"well": 3, "colonnade": 1, "feast": 1}}
+midPillars = {"chance": 0.5, "minFloor": 110, "ground": 0.4, "near": 0.35, "shapes": [[[-2, 0], [2, 0]], [[0, -2], [0, 2]], [[-2, -2], [2, -2], [-2, 2], [2, 2]], [[-2, -1], [2, 1]], [[-3, 0], [0, 0], [3, 0]]]}

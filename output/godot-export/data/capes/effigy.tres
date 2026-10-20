@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="CapeData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/cape_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "effigy"
+name_ = "SCARECROW'S CAPE"
+color = "#c9a24e"
+params = {"life": 6, "r": 7, "cooldown": 18, "shots": true, "oops": true}

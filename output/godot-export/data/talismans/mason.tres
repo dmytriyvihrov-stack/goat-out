@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="TalismanData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/talisman_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "mason"
+name_ = "MASON'S MARK"
+rarity = 2.0
+color = "#8d8a85"
+tiers = [{"params": {"splat": 0.75, "props": true, "bodies": true}}]
+tag = "geo"

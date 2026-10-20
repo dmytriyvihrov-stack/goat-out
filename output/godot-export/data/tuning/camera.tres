@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CameraTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/camera_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+lens = 1.1
+lead = 76.8
+lerp = 3.5
+leadLerp = 1.8
+leadStill = 0.3
+zoomRest = 1.0
+zoomFast = 0.985
+zoomLerp = 1.0
+deadzone = 25.6
+fitMargin = 64.0
+hudLift = 0.05
+fight = {"pull": 0.22, "max": 96, "zoom": 0.9, "near": 384, "ease": 1.2, "follow": 1.6}
+leash = 0.62
+leashLerp = 14.0
+blend = 1.6
+blendIn = 12.8
+holdLerp = 2.0
+lensLerp = 1.2

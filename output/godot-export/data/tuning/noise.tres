@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="NoiseTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/noise_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+footstep = 3.0
+footstepGap = 0.16
+chase = 6.0
+headbutt = 5.0
+splat = 8.0
+smash = 8.0
+gunshot = 14.0
+bell = 30.0
+swing = 4.0
+door = 10.0
+table = 9.0
+breath = 10.0
+boom = 16.0
+cast = 7.0
+rune = 11.0
+cage = 13.0
+steel = 9.0
+embers = 6.0

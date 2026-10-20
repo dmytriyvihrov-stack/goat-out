@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SoulData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/soul_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "leapfrog"
+skill = "roll"
+active = true
+emoji = "🐸"
+minLevel = 0.0
+name_ = "LEAPFROG"
+desc = "Roll at a man to jump over him and stun him."
+params = {"reach": 3, "cone": 0.6, "behind": 1, "daze": 0.9, "cooldownMul": 2, "time": 0.36, "height": 20, "over": 0.45}

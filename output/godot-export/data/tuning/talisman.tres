@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="TalismanTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/talisman_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+slots = 3.0
+charm = {"at": [[0.5], [0.3, 0.7], [0.18, 0.5, 0.82]], "drop": 1.2}

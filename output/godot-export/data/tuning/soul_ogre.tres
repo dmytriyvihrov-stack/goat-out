@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="SoulOgreTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/soul_ogre_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+damage = 1.0
+knock = 4.0
+ring = {"from": 2, "n": 2, "apart": 0.7, "start": 1.2, "speed": 3.5, "max": 12, "thick": 0.6, "gaps": 2, "gap": 0.34, "flames": 0.75, "flameSize": 9}
+line = {"from": 3, "n": 2, "apart": 0.9, "start": 1.9, "speed": 4.5, "max": 14, "w": 3, "depth": 0.7, "flames": 0.75, "flameSize": 9}

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="CapeTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/cape_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+shopChance = 0.4
+sway = {"rate": 7, "run": 60}
+wind = {"from": 0.25, "trail": 3, "rise": 4, "riseWave": 1.2, "idleRise": 0.8, "spread": 2, "lift": 1, "wave": 1.4, "freq": 11, "phase": 0.9, "idle": 0.6, "idleFreq": 2.4}
+ruin = {"ring": 1, "parts": 26, "shake": 7, "stagger": 0.6}
+sprout = {"search": 2}

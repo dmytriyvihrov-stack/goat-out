@@ -1,0 +1,42 @@
+[gd_resource type="Resource" script_class="LevelData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/level_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+index = 5.0
+name_ = "THE ENGINE"
+sub = "Level 6"
+rooms = 12.0
+canon = {"id": "mech", "name": "IRON", "idea": "The cult builds what it cannot breed. Presses, belts and burners in every room, and the machines walking them do not bleed."}
+theme = "The engine that drives the works, hot, loud and built to crush."
+decor = "Burner grills, flame pipes, gantries over the drop, the shield generators' domes."
+arenas = [{"at": 4, "boss": "sawbot", "escorts": 2}, {"at": 11, "boss": "automaton", "escorts": 2, "with": ["sawbot", "sweeper"]}]
+gates = [6]
+rests = [10]
+gateKeeper = true
+heals = 3.0
+souls = 2.0
+racks = 0.12
+traps = 0.0
+crates = 0.25
+encounters = {"kinds": ["sawbot", "welder", "arm", "sweeper", "shieldgen", "cartridge"], "introduce": [["sweeper", 0], ["cartridge", 0.14], ["shieldgen", 0.4]], "from": 12, "to": 25, "ease": 1.1, "cap": {"men": 5, "sawbot": 3, "welder": 2, "arm": 2, "sweeper": 2, "shieldgen": 1, "cartridge": 2}}
+floor = "#5e5a56"
+floorAlt = "#57534f"
+wall = "#24201f"
+wallTop = "#4f4743"
+fog = "#0a0807"
+doorChance = 0.35
+hint = "BREAK THE DOME FIRST. EVERYTHING HERE BURNS BUT THEM."
+met = ["bearer", "champion", "dog", "seer", "shield", "butcher", "hunter", "shaman", "thrower", "sawbot", "welder", "arm", "automaton"]
+known = ["stone", "fire", "hollow", "line", "open", "funnel", "mech"]
+barrels = 0.25
+beasts = ["tortoise", "crow", "horse", "husky", "fish"]
+ironDoors = 0.85
+stack = 0.0
+hintKey = null
+spikes = 0.0
+clockDoors = 0.45
+mech = true
+factory = true
+mechRooms = ["arms", "scrapyard", "workshop", "carousel", "gantry", "gridiron", "pipes", "island", "crusher", "burners", "belts", "hammers"]

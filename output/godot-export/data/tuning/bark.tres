@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BarkTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/bark_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+life = 1.9
+gap = 0.9
+perEnemy = 7.0
+cap = 1.0
+bossCap = 2.0
+nearDist = 7.5
+nearChance = 0.13
+witnessDist = 7.0

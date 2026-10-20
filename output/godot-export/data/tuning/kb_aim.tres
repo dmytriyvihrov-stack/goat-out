@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="KbAimTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/kb_aim_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+reach = 5.2
+cone = 0.95
+still = {"cone": 1.6, "reach": 3.2}
+mouseBack = 90.0
+mouseGap = 0.3

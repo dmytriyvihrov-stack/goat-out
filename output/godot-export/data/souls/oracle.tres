@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="SoulData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/soul_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "oracle"
+emoji = "👁️"
+minLevel = 0.0
+name_ = "THE ORACLE"
+desc = "You can see through walls near you."

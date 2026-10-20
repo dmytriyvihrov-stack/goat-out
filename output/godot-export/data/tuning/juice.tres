@@ -1,0 +1,47 @@
+[gd_resource type="Resource" script_class="JuiceTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/juice_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+screen = 0.6
+stop = 0.7
+shakeOther = 0.0
+kickOther = 0.35
+hitstop = 0.07
+hurtStop = 0.06
+shakeKill = 9.0
+shakeHit = 6.0
+shakeDecay = 12.0
+deathSlow = 1.6
+killSlow = 0.22
+shakeFreq = 16.0
+shakeRef = 7.0
+shakeThud = 0.4
+thudNear = 4.0
+thudFar = 14.0
+kick = 7.0
+kickDecay = 11.0
+kickMax = 15.0
+zoomKick = 0.025
+zoomDecay = 7.0
+flashDecay = 6.0
+comboWindow = 2.4
+comboSlow = 0.12
+comboHitstopMul = 0.004
+comboHitstopCap = 0.025
+comboShakeMul = 0.35
+hurtVignette = {"life": 1, "alpha": 0.32}
+hurtLook = {"life": 0.55, "white": 0.11, "blink": 22, "len": 46, "slash": 0.3}
+heartBreak = {"life": 0.9, "swell": 1.8, "split": 0.14, "drift": 16, "fall": 40, "bits": 9}
+blame = {"life": 1.6, "fade": 0.4, "pulse": 14, "px": 2, "alpha": 0.95, "ring": 1.15, "snapFrom": 2.2, "snap": 0.18, "bob": 2, "arc": 0.5, "ringAlpha": 0.6, "ringFor": 0.7}
+hitFlash = 0.07
+marks = {"px": 2, "stars": 3, "rx": 11, "ry": 4.5, "spin": 6.5, "grow": 0.5, "shock": 7, "turns": 1.5, "shockSpin": 2.4, "shockR": 0.95, "buff": {"note": "#f7d774", "glass": "#e0b25a", "bob": 4, "warn": 2}}
+windupTint = {"max": 0.4, "curve": 1.6, "warm": 2.6, "pop": 0.88, "popMax": 0.85, "states": ["windup", "hookwind", "slamwind", "hopwind", "cast", "aim", "wdaim"]}
+impact = {"ring": 0.7, "life": 0.16, "sparks": 3, "killRing": 1.2, "killLife": 0.26}
+wallMark = {"keep": 90, "into": 3, "cell": 2, "cells": [3, 6], "sparks": 5, "speed": [140, 260], "life": [0.1, 0.22]}
+deathBits = {"n": [6, 10], "speed": [90, 230], "life": [0.22, 0.45], "size": [2, 3], "chunk": 0.5, "spread": 1.9}
+dust = {"lunge": 3, "roll": 4, "land": 5, "life": 0.4, "size": 3.5, "grow": 7, "speed": 45}
+squash = {"hit": 0.09, "hurt": 0.18, "land": 0.07, "freq": 30, "decay": 12}
+muzzle = {"life": 0.07, "size": 18}
+heartbeat = {"hp": 1, "bpm": 78, "alpha": 0.2, "throb": 0.18}

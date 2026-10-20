@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="CanonTable" format=3]
+
+[ext_resource type="Script" path="res://data/classes/canon_table.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+share = 0.5
+minRooms = 4.0

@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="StairsTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/stairs_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+climb = 0.85
+climbSpeed = 70.4
+rise = 16.0
+arrive = 1.1

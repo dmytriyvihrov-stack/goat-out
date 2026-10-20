@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="StealthTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/stealth_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+fightR = 14.0
+speed = 0.8
+sight = 0.8
+step = 4.5
+knock = 1.5
+floor = 1.5
+stop = 0.06
+text = "UNSEEN"
+statusText = "STEALTH"
+denyText = "NOT IN A FIGHT"
+ease = 6.0
+alarm = 0.7
+deny = 6.0
+spotted = "SPOTTED"
+turn = 1.6
+grass = 1.5
+cover = {"kinds": ["crate", "rock", "barrel", "machine"], "grow": 2}
+search = {"looks": 3, "every": 1.1}
+dark = {"sight": 0.7, "ear": 1.4}
+notice = {"noticeNear": 1.2, "noticeFar": 12, "noticeMin": 0.7, "noticeMax": 1.5}
+idle = {"tries": 12, "far": 6, "keep": 0.75, "wall": 1, "wake": 0.4}
+crouch = {"wide": 0.07, "low": 0.12}
+look = {"px": 4, "ray": 0.03, "keep": 0.25, "turn": 0.06, "budget": 3, "cone": "rgba(196,48,36,0.2)", "rim": "rgba(226,70,50,0.6)", "seen": "rgba(238,64,42,0.34)", "ear": "rgba(214,160,72,0.4)", "status": "#9fc7e8", "statusDeny": "#e0a040"}

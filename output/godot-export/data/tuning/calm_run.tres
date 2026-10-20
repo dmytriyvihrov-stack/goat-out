@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="CalmRunTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/calm_run_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+mul = 2.0
+r = 14.0

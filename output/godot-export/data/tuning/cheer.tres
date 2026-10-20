@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CheerTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/cheer_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+on = true
+only = "rear"
+skip = 0.45
+rear = {"time": 1.7, "up": 0.26, "down": 0.28, "tilt": 0.95, "heel": 7, "lift": 6, "tall": 0.3, "paw": 7, "sparks": 28, "hop": 7, "hopT": 0.3, "burst": 46, "ring": 2.6, "punch": 1.4, "stop": 0.06}
+banner = {"time": 1.9, "out": 0.3, "slide": 0.22, "rise": 0.4, "band": 0.24, "goat": 0.42, "rear": 0.18, "cell": 4, "sparks": 26}
+gulp = {"time": 2, "out": 0.3, "swallow": 0.85, "goat": 0.55, "tilt": 0.3, "snap": 0.12, "mouth": [0.2, 0.185], "cell": 4, "sparks": 40}

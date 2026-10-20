@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="SacrificeTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/sacrifice_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+at = 2.0
+minRoom = 2.0
+clear = 1.0
+propGap = 1.8
+spawnGap = 2.0
+enterGap = 3.0
+r = 1.1
+tick = 1.0
+cells = 6.0
+fade = 1.6
+radius = 1.6
+blink = 1.4
+clutter = ["crate", "barrel", "rock", "bomb"]
+portal = {"r": 0.7, "gap": 2.4, "near": 6, "size": 0.95}

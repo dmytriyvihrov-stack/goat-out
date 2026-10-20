@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ChandelierTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/chandelier_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+chance = 0.3
+perLevel = 2.0
+fromWall = 4.0
+nearDoor = 5.0
+byDoor = 2.0
+cleatIn = 1.0
+reach = 9.0
+z = 64.0
+texel = 2.0
+gravity = 1500.0
+killR = 34.0
+fireR = 1.0
+fireFor = 3.6
+sway = 0.05
+look = {"ring": 1.5, "fade": 0.32, "rope": 0.8, "ropeA": 0.4, "warnR": 83.2}

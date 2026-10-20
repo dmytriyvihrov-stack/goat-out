@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="TuningScalars" format=3]
+
+[ext_resource type="Script" path="res://data/classes/tuning_scalars.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+permadeath = true
+cageThought = 2.4
+boonArm = 0.4

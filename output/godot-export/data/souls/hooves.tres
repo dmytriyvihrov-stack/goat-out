@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SoulData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/soul_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "hooves"
+skill = "butt"
+emoji = "🐴"
+minLevel = 0.0
+name_ = "MULE KICK"
+desc = "When you headbutt, your hind hooves kick back whoever is behind you."
+params = {"share": 0.5, "reach": 1, "cone": 0.35}
+addition = ["neck", "horns", "skull"]

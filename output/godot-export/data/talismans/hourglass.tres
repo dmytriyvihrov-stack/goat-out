@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="TalismanData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/talisman_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "hourglass"
+name_ = "THE HOURGLASS"
+rarity = 2.0
+color = "#d8b46a"
+tiers = [{"params": {"free": 1}}]
+tag = "cd"

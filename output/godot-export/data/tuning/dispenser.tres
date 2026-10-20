@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="DispenserTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/dispenser_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+r = 15.0
+wind = 3.0
+out = 22.0
+outX = 34.0
+cd = 0.6

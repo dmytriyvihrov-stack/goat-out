@@ -1,0 +1,49 @@
+[gd_resource type="Resource" script_class="LevelData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/level_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+index = 2.0
+name_ = "THE CAVE"
+sub = "Level 3"
+rooms = 13.0
+canon = {"id": "hollow", "name": "THE HOLLOW", "idea": "No wall runs straight. The rock curves, so a man thrown along it slides; he dies on what he hits square, a boulder, the end of a bend. The grass hides whoever is in it, and that includes you."}
+theme = "The caves the compound was dug out of, where nobody bothered to square the walls."
+decor = "Round rock, tall grass that hides, boulders that break, hounds and a garrison in the dark."
+arenas = [{"at": 4, "boss": "champion"}, {"at": 12, "boss": "butcher"}]
+gates = [6]
+rests = [11]
+gateKeeper = true
+millAt = 8.0
+heals = 3.0
+souls = 2.0
+racks = 0.18
+traps = 0.0
+crates = 0.5
+encounters = {"kinds": ["bearer", "champion", "dog", "seer", "shield"], "introduce": [["shield", 0.45]], "from": 3, "to": 14, "ease": 1.25, "weight": {"bearer": 3, "dog": 4, "seer": 2, "champion": 2}, "cap": {"men": 6, "dog": 3}}
+floor = "#2b2821"
+floorAlt = "#302c24"
+wall = "#3b3731"
+wallTop = "#5f584b"
+fog = "#040405"
+doorChance = 0.15
+hint = "THE GRASS HIDES YOU. IT HIDES THEM TOO. THE ROCK HAS TEETH."
+met = ["bearer", "champion", "dog", "seer"]
+known = ["stone", "fire"]
+vaultAt = 3.0
+secrets = [2, 3]
+beasts = ["tortoise", "chicken", "pig", "husky", "rabbit"]
+artPass = {"wall": "#302d28", "wallTop": "#433e35"}
+ironDoors = 0.4
+stack = 0.28
+hintKey = null
+cave = true
+grass = 0.8
+rocks = 0.7
+rockClusters = 0.35
+grassColor = "#3d5a2a"
+grassHi = "#6f8f45"
+grassDark = "#223618"
+spikes = 0.0
+clockDoors = 0.35

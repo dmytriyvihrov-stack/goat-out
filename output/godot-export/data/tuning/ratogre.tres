@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="RatogreTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/ratogre_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+radius = 22.0
+speed = 135.390528
+sight = 14.0
+cone = 6.28318530717959
+hp = 6.0
+reach = 44.8
+windup = 0.72
+swing = 0.18
+recover = 0.5
+arc = 1.88495559215388
+damage = 1.0
+knock = 48.0
+stagger = 0.35
+emerge = 0.7
+trapSense = 1.0
+emergeFx = {"hitstop": 0.08, "slow": 0.35, "zoom": 1.6}
+bounce = 4.0
+immune = {"fire": true, "witch": true, "stun": true, "grab": true, "blunder": true}
+flingSpeed = 448.0
+hop = {"dist": 3, "wind": 0.34, "air": 0.42, "land": 0.36, "radius": 1.35, "damage": 1, "knock": 44.8, "lift": 26, "minHop": 1}

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ChasmTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/chasm_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+minRoom = 2.0
+from = 3.0
+chance = 0.45
+margin = 3.0
+lane = 2.0
+clear = 1.2
+farKinds = ["hunter", "champion"]
+shaman = 2.0
+shamanLip = 2.5
+hop = {"time": 0.42, "h": 14, "land": 1.25, "square": 0.45}

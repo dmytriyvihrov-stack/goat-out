@@ -1,0 +1,44 @@
+[gd_resource type="Resource" script_class="LevelData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/level_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+index = -1.0
+name_ = "THE DARK"
+sub = "Level 3"
+rooms = 12.0
+canon = {"id": "lamp", "name": "THE LAMP", "idea": "Every room has its lamp, and the lamp is a choice: it shows them to you and you to them. Knock it down and it burns where it falls, and then the room is black and they hunt you by ear."}
+theme = "The cellars under the yard, where the cult keeps what it does not want seen."
+decor = "Low vaults and cells, a standing lamp or two to a room, a lantern on the wall by every door, and nothing else lit."
+arenas = [{"at": 3, "boss": "seer"}, {"at": 7, "boss": "butcher"}, {"at": 11, "boss": "champion"}]
+gates = [5]
+rests = [9]
+gateKeeper = true
+heals = 4.0
+souls = 2.0
+racks = 0.2
+traps = 0.0
+crates = 0.45
+encounters = {"kinds": ["bearer", "champion", "dog", "seer"], "introduce": [], "weight": {"bearer": 5, "dog": 4, "seer": 3, "champion": 2}, "from": 4, "to": 11, "ease": 1.2, "cap": {"men": 5}}
+floor = "#24222b"
+floorAlt = "#2a2731"
+wall = "#2c2932"
+wallTop = "#665e70"
+fog = "#030306"
+doorChance = 0.2
+hint = "A LAMP SHOWS THEM TO YOU, AND YOU TO THEM. KNOCK IT DOWN: IT BURNS, AND THEN THE ROOM IS BLACK."
+met = ["bearer", "champion", "dog", "seer"]
+known = ["stone", "fire"]
+barrels = 0.45
+vaultAt = 6.0
+beasts = ["crow", "goose", "horse", "pig"]
+ironDoors = 0.5
+stack = 0.25
+hintKey = null
+spikes = 0.15
+clockDoors = 0.3
+lonePosts = 0.0
+scraps = true
+dark = true
+darkOf = 2.0

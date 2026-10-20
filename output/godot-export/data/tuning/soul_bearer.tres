@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="SoulBearerTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/soul_bearer_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+hp = 1.0
+flingMul = 0.6
+swift = 1.15
+witchProof = true
+traits = {"bearer": [], "champion": [], "boss": [], "butcher": [], "dog": [], "seer": [], "hunter": [], "wraith": []}

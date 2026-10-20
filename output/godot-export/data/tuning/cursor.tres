@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="CursorTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/cursor_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+cell = 2.0
+halo = "rgba(255,255,255,0.55)"

@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="DevTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/dev_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+burstGap = 1.5
+uiScale = 1.3
+minText = 12.0
+godSpeed = 3.0

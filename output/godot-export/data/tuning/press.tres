@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="PressTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/press_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+open = 1.8
+warn = 0.8
+slam = 0.14
+shut = 0.45
+back = 0.9
+goatHurt = 1.0
+rodMin = 3.0
+shake = 1.5
+eject = 9.0
+cell = 4.0
+quick = {"open": 0.6, "back": 0.5}

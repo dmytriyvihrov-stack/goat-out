@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="BurnerTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/burner_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+off = 1.6
+warn = 0.7
+ignite = 0.15
+fire = 1.4

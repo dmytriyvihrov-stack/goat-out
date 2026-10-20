@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SoulData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/soul_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "crook"
+skill = "butt"
+emoji = "🪝"
+minLevel = 0.0
+name_ = "CROOKED HORNS"
+desc = "Your right horn grew crooked: your headbutt reaches wider and further on that side."
+params = {"side": -1, "widen": 0.75, "reachMul": 1.35, "rowW": 0.3}
+addition = ["horns", "neck"]

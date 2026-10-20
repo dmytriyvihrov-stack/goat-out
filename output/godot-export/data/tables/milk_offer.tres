@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="MilkOfferTable" format=3]
+
+[ext_resource type="Script" path="res://data/classes/milk_offer_table.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "milk"
+name_ = "GRASS"
+color = "#a8bd6c"
+tiers = [{"desc": "A heart a tuft. No talisman."}]

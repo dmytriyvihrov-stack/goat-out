@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="TalismanData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/talisman_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "tablecharm"
+name_ = "THE TABLE AMULET"
+rarity = 2.0
+color = "#a8794a"
+tiers = [{"params": {"r": 1.8, "stun": 1.6}}]
+tag = "table"
+lock = {"text": "DROP THREE TABLES OFF HEAVEN'S EDGE ONTO THE CULT, AND IT IS ON THE MOUSE'S SHELVES."}

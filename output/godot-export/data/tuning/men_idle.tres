@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="MenIdleTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/men_idle_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+period = 2.6
+amp = 0.025
+wide = 0.012
+sway = 0.03
+swayPeriod = 5.5

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="MachineTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/machine_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+tape = {"cell": 4, "rows": 2, "alpha": 0.3}
+lamp = {"cell": 4}
+steam = 4.0
+sparks = 7.0
+blood = {"max": 3}
+stop = false
+gasGap = 0.35
+floor = {"hi": 0.25, "lo": 0.5}
+miss = {"chance": 0.2, "gap": 4, "blind": 0.9}

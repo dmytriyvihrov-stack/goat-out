@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="LevelModsTable" format=3]
+
+[ext_resource type="Script" path="res://data/classes/level_mods_table.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+chase = {"name": "THE CHASE", "card": "they are coming", "banner": "THEY ARE COMING. KEEP RUNNING."}
+snow = {"name": "THE SNOW", "card": "under snow", "banner": null}

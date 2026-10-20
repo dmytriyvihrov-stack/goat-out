@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="EncounterTable" format=3]
+
+[ext_resource type="Script" path="res://data/classes/encounter_table.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+weight = {"bearer": 6, "dog": 3, "champion": 2, "hunter": 3, "seer": 2, "wraith": 3, "shield": 1, "thrower": 1, "shaman": 1, "sawbot": 3, "welder": 1, "automaton": 0, "arm": 0, "sweeper": 2, "shieldgen": 1, "cartridge": 2}
+cap = {"seer": 1, "champion": 1, "hunter": 2, "dog": 2, "wraith": 3, "men": 7, "shield": 1, "thrower": 1, "shaman": 1, "sawbot": 3, "welder": 2, "automaton": 1, "arm": 4, "sweeper": 3, "shieldgen": 1, "cartridge": 2}
+introWith = {}
+room = {"ref": 120, "min": 3, "grow": 1.25}
+hallCap = 18.0
+escortThreat = 2.5
+afterIntro = 0.65
+millEase = 0.45
+killbox = {"men": ["hunter", "hunter"], "near": ["bearer", "bearer"]}
+cheap = {"kind": "bearer", "full": 8, "none": 22, "max": 6, "min": 2}

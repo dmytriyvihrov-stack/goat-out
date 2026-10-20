@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="BoonPowerTable" format=3]
+
+[ext_resource type="Script" path="res://data/classes/boon_power_table.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+heart = 1.0
+collar = 1.3
+howl = 1.5
+breath = 1.5
+bomb = 1.3
+hide = 1.2
+oracle = 0.6
+ember = 0.6
+kindling = 0.8
+throat = 0.8
+leapfrog = 1.1
+coldeye = 0.9
+stomachs = 0.5
+neck = 0.8
+hocks = 0.6
+lungs = 0.7
+hunger = 0.4
+ricochet = 0.5

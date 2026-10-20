@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="FogTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/fog_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+shade = 0.72
+radius = 26.0
+soft = 0.6
+oracle = 11.0
+mem = {"on": true, "soft": 4, "blur": 0.7, "solid": 2, "every": 0.25}

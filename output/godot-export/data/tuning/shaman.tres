@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ShamanTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/shaman_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+hp = 2.0
+speedMul = 0.9
+r = 11.0
+keep = {"min": 3.5, "max": 6.5}
+wake = 1.2
+near = 4.5
+spirit = {"cd": 7, "wind": 0.9, "reach": 7, "max": 3, "speed": 1.3, "hurt": 1, "hp": 1, "time": 14, "recover": 0.5}
+call = {"cd": 6, "wind": 1.2, "min": 2.5, "max": 8, "time": 2.6, "recover": 0.6, "guard": 3, "gapR": 5}
+sightMul = 1.4
+aura = {"r": 2.6, "burst": 3.4, "runes": 9, "turn": 0.35}

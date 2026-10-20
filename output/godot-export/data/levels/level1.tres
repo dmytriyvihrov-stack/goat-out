@@ -1,0 +1,44 @@
+[gd_resource type="Resource" script_class="LevelData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/level_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+index = 1.0
+name_ = "THE YARD"
+sub = "Level 2"
+rooms = 12.0
+canon = {"id": "fire", "name": "FIRE", "idea": "Coals and straw. Every room has something in it that burns, and by the time the mage lights the ground you have already lit it yourself."}
+theme = "The yard behind the sanctum, kept lit for the rendering to come."
+decor = "Braziers, straw, ovens, oil lamps, a hound pack, the Seer’s witchfire."
+arenas = [{"at": 4, "boss": "champion", "escorts": 1, "hp": 4}, {"at": 9, "boss": "seer", "sealed": true}, {"at": 11, "boss": "seer", "escorts": 1, "with": ["seer"]}]
+gates = [5]
+rests = [10]
+gateKeeper = true
+millAt = 7.0
+heals = 2.0
+souls = 2.0
+racks = 0.16
+traps = 1.0
+crates = 0.3
+encounters = {"kinds": ["bearer", "champion", "dog", "seer"], "introduce": [["dog", 0.12], ["seer", 0.4]], "from": 1.5, "to": 8.5, "ease": 1.5}
+floor = "#8a7554"
+floorAlt = "#907b5a"
+wall = "#3b2233"
+wallTop = "#55344a"
+fog = "#120d12"
+doorChance = 0.42
+hint = "THE MAGE BURNS THE GROUND YOU STAND ON"
+met = ["bearer", "champion"]
+known = ["stone"]
+teachScream = true
+teachSneak = true
+chandAt = 3.0
+barrels = 0.3
+vaultAt = 6.0
+secrets = [2, 3]
+beasts = ["chicken", "goose", "pig", "rabbit", "fish"]
+artPass = {"floor": "#3d3224", "floorAlt": "#423627", "wallTop": "#6e4862"}
+ironDoors = 0.45
+stack = 0.22
+hintKey = "roll"

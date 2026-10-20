@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="BigRoomTable" format=3]
+
+[ext_resource type="Script" path="res://data/classes/big_room_table.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+w = 20.0
+doorChance = 0.85

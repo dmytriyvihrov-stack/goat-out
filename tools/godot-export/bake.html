@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>godot-export bake</title>
+<style>body{background:#1b1714;color:#d8ccb0;font:13px monospace;margin:8px}pre{white-space:pre-wrap}</style></head>
+<body><pre id="log">loading scripts...</pre>
+<script>
+// ВЫГРУЗКА, part 2 (Godot move, session 1): bakes every unit into PNG sheets + JSON through the game's own draw code,
+// posts them to tools/godot-export/sprites.js's /put (output/godot-export/sprites/units/), then compares game vs file.
+// Open via `node tools/godot-export/sprites.js`:  http://localhost:8795/tools/godot-export/bake.html[?only=goat,ogre]
+// Loads the game's scripts (not game.js: no run is started) and reads them, never writes js/.
+const LIST = 'tuning text-edit rng rooms gen showroom rules juice foley audio world input entities enemies waves endboss warden sacrifice gapcross thrower shaman coward factory machines snow status shop capes shell talismans beasts altar-art painted-art pixel-assets pixel-env-assets decal-pixels pixel-art skill-icons render prologue-art prop-pixels cape-pixels ogre-pixels spartan-pixels thrower-pixels shaman-pixels warden-pixels flayed-pixels factory-assets factory-pixels horse-pixels pig-pixels beasts-more small-art-study beast-chat heaven-pixels combat-fx scatter factory-props heaven heaven-home motes codex cheer dark goat-grid juice-preview'.split(' ');
+const logEl = document.getElementById('log'), log = (s) => { logEl.textContent += '\n' + s; console.log(s); };
+const loadAll = () => LIST.reduce((p, n) => p.then(() => new Promise((ok) => { const s = document.createElement('script'); s.src = '/js/' + n + '.js'; s.async = false; s.onload = ok; s.onerror = () => { log('FAILED ' + n); ok(); }; document.body.appendChild(s); })), Promise.resolve());
+const only = (new URLSearchParams(location.search).get('only') || '').split(',').filter(Boolean);
+const want = (n) => !only.length || only.includes(n);
+const mkc = (w, h) => { const c = document.createElement('canvas'); c.width = Math.max(1, w); c.height = Math.max(1, h); return c; };
+const put = (path, body) => fetch('/put?path=' + encodeURIComponent(path), { method: 'POST', body }).then((r) => r.text());
+const hashOf = (c) => { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let h = 2166136261; for (let i = 0; i < d.length; i += 4) { h = Math.imul(h ^ (d[i] | d[i + 1] << 8 | d[i + 2] << 16 | d[i + 3] << 24), 16777619); } return c.width + 'x' + c.height + ':' + (h >>> 0); };
+const mirrored = (c) => { const m = mkc(c.width, c.height), x = m.getContext('2d'); x.translate(c.width, 0); x.scale(-1, 1); x.imageSmoothingEnabled = false; x.drawImage(c, 0, 0); return m; };
+const trimmed = (c) => { const x = c.getContext('2d'), d = x.getImageData(0, 0, c.width, c.height).data; let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+  for (let y = 0; y < c.height; y++) for (let i = 0; i < c.width; i++) if (d[(y * c.width + i) * 4 + 3]) { if (i < x0) x0 = i; if (i > x1) x1 = i; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  if (x1 < 0) return null; const o = mkc(x1 - x0 + 1, y1 - y0 + 1); o.getContext('2d').drawImage(c, x0, y0, o.width, o.height, 0, 0, o.width, o.height); return { c: o, x0, y0 }; };
+
+// a unit's frames: cells = [{ c: canvas, foot: [x, y] in the canvas, dir, anim, extra }]
+const units = {};   // name -> { cells, info }
+const DIRS = [0, 1, 2, 3, 4, 5, 6, 7], ang = (d) => (d + 2) * Math.PI / 4;   // packed index d <- heading (d + 2) * pi / 4, the inverse of PIXEL_ART.facing
+
+// ---------- the atlas units (PIXEL_ASSETS): native 112 px frames, exactly as `draw` puts them down ----------
+function atlasUnit(name, id, opt = {}) {
+  const u = PIXEL_ASSETS.units[id], G = PIXEL_ART.gaitCfg(id), ext = PIXEL_EXTENT[id], cells = [];
+  const variants = [['', {}]]; if (id === 'goat') variants.push(['bare_', { bare: true }], ['marked_', { mark: true }]);
+  PIXEL_EXTENT[id] = PIXEL_ASSETS.target;   // k = 1: the frame lands at its own atlas size
+  PIXEL_ART.penitent = !!opt.penitent;
+  try {
+    if (u.idle.length === 1) {   // a unit with one frame for every heading (goose, mouse, raven, turtle): drawn by PIXEL_ART.frame
+      const f = u.idle[0], c = mkc(f[2], f[3]), x = c.getContext("2d"); x.translate(f[4], f[5]); PIXEL_ART.frame(x, f, id, 1, false);
+      cells.push({ c, foot: [f[4], f[5]], dir: "all", anim: "idle", flip: false, atlasFrame: f, game: { frameOnly: true } });
+    } else for (const [pre, o] of variants) for (const d of DIRS) {
+      const a = ang(d), seq = [['idle', 0, false, 0, null]];
+      if (u.walk && G) for (let s = 0; s < G.steps; s++) seq.push(['walk' + s, (s + 0.5) * 0.5 / G.steps, true, s, null]);
+      else if (u.walk) for (let n = 0; n < 4; n++) seq.push(['walk' + n, (n + 0.5) / 8, true, n, null]);
+      else if (G) for (let s = 0; s < G.steps; s++) seq.push(['walk' + s, 0, true, s, (s + 0.5) / G.steps]);
+      for (const [anim, t, moving, n, phase] of seq) {
+        const { d: dd, flip, f } = PIXEL_ART.frameOf(id, a, moving, t, 0);
+        const c = mkc(f[2], f[3]), x = c.getContext('2d'), fx = flip ? f[2] - f[4] : f[4];
+        PIXEL_ART.markForce = !!o.mark; x.translate(fx, f[5]);
+        PIXEL_ART.draw(x, id, a, moving, t, 0, !!o.bare, phase);
+        PIXEL_ART.markForce = undefined;
+        const cell = { c, foot: [fx, f[5]], dir: d, anim: pre + anim, flip, atlasFrame: f, game: { id, angle: a, moving, t, bare: !!o.bare, mark: !!o.mark, phase, penitent: !!opt.penitent } };
+        if (id === 'goat' && !o.mark) {
+          const fix = PIXEL_ART.hornFix(id, dd, f), hs = PIXEL_ART.hornsOf(f, fix || undefined), hsh = PIXEL_ART.headShift(id, dd, f);
+          cell.hornRoots = hs.map((h) => [flip ? f[2] - h.base[0] : h.base[0], h.base[1]]); cell.headShift = [flip ? -hsh[0] : hsh[0], hsh[1]];
+        }
+        cells.push(cell);
+      }
+    }
+  } finally { PIXEL_EXTENT[id] = ext; PIXEL_ART.penitent = false; }
+  units[name] = { cells, info: { kind: 'atlas', atlasUnit: id, extent: ext, worldPerPx: ext / PIXEL_ASSETS.target, zoom: 1, penitent: !!opt.penitent, gaitSteps: G ? G.steps : 0,
+    note: 'png px = atlas px; world px = png px * worldPerPx; foot is the point drawn at the entity origin. dir 0 S,1 SW,2 W,3 NW,4 N,5 NE,6 E,7 SE (mirrored dirs are already mirrored). walk<n> = gait/step n of a cycle (steps/s: game t*8 over 4 frames).' } };
+}
+
+// ---------- the hand-built units: the sprite API's own canvases (4 px a texel), anchors as each draw() places them ----------
+function builtUnit(name, O, anchor, enumerate, extra = {}) {
+  const cells = [];
+  for (const e of enumerate()) {
+    let sp; try { sp = O.sprite(...e.args); } catch (err) { continue; } if (!sp) continue;
+    let c = O.canvas(sp.g ? sp : sp), [ax, ay] = anchor(O, c, e);
+    if (sp.flip) { c = mirrored(c); ax = c.width - ax; }
+    const cell = { c, foot: [ax, ay], dir: e.dir, anim: e.anim, flip: !!sp.flip, view: e.view, args: e.args.map((a) => (typeof a === 'string' || typeof a === 'number' ? a : String(a))) };
+    cells.push(cell);
+  }
+  const c0 = cells[0].c, zoom = c0.width / (O.W * O.TX);
+  units[name] = { cells, info: Object.assign({ kind: 'built', texelWorld: O.TX, zoom, worldPerPx: 1 / zoom, W: O.W, H: O.H, FOOT: O.FOOT,
+    note: 'png px = 4 per texel; world px = png px / zoom; foot is the origin drawn at the entity foot. Rotation/bob of draw() (walk lean) is code, not baked.' }, extra) };
+}
+const stdAnchor = (O, c) => [c.width / 2, O.FOOT * c.height / O.H];
+const ST = [['0', 0], ['p', 1], ['m', -1]];   // the three strides of a [0, 1, 0, -1] cycle
+
+function bakeBuilt() {
+  const D = DIRS;
+  if (want('ogre')) builtUnit('ogre', OGRE_PIXELS, stdAnchor, function* () { for (const d of D) { for (const [n, s] of ST) yield { dir: d, anim: 'walk' + n, args: [d, 'idle', s] }; yield { dir: d, anim: 'up', args: [d, 'up', 0] }; } });
+  if (want('flayed')) builtUnit('flayed', FLAYED_PIXELS, stdAnchor, function* () { for (const d of D) { for (const [n, s] of ST) yield { dir: d, anim: 'walk' + n, args: [d, 'idle', s] }; yield { dir: d, anim: 'up', args: [d, 'up', 0] }; } });
+  if (want('spartan')) builtUnit('spartan', SPARTAN_PIXELS, stdAnchor, function* () { for (const d of D) for (const [n, s] of ST) yield { dir: d, anim: 'walk' + n, args: [d, s] }; });
+  if (want('warden')) builtUnit('warden', WARDEN_PIXELS, stdAnchor, function* () { for (const d of D) for (const p of ['idle', 'raise', 'carry', 'windup', 'swing', 'aim']) for (const [n, s] of ST) { if (s && !(p === 'idle' || p === 'carry')) continue; yield { dir: d, anim: p + (s ? '_' + n : ''), args: [d, p, s] }; } });
+  if (want('thrower')) {
+    const P = THROWER_PIXELS, viewDir = {}; for (const d of D) viewDir[d] = Thrower.viewOf(ang(d));
+    builtUnit('thrower', P, (O, c, e) => [O.ANCHOR[e.view] * c.width / O.W, (O.FOOT + O.UP) * c.height / (O.H + O.UP)], function* () {
+      for (const v of ['S', 'E', 'N', 'W']) for (const p of ['idle', 'walk', 'up', 'punchwind', 'punch', 'throw']) for (const [n, s] of ST) { if (s && !(p === 'walk' || p === 'up')) continue; for (let f = 0; f < P.N; f++) yield { dir: v, view: v, anim: p + (s ? '_' + n : '') + '_f' + f, args: [v, p, s, f] }; }
+    }, { views: 'S E N W (no mirroring: the big arm is his right whichever way he faces)', dirToView: viewDir, pulseFrames: P.N, pulse: TUNING.thrower.pulse });
+  }
+  if (want('shaman')) {
+    const look = (typeof ART_PASS !== 'undefined' && ART_PASS.shaman) || 0;
+    builtUnit('shaman', SHAMAN_PIXELS, (O, c) => [c.width / 2, (O.FOOT + O.UP) * c.height / (O.H + O.UP)], function* () {
+      for (const d of D) for (const f of [0, 1]) { for (const [n, s] of ST) yield { dir: d, anim: 'walk' + n + '_f' + f, args: [d, look, s, 'idle', 0, f] }; for (const j of [1, -1]) yield { dir: d, anim: 'raise_j' + (j > 0 ? 'p' : 'm') + '_f' + f, args: [d, look, 0, 'raise', j, f] }; yield { dir: d, anim: 'call_f' + f, args: [d, look, 0, 'call', 0, f] }; }
+    }, { robe: look, note2: 'robe look = ART_PASS.shaman at bake time; the other robes are SHAMAN_PIXELS.ROBES' });
+  }
+  for (const [name, O] of [['horse', HORSE_PIXELS], ['pig', PIG_PIXELS]]) if (want(name))
+    builtUnit(name, O, stdAnchor, function* () { for (const d of D) { const kind = O.VIEWS[d][0]; for (const pose of [undefined, 'kick', 'eat']) { const n = O.FRAMES[pose === 'eat' && O.FRAMES.eat ? 'eat' : kind]; for (let f = 0; f < (n || 1); f++) yield { dir: d, anim: (pose || 'run') + '_f' + f, args: [d, pose, f] }; } } });
+}
+
+// ---------- drawn-live units and overlays: the whole draw() into a scratch canvas, trimmed ----------
+function scratch(drawFn, zoom, W = 900, H = 900) {
+  const c = mkc(W, H), x = c.getContext('2d'); x.imageSmoothingEnabled = false;
+  x.translate(W / 2, H * 0.78); x.scale(zoom, zoom); x.rotate = () => {};
+  drawFn(x); const t = trimmed(c); return t && { c: t.c, foot: [W / 2 - t.x0, H * 0.78 - t.y0] };
+}
+function bakeFactory() {
+  const keys = ['sawbot', 'welder', 'automaton', 'arm', 'sweeper', 'shieldgen', 'cartridge'], Z = 3, fails = [];
+  for (const key of keys) {
+    if (!want(key)) continue;
+    const cells = [];
+    for (const d of DIRS) for (const [anim, moving, t] of [['idle', false, 0], ...[0, 1, 2, 3].map((n) => ['walk' + n, true, (n + 0.5) / 8])]) {
+      const a = ang(d), e = { facing: a, state: 'idle', kind: 'bearer', x: 0, y: 0, vx: moving ? 80 : 0, vy: 0, r: 12, hp: 2, maxHp: 2, auto: null, armAng: 0, armExt: 0, armZ: 0, sang: a };
+      try { const r = scratch((x) => FACTORY_PIXELS.draw(x, key, a, moving, t, 0, e), Z); if (r) cells.push(Object.assign(r, { dir: d, anim })); } catch (err) { fails.push(key + ':' + err.message); break; }
+    }
+    if (cells.length) units[key] = { cells, info: { kind: 'live', zoom: Z, worldPerPx: 1 / Z, extent: PIXEL_EXTENT[key], note: 'FACTORY_PIXELS.draw captured at zoom ' + Z + ' in the default pose (idle state, e stubbed); poses driven by state (welder firing, automaton legs, arm extension, sweeper heading) are code in js/factory.js and factory-pixels.js.' } };
+  }
+  if (fails.length) log('factory fails: ' + fails.join(' | '));
+}
+function bakeCapes() {
+  if (!want('capes')) return;
+  const cells = [], Z = 4, ids = Object.keys(CAPE_PIXELS.LOOKS);
+  for (const id of ids) for (const layer of ['behind', 'over']) for (const d of DIRS) for (const step of [-1, 0, 1, 2, 3]) {
+    const r = scratch((x) => CAPE_PIXELS.draw(x, id, layer, ang(d), step, { t: 0, k: 0 }), Z, 400, 400); if (r) cells.push(Object.assign(r, { dir: d, anim: id + '_' + layer + '_' + (step < 0 ? 'stand' : 'step' + step) }));
+  }
+  units.capes = { cells, info: { kind: 'live', zoom: Z, worldPerPx: 1 / Z, capes: ids, note: 'CAPE_PIXELS.draw per cape, layer (behind/over the goat frame), dir and stride step, wind off (the sway is code). Foot = goat foot in world px * zoom.' } };
+}
+
+// ---------- pack + write ----------
+function emit(name) {
+  const { cells, info } = units[name], seen = new Map(), uniq = [];
+  for (const c of cells) { const k = hashOf(c.c); if (seen.has(k)) c.same = seen.get(k); else { seen.set(k, c); uniq.push(c); } }
+  let W = 2048, x = 1, y = 1, rowH = 0; uniq.sort((a, b) => b.c.height - a.c.height);
+  for (const c of uniq) { W = Math.max(W, c.c.width + 2); }
+  for (const c of uniq) { if (x + c.c.width + 1 > W) { x = 1; y += rowH + 1; rowH = 0; } c.rect = [x, y, c.c.width, c.c.height]; x += c.c.width + 1; rowH = Math.max(rowH, c.c.height); }
+  const sheet = mkc(W, y + rowH + 1), sx = sheet.getContext('2d'); for (const c of uniq) sx.drawImage(c.c, c.rect[0], c.rect[1]);
+  const frames = cells.map((c) => { const r = c.same ? c.same.rect : c.rect; const o = { dir: c.dir, anim: c.anim, rect: r, foot: c.foot.map((v) => +v.toFixed(3)) };
+    for (const k of ['flip', 'view', 'hornRoots', 'headShift', 'args', 'atlasFrame']) if (c[k] !== undefined) o[k] = c[k]; return o; });
+  units[name].sheet = sheet; units[name].frames = frames; units[name].uniq = uniq.length;
+  const json = Object.assign({ unit: name, sheet: name + '.png', sheetSize: [sheet.width, sheet.height], frameCount: cells.length, uniqueFrames: uniq.length }, info, { frames });
+  return Promise.all([put('units/' + name + '.png', sheet.toDataURL('image/png')), put('units/' + name + '.json', JSON.stringify(json))]);
+}
+
+// ---------- the tables the draw code reads ----------
+function tables() {
+  const T = { PIXEL_EXTENT, PIXEL_UNIT, PIXEL_NECK, PIXEL_FACE, PIXEL_FACE_ART, PIXEL_HORN_FIX, PIXEL_MIRROR, HORN_MODEL_UNITS,
+    gait_goat: TUNING.goat.gait, gait_men: TUNING.enemyAnim.run, hornModel: TUNING.goat.hornModel, hornLooks: TUNING.goat.hornLooks, face: TUNING.goat.face, collar: TUNING.goat.collar,
+    facing: 'dir 0 S,1 SW,2 W,3 NW,4 N,5 NE,6 E,7 SE; PIXEL_NECK / PIXEL_FACE are world px from the foot per dir at the unit EXTENT (goat 34)', atlasTarget: PIXEL_ASSETS.target,
+    handBuilt: { ogre: OGRE_PIXELS.TX, flayed: FLAYED_PIXELS.TX, spartan: SPARTAN_PIXELS.TX, thrower: THROWER_PIXELS.TX, shaman: SHAMAN_PIXELS.TX, warden: WARDEN_PIXELS.TX, horse: HORSE_PIXELS.TX, pig: PIG_PIXELS.TX },
+    studies: { ART_PASS_clubman: ART_PASS.clubman, ART_PASS_hunter: ART_PASS.hunter, ART_PASS_on: ART_PASS.on } };
+  return put('tables.json', JSON.stringify(T, (k, v) => (typeof v === 'function' ? undefined : v), 1));
+}
+
+// ---------- the comparison: the game's draw beside the written file ----------
+const loadImg = (src) => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => no(new Error('load ' + src)); i.src = src + '?' + Date.now(); });
+function diffCount(a, b) { const da = a.getContext('2d').getImageData(0, 0, a.width, a.height).data, db = b.getContext('2d').getImageData(0, 0, b.width, b.height).data; let n = 0; for (let i = 0; i < da.length; i += 4) { if (da[i + 3] !== db[i + 3] || (da[i + 3] && (da[i] !== db[i] || da[i + 1] !== db[i + 1] || da[i + 2] !== db[i + 2]))) n++; } return n; }
+async function compare() {
+  const names = Object.keys(units), report = {}, Z = 3, cellW = 150, cellH = 170, rowsN = names.length;
+  const out = mkc(8 * 2 * cellW + 140, rowsN * cellH + 20), o = out.getContext('2d'); o.fillStyle = '#2b2622'; o.fillRect(0, 0, out.width, out.height); o.font = '12px monospace';
+  let row = 0;
+  for (const name of names) {
+    const U = units[name], img = await loadImg('/out/units/' + name + '.png'), fileCan = mkc(img.width, img.height); fileCan.getContext('2d').drawImage(img, 0, 0);
+    let bad = 0, total = 0, badFrames = [];
+    // 1) every frame cell in the file equals the canvas the game produced
+    for (let i = 0; i < U.cells.length; i++) { const c = U.cells[i], r = U.frames[i].rect, f = mkc(r[2], r[3]); f.getContext('2d').drawImage(fileCan, r[0], r[1], r[2], r[3], 0, 0, r[2], r[3]); const n = diffCount(f, c.c); total++; if (n) { bad++; if (badFrames.length < 5) badFrames.push(U.frames[i].anim + '@' + U.frames[i].dir + ':' + n); } }
+    // 2) a fresh render by the game's own draw path at world scale x3 against the file's frame placed the same way
+    let fresh = 0, freshN = 0; const info = U.info; o.fillStyle = '#d8ccb0'; o.fillText(name, 4, row * cellH + 30);
+    for (const d of DIRS) {
+      const want0 = (c) => c.dir === d || (c.dir === 'all' && d === 0) || (info.dirToView && c.dir === info.dirToView[d]);
+      let idx = U.cells.findIndex((c) => want0(c) && /^(idle|walk0|run_f0)/.test(c.anim)); if (idx < 0) idx = U.cells.findIndex(want0); if (idx < 0) continue;
+      const c = U.cells[idx], fr = U.frames[idx], k = info.worldPerPx * Z, W = cellW, H = cellH;
+      const mk1 = () => { const q = mkc(W, H), qx = q.getContext('2d'); qx.imageSmoothingEnabled = false; qx.translate(W / 2, H - 40); return [q, qx]; };
+      const [qa, xa] = mk1(), [qb, xb] = mk1();
+      // file side: the cell placed by its foot at the same scale
+      xb.save(); xb.imageSmoothingEnabled = info.kind === 'built'; const fc = mkc(fr.rect[2], fr.rect[3]); fc.getContext("2d").drawImage(fileCan, fr.rect[0], fr.rect[1], fr.rect[2], fr.rect[3], 0, 0, fr.rect[2], fr.rect[3]); xb.drawImage(fc, -fr.foot[0] * k, -fr.foot[1] * k, fr.rect[2] * k, fr.rect[3] * k); xb.restore();
+      // game side: the same cell redrawn by the real drawer (atlas: PIXEL_ART.draw; built: the cell canvas as the sprite API gives it)
+      if (info.kind === 'atlas' && c.game.frameOnly) { xa.scale(Z, Z); PIXEL_EXTENT[info.atlasUnit] = PIXEL_ASSETS.target * 0 + info.extent; PIXEL_ART.frame(xa, c.atlasFrame, info.atlasUnit, 1, false); }
+      else if (info.kind === 'atlas') { const g = c.game, ext = PIXEL_EXTENT[info.atlasUnit]; xa.scale(Z, Z); PIXEL_ART.penitent = g.penitent; PIXEL_ART.markForce = g.mark; PIXEL_ART.draw(xa, info.atlasUnit, g.angle, g.moving, g.t, 0, g.bare, g.phase); PIXEL_ART.penitent = false; PIXEL_ART.markForce = undefined; }
+      else { xa.save(); xa.imageSmoothingEnabled = info.kind === 'built'; xa.drawImage(c.c, -c.foot[0] * k, -c.foot[1] * k, c.c.width * k, c.c.height * k); xa.restore(); }
+      const n = diffCount(qa, qb); fresh += n; freshN++;
+      o.drawImage(qa, 140 + d * 2 * cellW, row * cellH + 10); o.drawImage(qb, 140 + (d * 2 + 1) * cellW, row * cellH + 10);
+      o.fillStyle = n ? '#e66' : '#7c7'; o.fillText('d' + d + ' diff ' + n, 144 + d * 2 * cellW, row * cellH + 22);
+    }
+    report[name] = { frames: U.cells.length, unique: U.uniq, cellsDifferent: bad, badFrames, freshCompare: freshN, freshDiffPixels: fresh };
+    row++;
+  }
+  await put('compare.png', out.toDataURL('image/png'));
+  return report;
+}
+
+(async () => {
+  await loadAll();
+  document.getElementById('log').textContent += '\nscripts ok';
+  // wait for the atlas to load and be hardened (PIXEL_ART.init is async)
+  for (let i = 0; i < 400 && !(PIXEL_ART.ready && PIXEL_ART.marks); i++) await new Promise((r) => setTimeout(r, 50));
+  if (!PIXEL_ART.ready) { log('atlas not ready'); return; }
+  const atl = ['goat', 'clubman', 'brute', 'mage', 'hound', 'hunter', 'butcher', 'wraith', 'chicken', 'ratogre', 'mouse', 'goose', 'raven', 'turtle', 'sheep-pet'];
+  for (const id of atl) if (want(id)) atlasUnit(id, id);
+  if (want('coward')) atlasUnit('coward', 'clubman', { penitent: true });
+  bakeBuilt(); bakeFactory(); bakeCapes();
+  const names = Object.keys(units); log('baked ' + names.join(' ') + ' (' + names.reduce((n, k) => n + units[k].cells.length, 0) + ' frames)');
+  await tables();
+  for (const n of names) { await emit(n); log('wrote ' + n + ' ' + units[n].cells.length + ' frames, ' + units[n].uniq + ' unique, sheet ' + units[n].sheet.width + 'x' + units[n].sheet.height); }
+  const rep = await compare(); await put('compare.json', JSON.stringify(rep, null, 1));
+  window.BAKE_DONE = rep; log('DONE\n' + JSON.stringify(rep));
+})().catch((e) => { log('ERROR ' + e.message + '\n' + e.stack); window.BAKE_ERR = String(e); });
+</script></body></html>

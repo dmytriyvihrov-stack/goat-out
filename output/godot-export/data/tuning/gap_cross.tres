@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="GapCrossTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/gap_cross_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+every = 0.25
+near = 1.5
+reach = 2.8
+longer = 2.5
+blinkR = 9.0
+hop = {"wind": 0.35, "air": 0.45, "lift": 22, "cd": 2.5}
+fall = {"after": 5, "chance": 0.12, "windMul": 1.4}

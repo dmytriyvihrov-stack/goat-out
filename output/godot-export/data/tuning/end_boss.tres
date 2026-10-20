@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="EndBossTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/end_boss_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+scene = {"bars": 0.11, "zoom": 1.12, "skipAfter": 0.5, "cap": 9}
+twin = {"from": 3, "hp": 3, "rattles": [0.35, 0.95, 1.5], "burst": 2.1, "walk": 0.9, "shut": 0.35}
+mage = {"see": 1.1, "run": 147.2, "runCap": 4, "hand": 1.5, "first": {"hand": 2.8, "walk": 0.55}, "wardenLine": "MINE NOW, GOAT. COME AND TAKE HER.", "witchFrom": 2, "witch": 1.2, "ringsFrom": 3, "ring": {"n": 2, "apart": 0.7, "start": 1, "speed": 3.5, "max": 15, "thick": 0.6, "gaps": 2, "gap": 0.36, "flames": 0.75, "flameSize": 9}}
+ogre = {"bones": 7, "throwAt": 0.7, "roarAt": 1.05, "end": 1.9, "boneSpeed": 288, "leapWind": 0.6, "long": {"mage": 1.8, "run": 1.8, "gnaw": 1.3, "roar": 1, "throw": 0.7, "cap": 9}}
+hunter = {"hp": 4, "pellets": 3, "spread": 0.24, "blinkFrom": 1, "blink": {"range": 3.2, "dist": 6, "cooldown": 3.6}, "scene": {"lie": 1.3, "line": "RUN, GOAT. THEY LIKE A RUNNER.", "rise": [0.8, 1.1, 1.4], "cock": 1.8, "shot": 2.3, "end": 2.9}}
+champion = {"slams": [0.45, 1], "lineAt": 1.45, "line": "FRESH MEAT FOR THE HOOK.", "end": 2.5}
+clubman = {"slams": [0.5], "lineAt": 0.95, "line": "BACK TO THE PEN, GOAT.", "end": 2}
+glimpse = {"floor": 3, "past": 2, "line": "STILL COMING, GOAT? SHE IS KEPT FOR THE TABLE.", "wait": 1.6, "speed": 4.6, "cap": 12}
+supper = {"seat": 1.55, "gap": 1.6, "inset": 0.9, "head": 1.5, "chair": 1.1, "slide": 0.9, "slideBy": 0.8, "lineGap": 3.2, "sink": 10, "scene": {"seal": 0.35, "pan": 0.6, "raise": 2, "box": 2.9, "back": 0.9, "zoom": 1, "cap": 40, "lines": ["YOUR BELOVED AND I HAVE BEEN WAITING FOR YOU, LITTLE GOAT.", "COME IN. SIT. EAT WITH US."]}, "slow": 0.42, "grass": 0.55, "grassAt": 0.8, "dome": {"pad": 1.1}, "lines": ["SIT.", "EAT.", "SHE IS WARM STILL."], "laugh": "NOT YET.", "laughs": ["HA HA HA!", "HAAA HA HA!", "HEH HEH HEH."], "drop": {"wait": 1.2, "lines": ["GOOD, LITTLE ONE. NOW, LET'S DANCE."]}, "platter": 1.9, "knock": {"wait": 1.6, "lines": ["BAAH. BAAH.", "(I AM THE DANGER. I AM THE ONE WHO KNOCKS.)"]}}

@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ClampTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/clamp_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+slam = 0.35
+hear = 14.0
+cell = 3.0
+readR = 5.0
+readFor = 2.2
+showR = 8.0

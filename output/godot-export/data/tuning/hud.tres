@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="HudTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/hud_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+scale = 1.05
+rail = 1.25
+minText = 12.0
+heart = {"px": 2.8, "gap": 24}
+life = 15.0
+cape = {"box": 44, "lift": 82}
+purse = {"show": 3.5, "fade": 0.8, "violet": 1.2}
+keyScale = 1.25
+minimap = {"w": 44, "h": 26, "cell": 1.5, "every": 0.3, "alpha": 0.9, "floor": [150, 138, 112], "wall": [58, 48, 52], "pit": [8, 6, 8], "exit": [247, 215, 116], "goat": "#f4f8ff"}
+boss = {"on": true, "near": 12, "show": 0.3, "slam": 0.45, "hide": 1.2, "hold": 1.4, "hint": 0, "shake": 0.35, "rows": 3, "w": 260, "cell": 14, "cellH": 5, "gap": 3}

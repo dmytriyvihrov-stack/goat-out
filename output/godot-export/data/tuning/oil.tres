@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="OilTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/oil_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+on = false
+start = 3.0
+max = 9.0
+grow = 2.5
+trail = 2.0
+trailAmt = 0.7
+burns = true
+catch = 0.18
+burn = 2.0
+valveReach = 4.0

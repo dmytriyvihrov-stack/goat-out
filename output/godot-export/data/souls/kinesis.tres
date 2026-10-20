@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SoulData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/soul_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "kinesis"
+skill = "grab"
+active = true
+emoji = "🌀"
+minLevel = 0.0
+name_ = "TELEKINESIS"
+desc = "Hold grab with nothing near to charge. Every object around you flies at the enemies."
+params = {"holdFor": 1.05, "r": 4, "reach": 9, "cooldown": 3.6, "speedMul": 1.1}

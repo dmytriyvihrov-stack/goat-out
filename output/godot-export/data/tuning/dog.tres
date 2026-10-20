@@ -1,0 +1,62 @@
+[gd_resource type="Resource" script_class="DogTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/dog_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+radius = 10.0
+speed = 170.106048
+sight = 12.0
+cone = 2.82743338823081
+reach = 24.32
+windup = 1.0
+swing = 0.12
+recover = 0.4
+damage = 1.0
+knock = 25.6
+dashRange = 4.5
+dashSpeed = 201.6
+dashTime = 0.82
+dashTurn = 2.6
+dashSkew = 0.45
+dashStart = 0.45
+dashRamp = 0.16
+dashLook = 0.9
+orbitLook = 1.1
+overrun = 1.5
+whiskTurn = 5.0
+flooredTime = 0.7
+dodge = 1.0
+dodgeCd = 10.0
+dodgeRest = 1.4
+dodgeSpeed = 336.0
+dodgeTime = 0.2
+circle = 2.6
+circleFlip = 0.9
+lungeCd = 1.4
+retreat = 0.55
+ringHold = 0.5
+flipGap = 0.4
+ringIn = 1.5
+ringOut = 1.25
+turn = 7.0
+pivot = 3.0
+turnSlow = 0.35
+accel = 4.0
+brake = 7.0
+sideHold = 1.1
+flipOdds = 0.3
+skid = 5.0
+mateArc = 1.7
+breakOut = 0.55
+pass_ = {"look": 1.3, "step": 0.3, "arc": 1.5, "hold": 0.45, "give": 1.2}
+packGap = 7.0
+packWait = 0.55
+barkGap = 0.9
+barkDart = 0.3
+dazeMul = 2.6
+flingMul = 1.3
+trapSense = 0.95
+hop = 1.0
+hopTime = 0.18
+immune = {"blunder": true}

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="AutomatonTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/automaton_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+bombBody = 0.85
+hp = 5.0
+speed = 55.0
+r = 12.0
+bodyR = 42.0
+limp = 0.3
+immune = {"fire": true, "witch": true, "poison": true, "stun": true, "blunder": true}
+legs = {"spread": [[-2.75, -1.45], [-1.9, 1.55], [1.9, 1.55], [2.75, -1.45]], "hitR": 0.85, "hitZ": 22, "footR": 10, "hits": 2, "heal": 4, "stuck": 1.2, "out": 6, "brace": 1.4, "sag": 10, "step": {"far": 0.9, "home": 0.35, "time": 0.32, "lift": 24, "lead": 0.3}, "swing": {"out": 1.45, "amp": 0.35, "rate": 2.4, "z": 62, "zAmp": 9}}
+fall = {"legs": 2, "time": 0.55, "r": 1.8, "damage": 1, "knock": 7, "down": 7.5, "hearts": 2, "after": 1.2, "rise": 1.6, "shoveR": 2.2, "shove": 7, "splay": 2.1}
+stomp = {"range": 3.8, "near": 2.4, "reach": 3.2, "wind": 0.8, "chainWind": 0.5, "chain": [2, 3, 3], "lift": 58, "r": 1.1, "damage": 1, "knock": 6, "menFling": 9, "hold": 0.6, "cd": 1.5, "angry": 0.65, "first": 0.6, "lead": 0.35}
+blastFall = true
+wreck = {"dark": 0.45}
+look = {"lift": 100, "downLift": 9, "thigh": 46, "shin": 74, "bob": 2.5, "open": {"rate": 7, "arm": 3, "gap": 3, "bob": 1.5}}

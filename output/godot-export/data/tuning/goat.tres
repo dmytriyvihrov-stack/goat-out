@@ -1,0 +1,44 @@
+[gd_resource type="Resource" script_class="GoatTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/goat_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+radius = 12.0
+speed = 172.0
+accel = 0.15
+decel = 0.25
+trapGrip = {"accel": 0.1, "decel": 0.07, "turn": 2}
+hp = 4.0
+headbutt = {"windup": 0.12, "active": 0.15, "recovery": 0.53, "lunge": 320, "impulse": 672, "propImpulse": 896, "reach": 52.48}
+horns = {"order": ["short", "big", "long"], "short": {"name": "SHORT", "note": "A QUICK STAB. ONE MAN", "windup": 1, "recovery": 1, "lunge": 1, "impulse": 1, "reach": 0, "cone": 0.15, "single": true}, "big": {"name": "BIG", "look": "moose", "note": "A WIDE ARC. SLOW TO COME BACK. HOLD TO CHARGE", "windup": 1.3, "recovery": 2.1, "lunge": 1.1, "impulse": 1, "reach": 0.35, "cone": -0.2, "charge": {"time": 0.8, "lunge": 0.6, "impulse": 0.8, "reach": 0.7}}, "long": {"name": "LONG", "look": "gazelle", "note": "TWO HORNS, STRAIGHT. THE TIPS HIT HARD. HOLD TO CHARGE", "windup": 1.15, "recovery": 1.65, "lunge": 1.1, "impulse": 1, "reach": 1, "cone": 0.5, "charge": {"time": 0.8, "lunge": 0.3, "impulse": 0.7, "reach": 1.1}, "rows": 2, "rowGap": 0.4, "rowW": 0.17, "tip": 0.8, "tipMul": 1.4, "shaftMul": 0.5, "tipHurt": 1}, "wave": {"time": 0.34, "alpha": 0.5, "tipHold": 0.22, "tipAlpha": 0.85}, "splash": {"life": 0.22, "len": 34, "tipLen": 50, "n": 3, "flash": 0.14, "stop": 0.035, "tipStop": 0.05}}
+buffer = 0.12
+grab = {"reach": 51.2, "speedMul": 0.6, "itemSpeedMul": 0.94, "holdTime": 8, "holdVary": 0.125, "throwImpulse": 870.4, "manThrow": 0.7, "holdDist": 22, "cooldown": 1.62, "bite": 0.18, "biteMove": 0.4, "biteSlack": 1.2, "biteMiss": 0.45, "manCd": 1.15, "letGo": 0.5, "loose": 0.6}
+carry = {"lead": 2, "reach": 0.7, "lift": {"crate": 10.5, "bomb": 7, "tortoise": 5, "chicken": 6}, "turn": 26}
+scream = {"duration": 0.3, "cooldown": 4.8, "radius": 3.4, "stun": 0.9, "call": 13, "balk": 1.25, "balkStun": 0.3, "minCooldown": 2}
+roll = {"speed": 212.8896, "duration": 0.32, "invuln": 0.24, "recover": 0, "recoverMove": 0.08, "cooldown": 1.782, "threatRange": 7, "stun": 0.7, "stunR": 51.2, "land": 0.22}
+trail = {"at": 0.55, "gap": 0.028, "keep": 7, "life": 0.18, "fastGap": 0.014, "fastKeep": 16, "fastLife": 0.34, "fastAt": 1.18}
+breath = {"range": 70.4, "halfAngle": 0.42, "fireTime": 4.4, "parts": 28, "cooldown": 6}
+bomb = {"fuse": 0.9, "radius": 83.2, "impulse": 768, "fxScale": 0.55, "fxLife": 0.4}
+momentum = {"max": 0.25, "time": 4, "lose": 3, "atLeast": 0.6}
+turn = 9.0
+fireDamageInterval = 1.2
+fireSooner = 0.769230769230769
+witchOnset = 0.333333333333333
+floorHeal = 2.0
+burnLook = {"sizes": [5, 7, 9, 11, 13], "low": -15, "high": -6, "cool": 0.4, "keep": 0.6}
+poison = {"build": 1.2, "drain": 1, "time": 3, "moveMul": 0.65}
+bleed = {"gap": 0.4, "jitter": 0.35, "minSpeed": 60, "size": 2}
+hornLooks = {"antler": {"cell": 3, "len": 2.3, "w0": 9, "w1": 5, "bend": 0.5, "tines": [0.28, 0.52, 0.76], "tineLen": [0.36, 0.34, 0.26], "tineW": 5, "tineTurn": 0.95, "fork": 0.22, "outline": "#1e130c", "ramp": ["#2c1a10", "#4f3220", "#7a5636", "#b08a62", "#e6d3b0"]}, "gazelle": {"cell": 3, "len": 2.7, "w0": 7, "w1": 3, "bend": 0.32, "tipIn": 0.15, "awayLean": 0.35, "rings": 7, "ringTo": 0.72, "outline": "#120c0a", "ramp": ["#16110f", "#2e2420", "#4c3d34", "#786558", "#ad9a88"], "grow": {"len": 1.22, "tines": 3, "tineAt": [0.38, 0.58, 0.78], "tineLen": 0.2, "bone": ["#8a7c66", "#c4b8a0", "#efe6d2"]}}, "moose": {"cell": 3, "len": 1.5, "w0": 8, "w1": 6, "beam": 0.4, "out": 1, "rise": 0.7, "palm": 0.72, "from": 0.25, "to": 0.3, "sideOut": 0.35, "points": 4, "pointLen": 0.3, "pointW": 5, "outline": "#1e130c", "ramp": ["#2e1f12", "#4d3620", "#6e5233", "#9a7a50", "#c9ab7c"], "grow": {"len": 1.28, "points": 3, "pointLen": 1.45, "tip": 0.4, "bone": ["#8a7c66", "#c4b8a0", "#efe6d2"]}}, "lava": {"ramp": ["#3a0d06", "#8f1e0a", "#e0521a", "#ffb43a", "#fff0a0"], "glow": "rgba(255,110,30,0.9)", "blur": 5}, "venom": {"ramp": ["#12260e", "#2f5a1c", "#5c9a2a", "#9fd84a", "#e4ffa0"], "glow": "rgba(140,220,70,0.9)", "blur": 4, "drip": 1.6}}
+titleHorn = {"cells": 20, "span": 1.05, "ramp": ["#21160f", "#3d2b1f", "#5c4331", "#836448", "#b8986f"], "outline": "#120a07", "ring": 0.17}
+collar = {"r": 3.6, "depth": 0.3, "flat": 2, "thin": 0.9, "w": 1.3, "edge": "#24160e", "leather": "#6e4326", "drop": 3.8, "icon": 3}
+face = {"cell": 0.910714285714286, "throat": {"tube": "#9a918a", "rim": "#efe4cc", "inside": "#1a0b09", "edge": "#24160e"}, "foam": {"rate": 3, "color": "#d4f59a", "dark": "#5c9a2a", "drip": 2.6, "dripVary": 1.8, "fall": 160, "splat": 1.6, "splatLife": 1.6}, "steam": {"gap": 0.3, "life": 0.95, "rise": 10, "drift": 8, "color": "232,229,222", "alpha": 0.5, "fire": 3.6, "fireVary": 2.6, "fireTime": 0.4, "fireGap": 0.035, "fireSpeed": 34, "fireLife": 0.32}, "eye": {"iris": "#a46cff", "pupil": "#16091f", "white": "#f6efff", "edge": "#24160e", "blink": 4.2}}
+breathe = {"period": 2.8, "amp": 0.03, "wide": 0.012}
+grazePose = {"lean": 0.2, "squash": 0.13, "wide": 0.07, "nibble": 0.35, "rate": 3, "ease": 6}
+feel = {"turnGrip": 1.6, "lean": 0.14, "leanRate": 14, "run": 0.05, "bob": 1.3, "pull": 3, "kick": {"from": 0.25, "squash": -0.07, "dust": 2}, "stop": {"at": 0.7, "squash": 0.06}, "skid": {"dot": -0.3, "at": 0.55, "squash": 0.09, "dust": 3, "gap": 0.35}}
+hornModel = {"len": 27, "up": [0.72, 0.17], "back": [0.25, 0.6], "out": [0.22, 0.15], "pitch": 0.3, "w0": 5, "w1": 0.9, "ridge": 3.5, "head": 1, "pal": {"line": "#231611", "body": "#2c1f18", "band": "#36261d", "glint": "#443126", "ridge": "#251812"}}
+gait = {"steps": 12, "lift": 7, "swing": 6, "side": 3, "belly": 0.6, "reach": 16, "minBlob": 10, "legW": 15, "scrap": 3, "hoof": true, "units": ["goat", "sheep-pet"], "beard": {"dark": 100, "hoofN": 60, "reach": 8, "band": 4.5, "len": 16, "trim": 9}, "farLeg": {"at": [1, 7], "dx": 15, "dy": 3, "shade": 0.8}}
+idle = {"after": 1.4, "gap": [2.2, 4.6], "weights": {"look": 3, "hop": 1, "shake": 2, "paw": 2, "stretch": 2, "sniff": 2, "scratch": 1}, "look": 1.1, "hop": {"time": 0.42, "h": 5}, "shake": {"time": 0.45, "amp": 0.09, "freq": 44}, "paw": {"time": 0.8, "scrapes": 2, "dist": 1.5}, "stretch": {"time": 1.1, "long": 0.12, "low": 0.1}, "sniff": {"time": 1, "sniffs": 3, "dip": 0.08, "lean": 0.12}, "scratch": {"time": 0.9, "lean": 0.14, "amp": 0.035, "freq": 70}}
+wounds = {"r": 1.9, "grow": 0.15, "front": 0.65, "alpha": 0.8, "spots": [[-4, -10], [5, -9], [-1, -14], [-7, -7], [7, -13], [2, -6]], "cache": 96}
+invuln = 0.9
+knock = {"time": 0.16, "lie": 0.9, "over": 1.2, "squash": 0.2, "flat": 0.1, "up": 0.22, "crouch": 0.14}

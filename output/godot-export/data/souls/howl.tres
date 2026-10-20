@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SoulData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/soul_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "howl"
+skill = "scream"
+active = true
+emoji = "📢"
+minLevel = 0.0
+name_ = "THE FULL THROAT"
+desc = "BAAH stuns men near you."
+params = {"cooldown": 4.8}

@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="LinksTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/links_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+shamanMage = {"near": 1.7, "every": [1.6, 3.4], "push": 0.9, "time": 0.2, "daze": 0.5}

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="TalismanData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/talisman_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "fatecomb"
+name_ = "THE COMB OF FATE"
+rarity = 2.0
+color = "#f2e2b0"
+tiers = [{"params": {"halo": 2}}]
+tag = "revive"
+lock = {"text": "LET THE BLIND SHEPHERD COMB YOU FIVE TIMES UP IN HEAVEN."}

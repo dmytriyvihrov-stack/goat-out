@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="DarkTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/dark_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+alpha = 0.98
+color = [5, 4, 10]
+res = 3.0
+flicker = 0.08
+maxFires = 140.0
+near = 4.5
+floor = 0.33
+sil = 0.94
+body = "#07060c"
+rim = "rgba(150,158,210,0.55)"
+self_ = [1.5, 0.66]
+run = {"at": 90, "ease": 4, "floor": 0.4, "self": [2.4, 0.76]}
+edge = {"alpha": 0.35, "from": 0.35}
+lights = {"brazier": [5.4, 1], "lamp": [4.7, 0.95], "sconce": [2.8, 0.9], "fire": [2.8, 0.85], "burning": [3.1, 0.9], "soul": [1.8, 0.55], "bearer": [2.4, 0.6], "exit": [3.4, 0.85], "blast": [6, 1], "muzzle": [3.4, 0.9], "rune": [2.2, 0.55]}
+eyes = {"range": 24, "blinkGap": [2.2, 5.5], "blinkTime": 0.13, "cell": 2.2, "glow": 0.65, "kinds": {"seer": ["#f6f0ff", "#8f6bff", 27, 5, 2.4], "dog": ["#fff6b8", "#ffab3a", 16, 13, 2.6], "wraith": ["#e6fbff", "#6fc3e8", 28, 4, 2.8]}}
+lamps = {"min": 1, "max": 2, "big": 70, "apart": 4, "door": 2, "doorLit": 3}
+ai = {"sight": {"all": 3.5, "dog": 5}, "lit": 0.75, "lose": 1.2, "earCast": 9, "earOwn": 1.5, "earFresh": 0.3}
+fork = {"at": 1, "apart": 4, "band": 0.6, "chance": 0.5}

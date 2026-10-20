@@ -1,0 +1,43 @@
+[gd_resource type="Resource" script_class="LevelData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/level_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+index = 7.0
+name_ = "THE OSSUARY"
+sub = "Level 8"
+rooms = 15.0
+canon = {"id": "niche", "name": "THE NICHE", "idea": "A body cannot form inside stone. Niches and lanes take arcs away from the dead; the open floor between them gives every arc back."}
+theme = "The ossuary beneath the compound, where nothing it ever killed stayed put."
+decor = "Stone niches and lanes, open floor between them, wraiths arriving from behind."
+arenas = [{"at": 4, "boss": "butcher"}, {"at": 9, "boss": "wraith"}, {"at": 14, "boss": "seer", "escorts": 6, "with": ["bearer", "bearer", "bearer", "shield", "shield", "dog"], "supper": true}]
+gates = [8]
+rests = [13]
+gateKeeper = true
+millAt = 6.0
+heals = 4.0
+souls = 2.0
+racks = 0.2
+traps = 2.0
+crates = 0.35
+encounters = {"kinds": ["bearer", "champion", "dog", "seer", "hunter", "wraith", "shield", "shaman"], "introduce": [["wraith", 0]], "from": 11, "to": 29, "ease": 1.12, "weight": {"wraith": 9, "bearer": 4, "dog": 2, "champion": 1, "hunter": 2, "seer": 1}, "cap": {"wraith": 4, "men": 10, "hunter": 3}}
+floor = "#22242b"
+floorAlt = "#282a33"
+wall = "#2c2a25"
+wallTop = "#706755"
+fog = "#05060a"
+doorChance = 0.22
+hint = "IT CANNOT STOP ONCE IT STARTS. LET IT START."
+met = ["bearer", "champion", "dog", "seer", "shield", "butcher", "hunter", "shaman", "thrower", "sawbot", "welder", "arm", "automaton", "sweeper", "shieldgen", "cartridge"]
+known = ["stone", "fire", "hollow", "line", "open", "funnel", "mech", "drop"]
+barrels = 0.2
+vaultAt = 7.0
+beasts = ["crow", "tortoise", "horse"]
+ironDoors = 0.65
+stack = 0.35
+hintKey = "butt"
+spikes = 0.35
+clockDoors = 0.6
+killboxAt = 11.0
+lonePosts = 2.0

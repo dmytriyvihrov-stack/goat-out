@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="ChaseTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/chase_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+grace = 4.0
+fill = 11.3
+fightMul = 0.8
+fightR = 9.0
+perTile = 0.007
+band = 0.28
+ease = 2.5
+spawn = {"from": 0.4, "gap": [6.5, 2.2], "cap": [2, 5], "minR": 6, "minD": 5, "maxD": 30, "behind": 2, "slack": 2}
+kinds = {"bearer": 6, "dog": 3, "seer": 0.7, "hunter": 0.6, "champion": 0.5}
+heavy = ["hunter", "champion"]
+heavyFrom = 0.75
+scent = 2.5
+drop = {"d": 40, "t": 4}
+cue = {"gap": 18}
+banner = {"time": 4.2, "fade": 0.8}
+look = {"cell": 5, "ragged": 2, "lumps": 6, "drift": 1.2, "pulse": 3, "spores": 3, "haze": 6, "hudLow": 70, "rate": 7, "alpha": 0.92, "motes": 26, "tint": 0.1, "tintFrom": 0.6, "hud": 38, "clear": 2, "back": 9}

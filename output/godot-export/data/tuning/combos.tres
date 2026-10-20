@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="CombosTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/combos_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+chance = 0.35
+over = 1.5
+extra = 2.0
+list = [{"id": "hook-drop", "name": "THE HOOK OVER THE DROP", "men": ["champion"], "room": {"pits": 8}, "from": 5, "why": "the butcher's rope drags the goat across the holes"}, {"id": "witch-hook", "name": "WITCHFIRE AND THE HOOK", "men": ["seer", "champion"], "room": {}, "from": 2, "why": "the mage will not be caught, and the hook drags the goat through his fire"}, {"id": "ogre-seer", "name": "THE SMALL RING", "men": ["seer"], "room": {"arena": "butcher"}, "from": 2, "why": "the ogre leaps where he stands, the mage burns where he runs"}]

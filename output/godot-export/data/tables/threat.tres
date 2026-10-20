@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="ThreatTable" format=3]
+
+[ext_resource type="Script" path="res://data/classes/threat_table.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+bearer = 1.0
+dog = 1.7
+hunter = 2.4
+wraith = 2.6
+seer = 2.4
+champion = 3.2
+butcher = 5.0
+shield = 2.6
+thrower = 3.0
+shaman = 2.6
+sawbot = 3.0
+welder = 4.0
+automaton = 10.0
+arm = 3.6
+sweeper = 2.4
+shieldgen = 3.0
+cartridge = 3.2

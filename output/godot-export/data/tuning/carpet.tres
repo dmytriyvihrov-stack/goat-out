@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CarpetTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/carpet_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+chance = 0.3
+tables = 0.75
+perLevel = 4.0
+long = [3, 7]
+short = [2, 4]
+across = 0.3
+tries = 40.0
+styles = 4.0
+blood = 0.3

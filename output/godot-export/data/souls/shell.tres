@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SoulData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/soul_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "shell"
+skill = "roll"
+active = true
+emoji = "🐢"
+minLevel = 0.0
+name_ = "TURTLEIZE"
+desc = "Hold the roll to become a crystal shell. Enemy blows charge it for the impact after the end."
+params = {"time": 5, "min": 0.25, "r": 2.4, "rPer": 0.3, "rMax": 5, "fling": 8, "flingPer": 1.2, "flingMax": 16, "hitsMax": 8, "daze": 1.2, "cooldownMul": 4, "after": 0.35, "cell": 2.2, "color": {"rim": "#1c0f30", "dark": "#4a2a7a", "mid": "#7a4cc0", "light": "#b48cff", "seam": "#2e1a4e", "glint": "#f2e8ff"}}
+lockText = "WIN THE TORTOISE'S DARE UP IN HEAVEN, AND THE CORRUPTED SOULS CAN DEAL IT."

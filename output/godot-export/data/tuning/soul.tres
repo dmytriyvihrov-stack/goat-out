@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SoulTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/soul_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+doorOff = 1.6
+r = 13.0
+pickupR = 22.0
+bossChance = 0.4
+roomChance = 0.0
+apart = 3.0
+exitGate = true
+guide = {"time": 3.2, "gap": 20, "speed": 70, "size": 5}
+hold = {"on": false, "from": 1}

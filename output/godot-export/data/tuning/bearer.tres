@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="BearerTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/bearer_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+radius = 11.0
+speed = 147.54096
+sight = 8.0
+cone = 1.5707963267949
+reach = 25.6
+windup = 0.46
+swing = 0.12
+recover = 0.55
+damage = 1.0
+knock = 32.0
+flooredTime = 0.8

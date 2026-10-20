@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="ArmTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/arm_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+wreck = {"burst": 30, "fly": 1.5, "throw": [0.7, 1.1], "spread": 0.9, "bits": ["fac-bit-plate", "fac-bit-plate", "fac-bit-gear", "fac-bit-gear", "fac-bit-bolt", "fac-bit-bolt", "fac-bit-bolt", "fac-bit-pipe"]}
+hp = 2.0
+r = 15.0
+reach = 4.2
+slamR = 1.1
+lift = 0.75
+slam = 0.14
+recover = 0.8
+cd = 1.3
+recharge = 3.5
+hurt = 1.0
+throw = 7.0
+daze = 0.45
+stunBy = 1.6
+immune = {"fire": true, "witch": true, "poison": true, "blunder": true}
+look = {"lift": 60, "w": 7, "bend": 30, "turret": 14, "watch": 1.8, "sweep": 0.7, "turn": 7, "rest": 0.5, "out": 0.88}

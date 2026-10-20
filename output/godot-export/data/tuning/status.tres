@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="StatusTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/status_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+weak = 0.7
+poison = {"time": 3, "moveMul": 0.55, "tempo": 0.6, "pool": 5, "trapMul": 0.35, "trapGap": 0.9, "pitSense": 0.6}
+look = {"cell": 2, "bite": 2, "deep": 0.68, "variants": 8, "drySteps": 4, "sheen": 3, "bubbles": 2, "bubble": 1.1, "dry": 0.4, "tint": 0.42, "goatTint": 0.38, "drops": 16, "globR": 6, "tail": 2, "rise": 16}
+blast = {"radius": 2.2, "hitR": 1.1, "impulse": 352, "goatPush": 300, "hits": 2, "guard": 2}
+sting = {"stun": 4, "poison": 6}
+scald = {"damage": 2}
+splash = {"range": 3, "back": -0.2}
+jaw = {"half": 1, "touch": 4}
+tumble = {"half": 1}
+spit = {"speed": 384, "range": 7.5, "tiles": 6}
+web = {"speed": 384, "range": 7.5, "tiles": 6, "time": 14, "hold": 3.2, "bigMul": 0.5, "burn": 1.4, "immune": ["butcher", "ratogre", "wraith"], "look": {"w": 1.15, "h": 1.5, "alpha": 0.7}}
+brand = {"burn": 3, "gap": 1}

@@ -1,0 +1,67 @@
+[gd_resource type="Resource" script_class="BoonBaseTable" format=3]
+
+[ext_resource type="Script" path="res://data/classes/boon_base_table.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+maxHp = 4.0
+speed = 1.0
+butcherDamage = 1.0
+fireResist = 1.0
+enemySlow = 1.21
+oracle = false
+headbuttReach = 1.0
+headbuttImpulse = 1.0
+headbuttRecovery = 1.0
+ironSkull = false
+antlers = false
+runButt = 0.0
+rollKeep = 0.0
+screamReach = 1.0
+hoofKick = null
+shieldBullets = 2.0
+holdTime = 8.0
+grabCooldown = 1.0
+throwFar = 1.0
+grabMen = false
+screamCooldown = 3.6
+screamRadius = 3.4
+screamCall = 13.0
+armour = 0.0
+screamStun = false
+roll = true
+rollDistance = 1.0
+rollCooldown = 1.0
+rollStun = 0.0
+leapfrog = null
+coldEye = null
+grassGain = 0.0
+ricochet = null
+breath = false
+bomb = false
+firePass = 0.0
+crooked = null
+luck = null
+boomerang = null
+blink = null
+effigy = null
+sprout = null
+ruin = null
+splash = false
+venomHold = 0.0
+brandHold = 0.0
+venomRoll = false
+spit = false
+web = false
+kinesis = null
+lightHearts = 0.0
+grazeMul = 1.0
+grazeLuck = 0.0
+invulnAdd = 0.0
+fireGuard = 0.0
+fireImmune = false
+burnMul = 1.0
+poisonGuard = 0.0
+poisonImmune = false
+poisonHurts = false
+thirdEvery = 0.0

@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="CapeData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/cape_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "morph"
+name_ = "MANTLE OF CHANGES"
+color = "#4fd1c5"
+params = {"cooldown": 36}

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="PadTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/pad_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+dead = 0.2
+aimDead = 0.35
+wake = 0.5
+wakeMove = 0.04
+trigger = 0.35
+assist = {"cone": 0.3, "reach": 5.2}
+navAt = 0.6
+repeatAfter = 0.36
+repeatEvery = 0.12
+rumble = {"full": 80, "min": 0.25, "strong": 0.8, "weak": 0.5, "stretch": 1.6}

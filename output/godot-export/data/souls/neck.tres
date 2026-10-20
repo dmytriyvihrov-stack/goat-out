@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SoulData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/soul_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "neck"
+skill = "butt"
+emoji = "🐂"
+minLevel = 0.0
+name_ = "FORREST GUMP"
+desc = "The longer your run, the harder your headbutt."
+params = {"bonus": 0.6}
+addition = ["horns", "bomb", "hocks"]

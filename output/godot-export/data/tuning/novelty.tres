@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="NoveltyTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/novelty_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+dry = 240.0
+near = 9.0
+cap = 40.0
+rooms = 2.0

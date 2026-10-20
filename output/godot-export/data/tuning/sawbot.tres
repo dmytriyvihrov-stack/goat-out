@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="SawbotTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/sawbot_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+hp = 2.0
+speedMul = 1.05
+flingMul = 1.1
+shrug = 2.5
+heat = {"time": 3.5, "hurt": 1, "cd": 0.9, "touch": 3}
+soak = 6.0
+saw = {"len": 15, "w": 4, "run": 30}
+immune = {"fire": true, "witch": true, "poison": true, "blunder": true}
+strike = {"reach": 24, "windup": 0.5, "swing": 0.14, "recover": 0.65, "damage": 1, "knock": 32}
+leap = {"min": 1.3, "range": 3.2, "reach": 2.8, "lead": 0.2, "wind": 0.55, "air": 0.34, "lift": 26, "r": 1.05, "damage": 1, "knock": 6, "menFling": 7, "recover": 0.75, "cd": 2.4, "chop": 0.28, "sawBig": 1.3}

@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="VaultTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/vault_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+kinds = {"grass": 0.4, "ambush": 0.35, "mages": 0.25, "ogre": 0.3}
+shutIn = 1.0
+land = 0.5
+ambush = {"men": 3, "kind": "bearer"}
+mages = {"men": 3, "kind": "seer"}
+ogre = {"hits": 3, "tellR": 5, "tellGap": 2.6, "tellVary": 0.2, "back": 0.6, "needs": ["brazier", "lamp", "barrel", "bomb", "spire", "sword"]}

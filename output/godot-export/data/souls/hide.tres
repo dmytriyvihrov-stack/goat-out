@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="SoulData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/soul_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "hide"
+emoji = "❤️"
+minLevel = 0.0
+name_ = "THICK HIDE"
+params = {"heartsAdd": 2}
+heal = 2.0

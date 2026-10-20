@@ -1,0 +1,44 @@
+[gd_resource type="Resource" script_class="ThrowerTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/thrower_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+hp = 3.0
+carryMax = 6.0
+pulse = {"rest": 3, "tell": 9}
+flingMul = 0.55
+speedMul = 0.95
+scale = 1.18
+seek = 9.0
+ammo = 3.0
+give = 3.5
+forget = 6.0
+bossMan = -4.0
+pant = {"time": 1.8, "cd": 3.2, "word": "HUFF... HUFF"}
+witch = {"r": 1, "dur": 4, "min": 0.12, "max": 2.2, "still": 30}
+lift = 0.7
+drop = 1.1
+carry = 0.7
+near = 1.6
+far = 6.5
+aim = 0.42
+recover = 0.75
+cd = 0.5
+hit = 1.0
+thing = 416.0
+man = 576.0
+beast = 384.0
+beastDrag = 2.6
+fist = {"reach": 33.6, "windup": 0.55, "swing": 0.15, "recover": 0.6, "damage": 1, "knock": 57.6}
+grab = {"reach": 10, "cd": 5, "wind": 0.5, "hold": 0.5, "speed": 448, "drag": 3, "hurt": 144, "hurtN": 1, "land": 0.45, "pick": 6, "turn": 7, "stop": 48, "slam": 0.15, "intoMan": {"man": 0.4, "goat": 0.45}}
+r = 13.0
+wake = {"lift": 0.6, "grab": 1.5}
+look = 0.5
+rest = {"lost": 0.3, "put": 0.4}
+bombOn = 0.15
+knock = 64.0
+beastLand = 64.0
+stun = 0.6
+acid = 3.0
+body = {"extra": 0.5, "life": 6, "dark": 0.3}

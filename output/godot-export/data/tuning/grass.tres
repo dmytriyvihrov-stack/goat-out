@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="GrassTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/grass_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+seeInto = 1.5
+hideR = 2.15
+cutR = 1.3
+lurk = 0.3
+lurkAlpha = 0.55
+patch = [1, 3]
+size = [5, 12]
+sway = 1.6
+burn = 2.6
+spread = 0.3

@@ -1,0 +1,953 @@
+{
+ "note": "JS code that did not export (stays code, session 14): souls desc/stat/apply/unlock, talismans tell/say/apply/need/desc/detail, capes tell/say/apply/desc/detail, mirror value/tell/apply/hint, BOON_SETS gain. Source of truth stays js/tuning.js.",
+ "count": 233,
+ "byField": {
+  "$.gain:function": 2,
+  "$.stat:function": 33,
+  "$.apply:function": 66,
+  "$.desc:getter": 14,
+  "$.unlock:function": 1,
+  "$.tell:function": 33,
+  "$.say:function": 27,
+  "$.tiers[].desc:getter": 21,
+  "$.tiers[].detail:getter": 21,
+  "$.lock.need:function": 2,
+  "$.detail:getter": 6,
+  "$.value:function": 6,
+  "$.hint:function": 1
+ },
+ "all": [
+  {
+   "path": "BOON_SETS.fire.gain",
+   "kind": "function"
+  },
+  {
+   "path": "BOON_SETS.poison.gain",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.collar.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.collar.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.howl.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.howl.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.breath.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.breath.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.bomb.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.bomb.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.weight.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.weight.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.splash.desc",
+   "kind": "getter"
+  },
+  {
+   "path": "BOONS.splash.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.splash.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.venomjaw.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.venomjaw.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.charge.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.charge.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.kinesis.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.kinesis.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.venomroll.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.venomroll.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.leapfrog.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.leapfrog.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.shell.unlock",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.shell.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.shell.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.webspit.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.webspit.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.spit.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.spit.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.hide.desc",
+   "kind": "getter"
+  },
+  {
+   "path": "BOONS.hide.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.hide.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.stomachs.desc",
+   "kind": "getter"
+  },
+  {
+   "path": "BOONS.stomachs.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.stomachs.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.horns.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.horns.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.skull.desc",
+   "kind": "getter"
+  },
+  {
+   "path": "BOONS.skull.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.skull.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.neck.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.neck.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.hooves.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.hooves.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.crook.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.crook.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.jaw.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.jaw.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.coldeye.desc",
+   "kind": "getter"
+  },
+  {
+   "path": "BOONS.coldeye.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.coldeye.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.ricochet.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.ricochet.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.kindling.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.kindling.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.throat.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.throat.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.lungs.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.lungs.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.hooves.desc",
+   "kind": "getter"
+  },
+  {
+   "path": "BOONS.hooves.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.hooves.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.joints.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.joints.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.hocks.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.hocks.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.ember.desc",
+   "kind": "getter"
+  },
+  {
+   "path": "BOONS.ember.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.ember.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.oracle.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.oracle.apply",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.hunger.desc",
+   "kind": "getter"
+  },
+  {
+   "path": "BOONS.hunger.stat",
+   "kind": "function"
+  },
+  {
+   "path": "BOONS.hunger.apply",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.firecharm.tell",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.firecharm.say",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.firecharm.tiers[0].desc",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.firecharm.tiers[0].detail",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.firecharm.apply",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.clover.tell",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.clover.say",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.clover.tiers[0].desc",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.clover.tiers[0].detail",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.clover.apply",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.mason.tell",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.mason.say",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.mason.tiers[0].desc",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.mason.tiers[0].detail",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.mason.apply",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.domino.tell",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.domino.say",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.domino.tiers[0].desc",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.domino.tiers[0].detail",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.domino.apply",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.echo.tell",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.echo.say",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.echo.tiers[0].desc",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.echo.tiers[0].detail",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.echo.apply",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.spade.tell",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.spade.say",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.spade.tiers[0].desc",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.spade.tiers[0].detail",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.spade.apply",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.mask.tell",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.mask.say",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.mask.tiers[0].desc",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.mask.tiers[0].detail",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.mask.apply",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.spur.tell",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.spur.say",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.spur.tiers[0].desc",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.spur.tiers[0].detail",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.spur.apply",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.moth.tell",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.moth.say",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.moth.tiers[0].desc",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.moth.tiers[0].detail",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.moth.apply",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.sandal.tell",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.sandal.say",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.sandal.tiers[0].desc",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.sandal.tiers[0].detail",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.sandal.apply",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.scapegoat.tell",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.scapegoat.say",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.scapegoat.tiers[0].desc",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.scapegoat.tiers[0].detail",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.scapegoat.apply",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.tallow.tell",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.tallow.say",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.tallow.tiers[0].desc",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.tallow.tiers[0].detail",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.tallow.apply",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.mirror.tell",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.mirror.say",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.mirror.tiers[0].desc",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.mirror.tiers[0].detail",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.mirror.apply",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.cup.tell",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.cup.say",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.cup.tiers[0].desc",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.cup.tiers[0].detail",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.cup.apply",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.knuckle.tell",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.knuckle.say",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.knuckle.tiers[0].desc",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.knuckle.tiers[0].detail",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.knuckle.apply",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.magnet.tell",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.magnet.say",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.magnet.tiers[0].desc",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.magnet.tiers[0].detail",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.magnet.apply",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.tally.tell",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.tally.say",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.tally.tiers[0].desc",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.tally.tiers[0].detail",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.tally.apply",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.nosebag.tell",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.nosebag.say",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.nosebag.tiers[0].desc",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.nosebag.tiers[0].detail",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.nosebag.apply",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.hourglass.tell",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.hourglass.say",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.hourglass.tiers[0].desc",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.hourglass.tiers[0].detail",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.hourglass.apply",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.tablecharm.tell",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.tablecharm.say",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.tablecharm.tiers[0].desc",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.tablecharm.tiers[0].detail",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.tablecharm.lock.need",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.tablecharm.apply",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.fatecomb.tell",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.fatecomb.say",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.fatecomb.tiers[0].desc",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.fatecomb.tiers[0].detail",
+   "kind": "getter"
+  },
+  {
+   "path": "ARTIFACTS.fatecomb.lock.need",
+   "kind": "function"
+  },
+  {
+   "path": "ARTIFACTS.fatecomb.apply",
+   "kind": "function"
+  },
+  {
+   "path": "CAPES.symbols.tell",
+   "kind": "function"
+  },
+  {
+   "path": "CAPES.symbols.say",
+   "kind": "function"
+  },
+  {
+   "path": "CAPES.symbols.apply",
+   "kind": "function"
+  },
+  {
+   "path": "CAPES.symbols.desc",
+   "kind": "getter"
+  },
+  {
+   "path": "CAPES.symbols.detail",
+   "kind": "getter"
+  },
+  {
+   "path": "CAPES.meadow.tell",
+   "kind": "function"
+  },
+  {
+   "path": "CAPES.meadow.say",
+   "kind": "function"
+  },
+  {
+   "path": "CAPES.meadow.apply",
+   "kind": "function"
+  },
+  {
+   "path": "CAPES.meadow.desc",
+   "kind": "getter"
+  },
+  {
+   "path": "CAPES.meadow.detail",
+   "kind": "getter"
+  },
+  {
+   "path": "CAPES.ruin.tell",
+   "kind": "function"
+  },
+  {
+   "path": "CAPES.ruin.say",
+   "kind": "function"
+  },
+  {
+   "path": "CAPES.ruin.apply",
+   "kind": "function"
+  },
+  {
+   "path": "CAPES.ruin.desc",
+   "kind": "getter"
+  },
+  {
+   "path": "CAPES.ruin.detail",
+   "kind": "getter"
+  },
+  {
+   "path": "CAPES.boomerang.tell",
+   "kind": "function"
+  },
+  {
+   "path": "CAPES.boomerang.say",
+   "kind": "function"
+  },
+  {
+   "path": "CAPES.boomerang.apply",
+   "kind": "function"
+  },
+  {
+   "path": "CAPES.boomerang.desc",
+   "kind": "getter"
+  },
+  {
+   "path": "CAPES.boomerang.detail",
+   "kind": "getter"
+  },
+  {
+   "path": "CAPES.effigy.tell",
+   "kind": "function"
+  },
+  {
+   "path": "CAPES.effigy.say",
+   "kind": "function"
+  },
+  {
+   "path": "CAPES.effigy.apply",
+   "kind": "function"
+  },
+  {
+   "path": "CAPES.effigy.desc",
+   "kind": "getter"
+  },
+  {
+   "path": "CAPES.effigy.detail",
+   "kind": "getter"
+  },
+  {
+   "path": "CAPES.morph.tell",
+   "kind": "function"
+  },
+  {
+   "path": "CAPES.morph.say",
+   "kind": "function"
+  },
+  {
+   "path": "CAPES.morph.apply",
+   "kind": "function"
+  },
+  {
+   "path": "CAPES.morph.desc",
+   "kind": "getter"
+  },
+  {
+   "path": "CAPES.morph.detail",
+   "kind": "getter"
+  },
+  {
+   "path": "MIRROR.life.value",
+   "kind": "function"
+  },
+  {
+   "path": "MIRROR.life.tell",
+   "kind": "function"
+  },
+  {
+   "path": "MIRROR.life.apply",
+   "kind": "function"
+  },
+  {
+   "path": "MIRROR.fleece.value",
+   "kind": "function"
+  },
+  {
+   "path": "MIRROR.fleece.tell",
+   "kind": "function"
+  },
+  {
+   "path": "MIRROR.fleece.apply",
+   "kind": "function"
+  },
+  {
+   "path": "MIRROR.halo.value",
+   "kind": "function"
+  },
+  {
+   "path": "MIRROR.halo.tell",
+   "kind": "function"
+  },
+  {
+   "path": "MIRROR.halo.apply",
+   "kind": "function"
+  },
+  {
+   "path": "MIRROR.grazer.hint",
+   "kind": "function"
+  },
+  {
+   "path": "MIRROR.grazer.value",
+   "kind": "function"
+  },
+  {
+   "path": "MIRROR.grazer.tell",
+   "kind": "function"
+  },
+  {
+   "path": "MIRROR.grazer.apply",
+   "kind": "function"
+  },
+  {
+   "path": "MIRROR.tumble.value",
+   "kind": "function"
+  },
+  {
+   "path": "MIRROR.tumble.tell",
+   "kind": "function"
+  },
+  {
+   "path": "MIRROR.tumble.apply",
+   "kind": "function"
+  },
+  {
+   "path": "MIRROR.helldive.value",
+   "kind": "function"
+  },
+  {
+   "path": "MIRROR.helldive.tell",
+   "kind": "function"
+  },
+  {
+   "path": "MIRROR.helldive.apply",
+   "kind": "function"
+  }
+ ]
+}

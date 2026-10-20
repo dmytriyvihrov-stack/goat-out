@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="SoulKeeperTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/soul_keeper_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+hp = 2.0
+speed = 1.3
+fireAt = 1.1
+fireR = 1.0
+fireFor = 2.6

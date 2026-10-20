@@ -1,0 +1,352 @@
+{
+ "note": "PROP_PIXELS.sprites, 1 texel = 1 png px, no anchor (the game fits each by code: PROP_FOOT, PAINTED_SIZE). Names with @pass/@lit/@dim are the art-pass variants; @ is ~ in file names.",
+ "sheet": "heaven.png",
+ "sheetSize": [
+  2048,
+  94
+ ],
+ "count": 31,
+ "sprites": {
+  "beam": {
+   "file": "heaven/beam.png",
+   "w": 154,
+   "h": 52,
+   "rect": [
+    1,
+    1,
+    154,
+    52
+   ]
+  },
+  "bell-0": {
+   "file": "heaven/bell-0.png",
+   "w": 20,
+   "h": 22,
+   "rect": [
+    156,
+    1,
+    20,
+    22
+   ]
+  },
+  "bell-1": {
+   "file": "heaven/bell-1.png",
+   "w": 19,
+   "h": 21,
+   "rect": [
+    177,
+    1,
+    19,
+    21
+   ]
+  },
+  "bell-2": {
+   "file": "heaven/bell-2.png",
+   "w": 17,
+   "h": 20,
+   "rect": [
+    197,
+    1,
+    17,
+    20
+   ]
+  },
+  "bell-3": {
+   "file": "heaven/bell-3.png",
+   "w": 16,
+   "h": 19,
+   "rect": [
+    215,
+    1,
+    16,
+    19
+   ]
+  },
+  "bell-4": {
+   "file": "heaven/bell-4.png",
+   "w": 15,
+   "h": 17,
+   "rect": [
+    232,
+    1,
+    15,
+    17
+   ]
+  },
+  "bell-5": {
+   "file": "heaven/bell-5.png",
+   "w": 14,
+   "h": 16,
+   "rect": [
+    248,
+    1,
+    14,
+    16
+   ]
+  },
+  "bell-6": {
+   "file": "heaven/bell-6.png",
+   "w": 13,
+   "h": 15,
+   "rect": [
+    263,
+    1,
+    13,
+    15
+   ]
+  },
+  "bell-7": {
+   "file": "heaven/bell-7.png",
+   "w": 12,
+   "h": 14,
+   "rect": [
+    277,
+    1,
+    12,
+    14
+   ]
+  },
+  "bell-asleep-0": {
+   "file": "heaven/bell-asleep-0.png",
+   "w": 20,
+   "h": 22,
+   "rect": [
+    290,
+    1,
+    20,
+    22
+   ]
+  },
+  "bell-asleep-1": {
+   "file": "heaven/bell-asleep-1.png",
+   "w": 19,
+   "h": 21,
+   "rect": [
+    311,
+    1,
+    19,
+    21
+   ]
+  },
+  "bell-asleep-2": {
+   "file": "heaven/bell-asleep-2.png",
+   "w": 17,
+   "h": 20,
+   "rect": [
+    331,
+    1,
+    17,
+    20
+   ]
+  },
+  "bell-asleep-3": {
+   "file": "heaven/bell-asleep-3.png",
+   "w": 16,
+   "h": 19,
+   "rect": [
+    349,
+    1,
+    16,
+    19
+   ]
+  },
+  "bell-asleep-4": {
+   "file": "heaven/bell-asleep-4.png",
+   "w": 15,
+   "h": 17,
+   "rect": [
+    366,
+    1,
+    15,
+    17
+   ]
+  },
+  "bell-asleep-5": {
+   "file": "heaven/bell-asleep-5.png",
+   "w": 14,
+   "h": 16,
+   "rect": [
+    382,
+    1,
+    14,
+    16
+   ]
+  },
+  "bell-asleep-6": {
+   "file": "heaven/bell-asleep-6.png",
+   "w": 13,
+   "h": 15,
+   "rect": [
+    397,
+    1,
+    13,
+    15
+   ]
+  },
+  "bell-asleep-7": {
+   "file": "heaven/bell-asleep-7.png",
+   "w": 12,
+   "h": 14,
+   "rect": [
+    411,
+    1,
+    12,
+    14
+   ]
+  },
+  "god": {
+   "file": "heaven/god.png",
+   "w": 76,
+   "h": 80,
+   "rect": [
+    424,
+    1,
+    76,
+    80
+   ]
+  },
+  "god-blink": {
+   "file": "heaven/god-blink.png",
+   "w": 76,
+   "h": 80,
+   "rect": [
+    501,
+    1,
+    76,
+    80
+   ]
+  },
+  "god-speak": {
+   "file": "heaven/god-speak.png",
+   "w": 76,
+   "h": 80,
+   "rect": [
+    578,
+    1,
+    76,
+    80
+   ]
+  },
+  "grass-gold": {
+   "file": "heaven/grass-gold.png",
+   "w": 19,
+   "h": 16,
+   "rect": [
+    655,
+    1,
+    19,
+    16
+   ]
+  },
+  "grass-gold-big": {
+   "file": "heaven/grass-gold-big.png",
+   "w": 29,
+   "h": 22,
+   "rect": [
+    675,
+    1,
+    29,
+    22
+   ]
+  },
+  "mirror": {
+   "file": "heaven/mirror.png",
+   "w": 30,
+   "h": 48,
+   "rect": [
+    705,
+    1,
+    30,
+    48
+   ]
+  },
+  "plinth": {
+   "file": "heaven/plinth.png",
+   "w": 30,
+   "h": 20,
+   "rect": [
+    736,
+    1,
+    30,
+    20
+   ]
+  },
+  "plinth-broken": {
+   "file": "heaven/plinth-broken.png",
+   "w": 36,
+   "h": 20,
+   "rect": [
+    767,
+    1,
+    36,
+    20
+   ]
+  },
+  "shepherd-0": {
+   "file": "heaven/shepherd-0.png",
+   "w": 34,
+   "h": 44,
+   "rect": [
+    804,
+    1,
+    34,
+    44
+   ]
+  },
+  "shepherd-1": {
+   "file": "heaven/shepherd-1.png",
+   "w": 34,
+   "h": 44,
+   "rect": [
+    839,
+    1,
+    34,
+    44
+   ]
+  },
+  "shepherd-2": {
+   "file": "heaven/shepherd-2.png",
+   "w": 34,
+   "h": 44,
+   "rect": [
+    874,
+    1,
+    34,
+    44
+   ]
+  },
+  "skull": {
+   "file": "heaven/skull.png",
+   "w": 9,
+   "h": 9,
+   "rect": [
+    909,
+    1,
+    9,
+    9
+   ]
+  },
+  "watchtower": {
+   "file": "heaven/watchtower.png",
+   "w": 40,
+   "h": 92,
+   "rect": [
+    919,
+    1,
+    40,
+    92
+   ]
+  },
+  "watchtower-cloud": {
+   "file": "heaven/watchtower-cloud.png",
+   "w": 66,
+   "h": 38,
+   "rect": [
+    960,
+    1,
+    66,
+    38
+   ]
+  }
+ }
+}

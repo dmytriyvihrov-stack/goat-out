@@ -1,0 +1,48 @@
+[gd_resource type="Resource" script_class="LevelData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/level_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+index = 3.0
+name_ = "THE ROAD"
+sub = "Level 4"
+rooms = 15.0
+canon = {"id": "line", "name": "THE LINE", "idea": "Long sightlines and hard cover. A rifle owns whatever it can see, so the room is about what it cannot, and about crossing the rest."}
+theme = "The processional road out of the compound, watched the whole way by rifles."
+decor = "Colonnades, long naves, stub cover, a killbox, grating underfoot, the Great Hall."
+arenas = [{"at": 5, "boss": "butcher"}, {"at": 14, "boss": "thrower", "escorts": 4}]
+gates = [7]
+rests = [13]
+gateKeeper = true
+millAt = 8.0
+heals = 2.0
+souls = 2.0
+racks = 0.14
+traps = 1.0
+crates = 0.35
+encounters = {"kinds": ["bearer", "champion", "dog", "seer", "hunter", "shield", "shaman"], "introduce": [["hunter", 0.2], ["shaman", 0.6]], "from": 5, "to": 17, "ease": 1.3}
+floor = "#4a3a2e"
+floorAlt = "#524032"
+wall = "#2a2430"
+wallTop = "#3e3346"
+fog = "#0b0a0d"
+doorChance = 0.35
+hint = "PUT SOMETHING SOLID BETWEEN YOU AND THE LINE. WATCH YOUR STEP."
+met = ["bearer", "champion", "dog", "seer", "shield", "butcher"]
+known = ["stone", "fire", "hollow"]
+barrels = 0.3
+vaultAt = 4.0
+beasts = ["tortoise", "goose", "chicken", "horse", "pig", "husky", "fish"]
+ironDoors = 0.5
+stack = 0.28
+hintKey = null
+spikes = 0.3
+clockDoors = 0.5
+chasmLesson = true
+mods = ["snow"]
+hallAt = 9.0
+hallThreat = 11.0
+galleryAt = 6.0
+killboxAt = 10.0
+lonePosts = 3.0

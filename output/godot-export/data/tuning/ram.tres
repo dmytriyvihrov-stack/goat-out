@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RamTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/ram_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+open = 1.5
+warn = 0.6
+punch = 0.1
+hold = 0.35
+back = 0.7
+reach = 2.6
+shake = 1.5
+shove = 10.0
+goatShove = 7.0
+daze = 0.35
+ironMul = 0.4

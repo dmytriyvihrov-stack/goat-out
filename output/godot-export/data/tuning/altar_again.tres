@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AltarAgainTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/altar_again_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+from = 1.5
+to = 6.0
+ease = 1.4
+men = 3.0
+millAt = [2, 3, 4, 5, 7]
+butcherBoss = 0.4
+racks = 0.3

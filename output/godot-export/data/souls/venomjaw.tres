@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="SoulData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/soul_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "venomjaw"
+skill = "grab"
+active = true
+emoji = "🐍"
+minLevel = 0.0
+name_ = "VENOM JAW"
+desc = "Objects that you hold in your mouth become poisonous."
+params = {"holdFor": 1.05}
+element = "poison"
+synergy = ["kindling"]

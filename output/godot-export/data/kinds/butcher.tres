@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="EnemyKindData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/enemy_kind_data.gd" id="1_s"]
+[ext_resource type="Resource" path="res://data/tuning/butcher.tres" id="2_r"]
+
+[resource]
+script = ExtResource("1_s")
+kind = "butcher"
+threat = 5.0
+tuning = ExtResource("2_r")

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SoulData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/soul_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "lungs"
+skill = "scream"
+emoji = "🫁"
+minLevel = 0.0
+name_ = "BIG LUNGS"
+desc = "Every kind of BAAH reaches further."
+params = {"reachMul": 1.3}
+addition = ["howl", "breath", "spit", "throat"]

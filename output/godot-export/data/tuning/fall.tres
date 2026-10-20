@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="FallTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/fall_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+time = 0.5
+back = 0.3
+damage = 1.0
+showFor = 0.75
+setback = 0.35
+invuln = 1.5
+ledge = 7.0
+deep = 13.0
+coyote = 0.15
+coyoteRoll = 0.14

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TalismanData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/talisman_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "clover"
+name_ = "LUCKY CLOVER"
+rarity = 2.0
+color = "#7c8f52"
+tiers = [{"params": {"secret": 3, "racks": 2.8, "grass": 2.4, "heals": 2}}]

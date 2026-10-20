@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SoulData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/soul_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "hocks"
+skill = "roll"
+emoji = "🦘"
+minLevel = 0.0
+name_ = "SPRING HOCKS"
+desc = "After a roll you keep running and keep your run-up."
+params = {"keep": 0.75}
+addition = ["hooves", "neck", "joints"]

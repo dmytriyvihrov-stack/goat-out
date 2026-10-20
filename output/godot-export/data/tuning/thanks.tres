@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ThanksTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/thanks_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+fade = 1.4
+cell = 0.34
+y = 0.36
+pulse = 2.2
+crawl = 3.0
+textAt = 1.8
+pressAt = 3.2
+red = "#d01c1c"
+hot = "#ff4a32"
+halo = "#5a0608"
+lines = ["Thank you for playing, little goat. Please spread the word near and far,", "so that no other goat is ever led to the altar."]

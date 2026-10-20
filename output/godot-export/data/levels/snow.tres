@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="LevelData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/level_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+index = -1.0
+name_ = "THE SNOW"
+sub = "Dev · test"
+rooms = 5.0
+canon = {"id": "snow", "name": "WHITE", "idea": "The compound in winter. Every step is written down."}
+theme = "The yard under snow, the cult's things half buried in it."
+decor = "Drifts, trodden paths, icicles off every wall."
+arenas = [{"at": 4, "boss": "champion"}]
+gates = []
+rests = []
+heals = 0.0
+souls = 0.0
+racks = 0.0
+traps = 0.0
+crates = 0.0
+encounters = {"kinds": ["bearer", "dog", "hunter", "champion"], "introduce": [], "from": 3, "to": 6, "ease": 1.2}
+floor = "#dde5ef"
+floorAlt = "#d2dbe7"
+wall = "#3f4656"
+wallTop = "#8c97aa"
+fog = "#0a0d14"
+hint = null
+barrels = 0.0
+hintKey = null
+showroom = true
+snow = true

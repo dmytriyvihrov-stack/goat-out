@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="MirrorData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/mirror_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "halo"
+name_ = "HALO"
+costs = [30, 90]
+souls = [0, 2]
+params = {"light": [1, 2]}
+glyph = "halo"
+opens = 1.0
+hint = "Hearts of light you start every floor with. Each takes one hit for you, then it is gone."

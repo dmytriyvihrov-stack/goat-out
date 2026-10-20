@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="AudioTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/audio_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+master = 0.92
+drums = 1.0
+sfx = 0.45
+music = 0.85
+musicDefault = 0.35
+crowd = {"warm": 3, "hot": 6}
+hunterCue = {"gain": 0.04, "everyBars": 4}
+cut = 0.03
+ahead = 0.25
+layers = {"maxPerFamily": 3, "maxSpikes": 2, "maxMills": 2, "pursuitRadius": 256, "sampleSeconds": 0.1, "fadeSeconds": 0.3, "gain": 0.55, "exploreMix": 0.45, "fullGainVoices": 8, "hitBudgets": {"small": [0, 1, 2, 3], "ranged": [0, 1, 2, 3], "large": [0, 2, 3, 4], "trap": [0, 1, 2], "mill": [0, 2, 3]}, "spottedBars": 2, "combatHoldBars": 2, "calmBars": 1, "heavyBodyGain": 0.12, "heavyEdgeGain": 0.045, "eventGridSteps": 2, "eventQueueCap": 12, "eventStackCap": 3, "killGain": 0.1, "clearGain": 0.1, "spottedGain": 0.12, "heartSing": 0.45, "lateFromLevel": 5, "calm": {"kick": 0, "toms": 0, "motif": 0, "layers": 0, "tune": 1, "bass": 1, "pad": 1, "sparse": 0.5, "bassBeats": [0, 8], "first": 1}, "hush": {"tune": 0, "toms": 0, "bassBeats": [0]}, "doom": {"riff": [0, 0, 12, 0, 0, 10, 0, 0, 12, 0, 0, 7, 0, 0, 6, 7, 0, 0, 12, 0, 0, 10, 0, 0, 12, 0, 0, 10, 0, 0, 15, 14], "octave": 0.5, "len": 0.7, "gain": 0.5, "accent": 1.3, "drive": 5, "tone": 2200, "out": 0.11, "gallop": [14, 15], "kick": 0.55, "doubles": [7, 15], "snare": 0.26, "snareBeats": [4, 12], "crash": 0.09, "tune": 0.12}, "fight": {"kick": 0.34, "kickBeats": [4, 6, 12, 14], "tom": 0.36, "low": 0.3, "lowBeats": [10], "rim": 0.09, "hat": 0, "chaseHat": 0, "chaseKick": 0.2, "chaseKickBeats": [4, 12]}}
+supper = {"drone": 55, "droneLen": 5.5, "droneGain": 0.06, "detune": 0.985, "gain": 0.05, "len": 2.4, "notes": [[0, 392], [0.6, 329.63], [1.45, 261.63], [2.05, 523.25, 0.97], [3.4, 392], [4.3, 329.63, 0.96]]}
+scene = {"duck": 0.12, "down": 0.6, "up": 1.5}
+bpm = 118.0
+title = {"intro": {"meadow": 0, "road": 0.12, "dark": 0.28, "cloth": 0.38, "huddle": 0.5, "approach": 0.62, "gate": 0.74, "black": 0.08, "wake": 0.18}, "ease": 2.5, "pad": 0.03, "tune": 0.075, "gallopAt": 0.45, "kickAt": 0.55, "pluckAt": 0.65, "rimAt": 0.8, "octaveAt": 0.7}
+tone = {"open": 18000, "heart": 900, "glide": 0.35, "hurt": 380, "back": 0.9}
+ambience = {"gain": 0.075, "every": 0.15, "fade": 1.5, "lab": 0.5, "fight": 0.4, "fightIn": 0.6, "beds": {"stone": {"loop": "air", "gain": 0.5, "drips": 0}, "fire": {"loop": "air", "gain": 0.4, "drips": 0}, "hollow": {"loop": "cave", "gain": 0.6, "drips": 1}, "line": {"loop": "wind", "gain": 0.35, "drips": 0}, "open": {"loop": "wind", "gain": 0.3, "drips": 0}, "funnel": {"loop": "wind", "gain": 0.4, "drips": 0}, "drop": {"loop": "wind", "gain": 0.6, "drips": 0}, "niche": {"loop": "air", "gain": 0.55, "drips": 0.4}, "lamp": {"loop": "air", "gain": 0.4, "drips": 0.5}, "trip": {"loop": "cave", "gain": 0.45, "drips": 0.8}, "heaven": {"loop": "choir", "gain": 0.55, "drips": 0}}, "fire": {"gain": 1.5, "radius": 7, "lit": 0.35, "tile": 0.12, "man": 0.6, "glide": 0.25}, "drip": {"gap": [1.5, 5], "gain": 0.7, "wet": 0.25}, "far": {"gap": [40, 90], "gain": 0.9, "wet": 0.2}, "grass": {"radius": 5, "gap": [1.6, 2.2], "gain": 0.95}, "heart": {"gain": 0.26, "dub": 0.6}}
+foley = {"takes": 3, "pitch": 0.06, "level": 0.12, "warmGap": 0.05, "hooves": 0.075, "rustle": 0.22, "rustleGap": 0.3, "barkGap": 0.16, "stack": {"window": 0.06, "mul": 0.6, "max": 3}, "hoofSide": {"pan": 0.08, "rate": 0.035}, "groan": {"gain": 0.14, "gap": 0.14, "delay": 0.2, "takes": 4, "dog": 0.8, "wet": 0.03, "rate": {"butcher": 0.74, "ratogre": 0.66}}}
+room = {"decay": 0.32, "damp": 1.4, "sfx": 0.07, "music": 0.06, "level": 0.6}
+spotlight = {"gain": 1.1, "near": 0.55, "key": 1.15, "attack": 0.012, "hold": 0.18, "release": 0.55, "big": 1.4, "chain": 1.15, "quiet": 0.8, "floor": 0.05, "deepest": 1.4, "gainMax": 1.3, "takes": 6, "heavy": ["butcher", "ratogre", "champion", "thrower", "shieldman", "welder", "automaton"], "duck": {"score": 0.42, "sfx": 0.48, "amb": 0.2}}
+space = {"near": 4, "far": 20, "floor": 0.12, "pan": 14}
+machines = {"build": 0.16, "vent": 0.07, "gas": 0.06, "down": 0.2, "far": 14}

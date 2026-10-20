@@ -1,0 +1,699 @@
+{
+ "PIXEL_EXTENT": {
+  "goat": 34,
+  "clubman": 36,
+  "brute": 38,
+  "mage": 38,
+  "hound": 40,
+  "hunter": 38,
+  "butcher": 48,
+  "wraith": 38,
+  "chicken": 22,
+  "ratogre": 70,
+  "ogre": 66,
+  "spartan": 36,
+  "thrower": 48,
+  "shaman": 44,
+  "warden": 70,
+  "flayed": 80,
+  "mouse": 26,
+  "goose": 28,
+  "raven": 22,
+  "turtle": 28,
+  "sheep-pet": 32,
+  "sawbot": 34,
+  "welder": 57,
+  "automaton": 210,
+  "arm": 48,
+  "sweeper": 18,
+  "shieldgen": 40,
+  "cartridge": 36
+ },
+ "PIXEL_UNIT": {
+  "sheep": "goat",
+  "clubman": "clubman",
+  "brute": "brute",
+  "mage": "mage",
+  "hound": "hound",
+  "hunter": "hunter",
+  "butcher": "butcher",
+  "wraith": "wraith",
+  "chicken": "chicken",
+  "ratogre": "ratogre",
+  "ogre": "ogre",
+  "spartan": "spartan",
+  "thrower": "thrower",
+  "shaman": "shaman",
+  "coward": "clubman",
+  "warden": "warden",
+  "flayed": "flayed",
+  "sawbot": "sawbot",
+  "welder": "welder",
+  "automaton": "automaton",
+  "arm": "arm",
+  "sweeper": "sweeper",
+  "shieldgen": "shieldgen",
+  "cartridge": "cartridge"
+ },
+ "PIXEL_NECK": [
+  [
+   0,
+   -6.3
+  ],
+  [
+   -2.2,
+   -6.8
+  ],
+  [
+   -6.6,
+   -11.7
+  ],
+  [
+   -1.5,
+   -17
+  ],
+  [
+   0,
+   -16.5
+  ],
+  [
+   1.5,
+   -17
+  ],
+  [
+   6.6,
+   -11.7
+  ],
+  [
+   2.2,
+   -6.8
+  ]
+ ],
+ "PIXEL_FACE": [
+  {
+   "mouth": [
+    0.1,
+    -7.6
+   ],
+   "nose": [
+    [
+     -0.7,
+     -9.3
+    ],
+    [
+     0.8,
+     -9.3
+    ]
+   ],
+   "brow": [
+    0.2,
+    -16
+   ]
+  },
+  {
+   "mouth": [
+    -8.4,
+    -7.2
+   ],
+   "nose": [
+    [
+     -9.4,
+     -8.3
+    ],
+    [
+     -8,
+     -8.7
+    ]
+   ],
+   "brow": [
+    -6.4,
+    -14.8
+   ]
+  },
+  {
+   "mouth": [
+    -14.8,
+    -12
+   ],
+   "nose": [
+    [
+     -15.9,
+     -13.9
+    ]
+   ],
+   "brow": [
+    -10.6,
+    -18.3
+   ]
+  },
+  {
+   "mouth": null,
+   "nose": [
+    [
+     -5.6,
+     -23.5
+    ]
+   ],
+   "brow": null
+  },
+  {
+   "mouth": null,
+   "nose": [
+    [
+     0,
+     -24
+    ]
+   ],
+   "brow": null
+  },
+  {
+   "mouth": null,
+   "nose": [
+    [
+     6.3,
+     -23.5
+    ]
+   ],
+   "brow": null
+  },
+  {
+   "mouth": [
+    14.4,
+    -12.4
+   ],
+   "nose": [
+    [
+     15.7,
+     -14.2
+    ]
+   ],
+   "brow": [
+    10.6,
+    -18.6
+   ]
+  },
+  {
+   "mouth": [
+    8.4,
+    -7.5
+   ],
+   "nose": [
+    [
+     9.1,
+     -8.5
+    ],
+    [
+     7.7,
+     -8.9
+    ]
+   ],
+   "brow": [
+    6.4,
+    -14.7
+   ]
+  }
+ ],
+ "PIXEL_FACE_ART": {
+  "throat": {
+   "front": [
+    {
+     "rows": [
+      "www",
+      "wiw",
+      "www"
+     ],
+     "at": [
+      1,
+      0
+     ]
+    },
+    {
+     "rows": [
+      ".www.",
+      "wiiiw",
+      "wiiiw",
+      "wiiiw",
+      ".www."
+     ],
+     "at": [
+      2,
+      0
+     ]
+    }
+   ],
+   "diag": [
+    {
+     "rows": [
+      ".www",
+      "twiw",
+      ".www"
+     ],
+     "at": [
+      0,
+      1
+     ]
+    },
+    {
+     "rows": [
+      "..www.",
+      ".wiiiw",
+      "twiiiw",
+      ".wiiiw",
+      "..www."
+     ],
+     "at": [
+      0,
+      2
+     ]
+    }
+   ],
+   "side": [
+    {
+     "rows": [
+      "..ww",
+      "ttwi",
+      "..ww"
+     ],
+     "at": [
+      0,
+      1
+     ]
+    },
+    {
+     "rows": [
+      "...ww",
+      "..wii",
+      "ttwii",
+      "..wii",
+      "...ww"
+     ],
+     "at": [
+      0,
+      2
+     ]
+    }
+   ]
+  },
+  "foam": [
+   {
+    "rows": [
+     "..g..",
+     "gggg.",
+     ".g.d."
+    ],
+    "at": [
+     1,
+     1
+    ]
+   },
+   {
+    "rows": [
+     ".d...",
+     "ggggg",
+     "..g.."
+    ],
+    "at": [
+     1,
+     1
+    ]
+   },
+   {
+    "rows": [
+     "...g.",
+     "gggg.",
+     ".d.g."
+    ],
+    "at": [
+     1,
+     1
+    ]
+   },
+   {
+    "rows": [
+     "g....",
+     "ggggg",
+     "...d."
+    ],
+    "at": [
+     1,
+     1
+    ]
+   }
+  ],
+  "eye": {
+   "front": {
+    "rows": [
+     ".v.",
+     "hpv",
+     "vpv",
+     ".v."
+    ],
+    "at": [
+     1,
+     2
+    ]
+   },
+   "side": {
+    "rows": [
+     "v",
+     "p",
+     "p",
+     "v"
+    ],
+    "at": [
+     0,
+     2
+    ]
+   }
+  },
+  "eyeShut": {
+   "rows": [
+    "ooo"
+   ],
+   "at": [
+    1,
+    0
+   ]
+  }
+ },
+ "PIXEL_HORN_FIX": {
+  "goat": {
+   "0": 2,
+   "1": 1,
+   "2": 3,
+   "3": 1,
+   "4": 1,
+   "6": 2,
+   "7": 2
+  }
+ },
+ "PIXEL_MIRROR": {
+  "goat": {
+   "5": 3
+  }
+ },
+ "HORN_MODEL_UNITS": [
+  "goat"
+ ],
+ "gait_goat": {
+  "steps": 12,
+  "lift": 7,
+  "swing": 6,
+  "side": 3,
+  "belly": 0.6,
+  "reach": 16,
+  "minBlob": 10,
+  "legW": 15,
+  "scrap": 3,
+  "hoof": true,
+  "units": [
+   "goat",
+   "sheep-pet"
+  ],
+  "beard": {
+   "dark": 100,
+   "hoofN": 60,
+   "reach": 8,
+   "band": 4.5,
+   "len": 16,
+   "trim": 9
+  },
+  "farLeg": {
+   "at": [
+    1,
+    7
+   ],
+   "dx": 15,
+   "dy": 3,
+   "shade": 0.8
+  }
+ },
+ "gait_men": {
+  "stride": 30,
+  "fast": 80,
+  "bob": 1.6,
+  "tilt": 0.07,
+  "lean": 0.12,
+  "lift": 6,
+  "swing": 5,
+  "side": 3,
+  "steps": 12,
+  "centre": 0.3,
+  "whole": true,
+  "stretch": 0,
+  "pairW": 10,
+  "units": [
+   "clubman",
+   "brute",
+   "hunter",
+   "mage",
+   "butcher",
+   "ratogre",
+   "hound"
+  ],
+  "per": {
+   "hound": {
+    "stride": 44,
+    "bob": 1.6,
+    "tilt": 0,
+    "lean": 0.08,
+    "stretch": 0.07,
+    "lift": 5,
+    "swing": 7,
+    "centre": 0.6
+   },
+   "mage": {
+    "bob": 1.2,
+    "tilt": 0.05
+   },
+   "ratogre": {
+    "stride": 52,
+    "bob": 3,
+    "tilt": 0.05,
+    "lift": 8,
+    "swing": 8
+   },
+   "butcher": {
+    "stride": 36,
+    "bob": 2.2
+   }
+  }
+ },
+ "hornModel": {
+  "len": 27,
+  "up": [
+   0.72,
+   0.17
+  ],
+  "back": [
+   0.25,
+   0.6
+  ],
+  "out": [
+   0.22,
+   0.15
+  ],
+  "pitch": 0.3,
+  "w0": 5,
+  "w1": 0.9,
+  "ridge": 3.5,
+  "head": 1,
+  "pal": {
+   "line": "#231611",
+   "body": "#2c1f18",
+   "band": "#36261d",
+   "glint": "#443126",
+   "ridge": "#251812"
+  }
+ },
+ "hornLooks": {
+  "antler": {
+   "cell": 3,
+   "len": 2.3,
+   "w0": 9,
+   "w1": 5,
+   "bend": 0.5,
+   "tines": [
+    0.28,
+    0.52,
+    0.76
+   ],
+   "tineLen": [
+    0.36,
+    0.34,
+    0.26
+   ],
+   "tineW": 5,
+   "tineTurn": 0.95,
+   "fork": 0.22,
+   "outline": "#1e130c",
+   "ramp": [
+    "#2c1a10",
+    "#4f3220",
+    "#7a5636",
+    "#b08a62",
+    "#e6d3b0"
+   ]
+  },
+  "gazelle": {
+   "cell": 3,
+   "len": 2.7,
+   "w0": 7,
+   "w1": 3,
+   "bend": 0.32,
+   "tipIn": 0.15,
+   "awayLean": 0.35,
+   "rings": 7,
+   "ringTo": 0.72,
+   "outline": "#120c0a",
+   "ramp": [
+    "#16110f",
+    "#2e2420",
+    "#4c3d34",
+    "#786558",
+    "#ad9a88"
+   ],
+   "grow": {
+    "len": 1.22,
+    "tines": 3,
+    "tineAt": [
+     0.38,
+     0.58,
+     0.78
+    ],
+    "tineLen": 0.2,
+    "bone": [
+     "#8a7c66",
+     "#c4b8a0",
+     "#efe6d2"
+    ]
+   }
+  },
+  "moose": {
+   "cell": 3,
+   "len": 1.5,
+   "w0": 8,
+   "w1": 6,
+   "beam": 0.4,
+   "out": 1,
+   "rise": 0.7,
+   "palm": 0.72,
+   "from": 0.25,
+   "to": 0.3,
+   "sideOut": 0.35,
+   "points": 4,
+   "pointLen": 0.3,
+   "pointW": 5,
+   "outline": "#1e130c",
+   "ramp": [
+    "#2e1f12",
+    "#4d3620",
+    "#6e5233",
+    "#9a7a50",
+    "#c9ab7c"
+   ],
+   "grow": {
+    "len": 1.28,
+    "points": 3,
+    "pointLen": 1.45,
+    "tip": 0.4,
+    "bone": [
+     "#8a7c66",
+     "#c4b8a0",
+     "#efe6d2"
+    ]
+   }
+  },
+  "lava": {
+   "ramp": [
+    "#3a0d06",
+    "#8f1e0a",
+    "#e0521a",
+    "#ffb43a",
+    "#fff0a0"
+   ],
+   "glow": "rgba(255,110,30,0.9)",
+   "blur": 5
+  },
+  "venom": {
+   "ramp": [
+    "#12260e",
+    "#2f5a1c",
+    "#5c9a2a",
+    "#9fd84a",
+    "#e4ffa0"
+   ],
+   "glow": "rgba(140,220,70,0.9)",
+   "blur": 4,
+   "drip": 1.6
+  }
+ },
+ "face": {
+  "cell": 0.9107142857142856,
+  "throat": {
+   "tube": "#9a918a",
+   "rim": "#efe4cc",
+   "inside": "#1a0b09",
+   "edge": "#24160e"
+  },
+  "foam": {
+   "rate": 3,
+   "color": "#d4f59a",
+   "dark": "#5c9a2a",
+   "drip": 2.6,
+   "dripVary": 1.8,
+   "fall": 160,
+   "splat": 1.6,
+   "splatLife": 1.6
+  },
+  "steam": {
+   "gap": 0.3,
+   "life": 0.95,
+   "rise": 10,
+   "drift": 8,
+   "color": "232,229,222",
+   "alpha": 0.5,
+   "fire": 3.6,
+   "fireVary": 2.6,
+   "fireTime": 0.4,
+   "fireGap": 0.035,
+   "fireSpeed": 34,
+   "fireLife": 0.32
+  },
+  "eye": {
+   "iris": "#a46cff",
+   "pupil": "#16091f",
+   "white": "#f6efff",
+   "edge": "#24160e",
+   "blink": 4.2
+  }
+ },
+ "collar": {
+  "r": 3.6,
+  "depth": 0.3,
+  "flat": 2,
+  "thin": 0.9,
+  "w": 1.3,
+  "edge": "#24160e",
+  "leather": "#6e4326",
+  "drop": 3.8,
+  "icon": 3
+ },
+ "facing": "dir 0 S,1 SW,2 W,3 NW,4 N,5 NE,6 E,7 SE; PIXEL_NECK / PIXEL_FACE are world px from the foot per dir at the unit EXTENT (goat 34)",
+ "atlasTarget": 112,
+ "handBuilt": {
+  "ogre": 1.4,
+  "flayed": 1.4,
+  "spartan": 0.92,
+  "thrower": 0.84,
+  "shaman": 1,
+  "warden": 0.95,
+  "horse": 1.25,
+  "pig": 1.1
+ },
+ "studies": {
+  "ART_PASS_clubman": 1,
+  "ART_PASS_hunter": 7,
+  "ART_PASS_on": true
+ }
+}

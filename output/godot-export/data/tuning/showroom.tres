@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="ShowroomTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/showroom_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+speed = 2.0

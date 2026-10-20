@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ShieldgenTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/shieldgen_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+hp = 1.0
+r = 4.5
+follow = 7.0
+behind = 1.5
+speedMul = 0.42
+flingMul = 1.2
+say = 2.2
+recharge = 1.0
+flee = 2.5
+immune = {"blunder": true}
+look = {"w": 9, "h": 7, "mast": 16, "field": {"cell": 3, "tether": 0.75, "packet": 3, "run": 90, "bubble": 0.24, "bubbleRim": 0.95, "bubbleW": 2, "scan": 0.9}}

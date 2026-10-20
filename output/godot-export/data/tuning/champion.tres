@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ChampionTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/champion_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+hp = 3.0
+scale = 1.06
+spikes = 5.0
+reach = 32.0
+windup = 0.62
+swing = 0.16
+recover = 0.6
+flingMul = 0.55
+hook = {"dropFloor": 0.5, "min": 3, "max": 7, "wind": 0.55, "cooldown": 3.6, "speed": 448, "lead": 1, "leadMax": 3, "over": 1.5, "catchR": 7, "pull": 288, "pullMax": 1.1, "stopAt": 4, "daze": 0.3, "reel": 512, "recover": 0.45, "step": 6, "propR": 3, "propGap": 4}
+rage = {"speed": 1.4, "tempo": 1.4}
+shove = {"window": 1.8, "odds": [0, 0, 0.25, 0.5], "speed": 416, "daze": 0.28, "lunge": 0.32, "lean": 10, "cd": 4, "ring": 1.6, "stop": 0.07, "after": 0.45}
+immune = {"blunder": true}

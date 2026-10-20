@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="MirrorData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/mirror_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "tumble"
+name_ = "QUICK"
+costs = [20, 50, 100]
+params = {"roll": 0.85, "scream": 0.9, "butt": 0.9}
+glyph = "quick"
+opens = 2.0
+hint = "SPEED: your buttons are ready again sooner. Each rank speeds up one more: the roll, then BAAH, then the headbutt."

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="FireTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/fire_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+spread = 0.48
+burn = 4.5
+pool = 6.5
+burnRunTime = 2.0
+burnRunSpeed = 134.4
+witch = 4.8
+avoidLook = 18.0
+catch = {"embers": 10, "cell": 3, "rise": 26, "flicker": 1.2, "glow": 0.8, "base": 1}

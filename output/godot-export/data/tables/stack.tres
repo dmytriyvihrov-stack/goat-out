@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="StackTable" format=3]
+
+[ext_resource type="Script" path="res://data/classes/stack_table.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+gap = [3, 5]
+minOverlap = 6.0
+run = 1.0

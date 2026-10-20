@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="MirrorData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/mirror_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "grazer"
+name_ = "GOOD GRAZER"
+costs = [25, 80]
+souls = [0, 1]
+params = {"graze": 0.5, "luck": 0.33}
+glyph = "grass"
+opens = 0.0

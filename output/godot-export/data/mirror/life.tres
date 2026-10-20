@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="MirrorData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/mirror_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = "life"
+name_ = "ONE MORE LIFE"
+names = ["ONE MORE LIFE", "SECOND CHANCE"]
+costs = [150, 150]
+souls = [2, 2]
+params = {"lives": [1, 2]}
+glyph = "life"
+opens = 3.0
+hint = "More lives each run. When you fall, you get back up where you fell."

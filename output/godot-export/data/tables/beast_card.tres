@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="BeastCardTable" format=3]
+
+[ext_resource type="Script" path="res://data/classes/beast_card_table.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+tortoise = ["THE TORTOISE CAME WITH YOU", "YOU START EVERY FLOOR AHEAD IN ARMOUR THAT TAKES ONE HIT"]
+goose = ["THE GOOSE CAME WITH YOU", "YOUR BAAH REACHES 20% FURTHER"]
+crow = ["THE CROW CAME WITH YOU", "IT HAS FOUND A RARE TALISMAN. IT WILL BE ON THE NEXT STAIRS, FREE"]
+horse = ["YOU BEAT THE HORSE", "YOU RUN 10% FASTER, FOR THE REST OF THE RUN"]
+pig = ["THE PIG IS FULL", "MORE GRASS ON EVERY FLOOR AHEAD"]
+rabbit = ["YOU HOPPED IT, LIKE A RABBIT", "YOUR ROLL IS READY 15% SOONER, FOR THE REST OF THE RUN"]
+husky = ["THE HUSKY SANG WITH YOU", "YOUR BAAH IS READY 15% SOONER, FOR THE REST OF THE RUN"]

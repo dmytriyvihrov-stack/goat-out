@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="GroundTable" format=3]
+
+[ext_resource type="Script" path="res://data/classes/ground_table.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+window = 3.0
+weight = 0.5

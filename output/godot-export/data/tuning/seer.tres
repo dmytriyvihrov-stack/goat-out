@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="SeerTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/seer_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+pair = {"apart": 2.2, "lead": 1, "maxLead": 4}
+radius = 11.0
+speed = 95.46768
+sight = 11.0
+cone = 1.94778744522567
+keepMin = 5.0
+keepMax = 9.0
+damage = 1.0
+hp = 2.0
+castWind = 0.8
+castCooldown = 2.5
+runeRadius = 1.4
+runeFire = 2.0
+blinkRange = 3.2
+blinkDist = 5.5
+blinkCooldown = 4.3
+fireCare = 2.2
+trapSense = 0.97

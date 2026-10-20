@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="EasyTable" format=3]
+
+[ext_resource type="Script" path="res://data/classes/easy_table.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+maxHp = 2.0
+enemySlow = 1.4

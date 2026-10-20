@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="ShieldmanTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/shieldman_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+uses = 2.0
+arc = 1.2
+speedMul = 0.86
+turn = 2.4
+brace = 0.3
+push = 96.0
+bounce = 96.0
+jolt = 0.2
+hp = 2.0
+scale = 1.15
+spikes = {"hurt": 1, "bounce": 160, "wear": 0, "plain": {"speed": 448, "daze": 0.9}}
+poisonTurn = 0.15
+low = 9.0
+side = 3.0
+ease = 9.0
+front = 7.0
+strike = {"reach": 27.2, "windup": 0.6, "swing": 0.16, "recover": 0.7, "damage": 1, "knock": 64, "thrust": 7}
+drop = 3.0
+bash = {"min": 1.4, "max": 3.4, "aim": 0.6, "cd": 3, "wind": 0.55, "speed": 235.2, "time": 0.37, "reach": 4, "damage": 1, "knock": 224, "bowl": 288, "wallDaze": 1.2, "recover": 0.9}
+guard = {"r": 1.9, "w": 5, "alpha": 0.7, "flash": 0.25}
+breath = {"shade": 14}

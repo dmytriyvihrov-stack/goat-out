@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="FanfareTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/fanfare_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+intro = 0.45
+stagger = 0.09
+pop = 0.24
+rays = 14.0
+spin = 0.06
+sparks = 46.0
+px = 4.0
+flash = 0.22
+settle = 0.45
+morph = {"time": 0.85, "bob": 4, "soulOut": 0.45, "cells": 30, "reach": 1.1, "goatIn": 0.3, "clear": 0.95, "pop": 0.82, "ring": 0.42, "flare": 0.7}

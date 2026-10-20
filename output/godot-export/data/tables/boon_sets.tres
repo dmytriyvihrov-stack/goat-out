@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="BoonSetsTable" format=3]
+
+[ext_resource type="Script" path="res://data/classes/boon_sets_table.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+fire = {"name": "FIRE", "step": [0, 0, 0.5, 1], "all": 4, "immune": false, "burnMul": 2, "whole": "+1s BEFORE FIRE HURTS YOU · YOUR FIRE BURNS TWICE AS LONG"}
+poison = {"name": "POISON", "step": [0.5, 1, 2], "all": 4, "quiet": true, "whole": "POISON CANNOT SLOW YOU · POISON HURTS MEN"}

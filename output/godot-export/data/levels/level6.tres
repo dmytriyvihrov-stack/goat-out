@@ -1,0 +1,44 @@
+[gd_resource type="Resource" script_class="LevelData" format=3]
+
+[ext_resource type="Script" path="res://data/classes/level_data.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+index = 6.0
+name_ = "THE RAFTERS"
+sub = "Level 7"
+rooms = 15.0
+canon = {"id": "drop", "name": "THE DROP", "idea": "The floor is not all there. Holes in the boards and windows in the walls, the same fall under both, and nobody who goes over comes back."}
+theme = "The rafters over the great hall, where the roof itself has started to give."
+decor = "Holes in the boards, windows in the walls, narrow catwalks, the same fall under both."
+arenas = [{"at": 4, "boss": "seer"}, {"at": 10, "boss": "butcher"}, {"at": 14, "boss": "champion"}]
+gates = [6]
+rests = [13]
+gateKeeper = true
+millAt = 7.0
+heals = 4.0
+souls = 2.0
+racks = 0.16
+traps = 1.0
+crates = 0.3
+encounters = {"kinds": ["bearer", "champion", "dog", "seer", "hunter", "shield", "shaman"], "introduce": [], "from": 9, "to": 28, "ease": 1.15, "cap": {"men": 9, "hunter": 3, "dog": 3}}
+floor = "#4b433a"
+floorAlt = "#544a40"
+wall = "#241d1a"
+wallTop = "#453629"
+fog = "#06060a"
+doorChance = 0.2
+hint = "THE FLOOR ENDS. THEY FALL FURTHER THAN YOU."
+met = ["bearer", "champion", "dog", "seer", "shield", "butcher", "hunter", "shaman", "thrower", "sawbot", "welder", "arm", "automaton", "sweeper", "shieldgen", "cartridge"]
+known = ["stone", "fire", "hollow", "line", "open", "funnel", "mech"]
+barrels = 0.3
+vaultAt = 8.0
+beasts = ["crow", "goose", "chicken", "rabbit", "fish"]
+ironDoors = 0.7
+stack = 0.35
+hintKey = "butt"
+spikes = 0.4
+clockDoors = 0.6
+killboxAt = 12.0
+lonePosts = 3.0
+windows = 0.55

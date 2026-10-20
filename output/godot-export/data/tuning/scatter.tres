@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="ScatterTuning" format=3]
+
+[ext_resource type="Script" path="res://data/classes/scatter_tuning.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+chance = 0.75
+count = [3, 4]
+texel = 1.45
+top = {"x0": -19, "x1": 19, "y0": -10, "y1": -1, "jitter": 4}
+menu = {"cult": ["apple", "apple", "pear", "bread", "bread", "cheese", "cheese", "jug", "jug", "goblet", "grapes", "grapes", "honey", "fish", "leg", "roast", "ribs", "haunch", "sausage", "boarhead", "stew"], "heaven": ["gapple", "gapple", "grapes", "bread", "milk", "honey", "cheese", "goblet", "pear"]}
+height = 13.0
+speed = [110, 250]
+spread = 0.95
+lift = [90, 190]
+gravity = 560.0
+bounce = 0.36
+bounceMin = 50.0
+skid = 0.62
+breakAt = [170, 270]
+shards = 4.0
+spill = 7.0
+squash = 0.09
+spin = 16.0
+roll = 1.6
+slide = 7.0
+still = 6.0
+wall = 0.4
+kick = {"r": 5, "keep": 0.8, "min": 70, "lift": 70}
+keep = 160.0
+soundGap = 0.035
+dim = {"k": 0.86, "grey": 0.12}
