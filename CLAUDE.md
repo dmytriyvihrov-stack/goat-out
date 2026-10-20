@@ -11,6 +11,12 @@ games are the real genre neighbors. Read it before starting a fresh art pass. `E
 future port (Godot 4 most likely): whether to port at all, Godot working rules, and how each system here
 maps onto it. Nothing in it is scheduled.
 
+**THE JS BUILD IS FROZEN** (20 Oct 2026, from the Godot repo's first commit `dae4bdc`, the user's principle 1 of the
+move). No system is added or changed here: only a crash fix for itch testers, and the ВЫГРУЗКА (export) scripts of the
+port, which live in `tools/godot-export/` and write to `output/godot-export/` only. New ideas go to `BACKLOG.md`. No JS
+deploys: the itch page is replaced at the end of the move. The port is `C:\Godot\projects\doomed-goat` (its own
+`CLAUDE.md`), worked session by session from https://claude.ai/code/artifact/a6568cbc-47a4-4e3b-a0e6-51a95eb5bc03.
+
 ---
 
 ## What this is
