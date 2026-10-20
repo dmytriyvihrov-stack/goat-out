@@ -1248,7 +1248,9 @@ class Game {
   // default: a number counting up in the corner of a game about running is a game about the number,
   // and the run is timed either way, the card at the end of a level is where the time belongs.
   loadSettings() {
-    const d = { timer: false, sound: true, easy: false, god: false, layeredMusic: true, musicVolume: TUNING.audio.musicDefault, sfxVolume: 0.5, shake: 1, fps: false, photoKey: false, photoAuto: false, fastCalm: false, stats: false, statsAsked: false, keysOnly: false, musicLow: true, sameFloor: false, skipIntro: false, tester: false, rebirth: true };
+    const d = { timer: false, sound: true, easy: false, god: false, layeredMusic: true, musicVolume: TUNING.audio.musicDefault, sfxVolume: 0.5, shake: 1, fps: false, photoKey: false, photoAuto: false, fastCalm: false, stats: false, statsAsked: false, keysOnly: false, musicLow: true, sameFloor: false, skipIntro: false, tester: false, rebirth: true, minimap: true };
+    // The minimap was the dev drawer's switch before it was a setting: a browser that turned it off there keeps it off.
+    try { if (localStorage.getItem(MINIMAP_KEY) === '0') d.minimap = false; } catch (e) { /* storage refused */ }
     try {
       const saved = JSON.parse(localStorage.getItem(SET_KEY) || '{}');
       // The music starts quieter (3 Oct 2026: playtesters turned it well down). A store written before
@@ -1663,7 +1665,7 @@ class Game {
     // THE HORN TOOL (a panel of sliders over the run, `Renderer.drawHornTool`) and what it asks of the game.
     if (id === 'hornInfo') { this.dev.hornInfo = !this.dev.hornInfo; try { localStorage.setItem(HORN_INFO_KEY, this.dev.hornInfo ? '1' : '0'); } catch (e) { /* storage refused */ } return; }
     if (id === 'hornTool') { this.dev.hornTool = !this.dev.hornTool; this.dev.hornZone = true; return; }
-    if (id === 'minimap') { this.dev.minimap = !this.minimapOn(); try { localStorage.setItem(MINIMAP_KEY, this.dev.minimap ? '1' : '0'); } catch (e) { /* storage refused */ } return; }
+    if (id === 'minimap') { this.toggleSetting('minimap'); return; }
     if (id === 'hornZone') { this.dev.hornZone = !this.dev.hornZone; return; }
     if (id === 'hornSave') { this.saveHorn(); return; }
     if (id === 'hornCopy') { this.copyHorn(); return; }
@@ -3440,12 +3442,9 @@ class Game {
     for (let i = 0; i < r.length; i++) if (p.x >= r[i].x && p.x <= r[i].x + r[i].w && p.y >= r[i].y && p.y <= r[i].y + r[i].h) return i;
     return -1;
   }
-  // THE MINIMAP, a test (19 Oct 2026): on until the dev drawer's MINIMAP turns it off (kept per browser); never in the itch build.
-  minimapOn() {
-    if (RELEASE.on) return false;
-    if (this.dev.minimap === undefined) { let v = null; try { v = localStorage.getItem(MINIMAP_KEY); } catch (e) { /* storage refused */ } this.dev.minimap = v !== '0'; }
-    return this.dev.minimap;
-  }
+  // THE MINIMAP (19 Oct 2026 a test; 20 Oct 2026, his: "much smaller, and on and off in the settings"): SETTINGS → SHOW THE MAP,
+  // the itch build too. The dev drawer's MINIMAP row throws the same switch.
+  minimapOn() { return !!this.settings.minimap; }
   // PAUSE's rows: PHOTOS only while the dev drawer is open (19 Oct 2026, his: "hide the photos from the menu, dev mode only").
   pauseItems() { return PAUSE_MENU.filter((r) => r.id !== 'photos' || (this.dev && this.dev.open && !this.dev.hidden)); }
   pauseKey(code) {

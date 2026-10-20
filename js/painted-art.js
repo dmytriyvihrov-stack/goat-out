@@ -598,7 +598,8 @@ class PaintedArt extends AltarArt {
       // It is a tile of the wall, so it is drawn flat like the tiles either side of it: a prop stands
       // counter-squashed (`Renderer.drawProp`), which made it a notch taller than the wall it is in.
       ctx.save();ctx.translate(p.x,p.y);ctx.scale(1,TILT);ctx.translate(-p.x,-p.y);ctx.imageSmoothingEnabled=true;
-      this.drawWall(ctx,renderer.game.level.def,p.x-TILE/2,p.y-TILE/2,p.wallSide==='up'?4:p.wallSide==='right'?8:1);
+      // no floor laid yet (the dev drawer's OBJECTS tab over the title): THE ALTAR's stone
+      this.drawWall(ctx,renderer.game.level?renderer.game.level.def:LEVELS[0],p.x-TILE/2,p.y-TILE/2,p.wallSide==='up'?4:p.wallSide==='right'?8:1);
       ctx.restore();
       // The crack tells still have to be drawn: the art carries none, and they're what the blow count
       // reads as (see `Renderer.wallCrack` / CLAUDE.md's "A wall that gives").

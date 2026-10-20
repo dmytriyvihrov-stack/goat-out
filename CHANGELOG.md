@@ -5,6 +5,15 @@ https://claude.ai/code/artifact/098e742b-e742-4ce7-8499-a303fa5db021
 
 ---
 
+## 0.041, 20 Oct 2026: the map smaller and in SETTINGS, the OBJECTS tab opens again
+
+- **The minimap** (his: "much smaller, and on and off in the settings"): SETTINGS → SHOW THE MAP (on by default, the itch
+  build too; the dev drawer's MINIMAP row throws the same switch, and a browser that had turned it off there keeps it off).
+  It shows 44 x 26 tiles at 1.5 px a tile (was 56 x 30 at 2.6), about a third of the area on screen.
+- **The dev drawer's OBJECTS tab crashed**: a row's BLAST badge had no colour, so the tab threw every frame; and opened over
+  the title, a wall that gives asked for a floor not yet laid. Both fixed (an unknown badge falls back to bone, the wall to
+  THE ALTAR's stone).
+
 ## 0.040, 19 Oct 2026: a cleanup, nothing to see
 
 His ask: "clean and optimise the code, delete what is not used". Nothing a player sees changes; every removal was found

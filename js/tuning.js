@@ -3,7 +3,7 @@ const TILE = 32;
 // The version tag shown under the seed in the corner of the screen, and nothing else, bump it
 // by hand alongside a CHANGELOG entry so a bug report can name the build it happened on. Counted 0.001, 0.002,
 // ... since 9 Oct 2026 (his word: "big numbers confuse me"); the line before it ended at 2.07.
-const BUILD = '0.040';
+const BUILD = '0.041';
 
 // The world is drawn squashed a little on Y, so the camera reads as tilted off straight-down
 // and the creatures show a bit of their side. Collision and AI stay in flat world space.
@@ -2651,7 +2651,7 @@ const TUNING = {
   // `life`: ONE MORE LIFE's portrait, px a side Г— `hs` (9 Oct 2026: 28 в†’ 15, "much smaller").
   hud: { scale: 1.05, rail: 1.25, minText: 12, heart: { px: 2.8, gap: 24 }, life: 15, cape: { box: 44, lift: 82 }, purse: { show: 3.5, fade: 0.8, violet: 1.2 }, keyScale: 1.25,
     // THE MINIMAP (a test, `Renderer.drawMinimap`): `w` x `h` tiles round him at `cell` px a tile, rebaked at most every `every` s
-    minimap: { w: 56, h: 30, cell: 2.6, every: 0.3, alpha: 0.9, floor: [150, 138, 112], wall: [58, 48, 52], pit: [8, 6, 8], exit: [247, 215, 116], goat: '#f4f8ff' },
+    minimap: { w: 44, h: 26, cell: 1.5, every: 0.3, alpha: 0.9, floor: [150, 138, 112], wall: [58, 48, 52], pit: [8, 6, 8], exit: [247, 215, 116], goat: '#f4f8ff' },
     // THE BOSS BAR (10 Oct 2026, "the boss fights: clarity, readability"; `Renderer.drawBossBar`, `BOSS_HINTS`): a man who takes more
     // than one blow, awake in the goat's room or after him within `near` tiles, gets his name, what he is and his hearts at the top
     // of the screen. `show` s to come up (the name slams in over `slam` s), `hide` s to go once he is out of the picture, `hold` s
@@ -3591,6 +3591,8 @@ const SETTINGS = [
   { key: 'god', name: 'GOD MODE', note: 'Nothing can hurt the goat. For looking round; no best is kept while it is on.' },
   // 30 Sep 2026 ("frame rate decides the clutch moments"): frames a second over the last half second,
   // the slowest frame in it, and what the game itself spent on the frame (`Game.frame`).
+  // 20 Oct 2026, his: the minimap (`Renderer.drawMinimap`) on and off here.
+  { key: 'minimap', name: 'SHOW THE MAP', note: 'A small map of the rooms you have seen, in the top-right corner.' },
   { key: 'fps', name: 'SHOW FPS', note: 'Frames a second in the top-left corner, the slowest frame and what the game spent on it.' },
   // 1 Oct 2026: pictures of the canvas at its own size, kept until PAUSE → PHOTOS lets you choose which to save.
   { key: 'photoKey', name: 'PHOTO MODE: ON A KEY', get note() { return `${typeof KEY_FACE !== 'undefined' ? KEY_FACE.KeyP : 'P'} takes a picture at the size of the screen. Choose which to keep under PAUSE, PHOTOS.`; } },

@@ -6961,6 +6961,7 @@ class Renderer {
       THROWN: { fg: PALETTE.fireHi, bg: 'rgba(255,224,138,0.18)' },
       FIRE: { fg: PALETTE.fire, bg: 'rgba(242,162,51,0.2)' },
       BODY: { fg: PALETTE.blood, bg: 'rgba(192,57,43,0.2)' },
+      BLAST: { fg: PALETTE.bone, bg: 'rgba(239,230,208,0.14)' },
     };
     const rowH = Math.max(46 * s, (H - top - 24 * s - pad) / FIXTURES.length);
     const thumb = Math.min(rowH - 4 * s, 48 * s);
@@ -6985,7 +6986,8 @@ class Renderer {
       let bx = nameX;
       ctx.font = `700 ${6.2 * s}px ${FONT_SC}`;
       for (const hit of f.hits) {
-        const tint = hitTint[hit];
+        // A badge with no colour of its own gets the bone one (20 Oct 2026: BLAST had none and the tab threw every frame).
+        const tint = hitTint[hit] || hitTint.BLAST;
         const w = textW(ctx, hit) + 8 * s;
         ctx.fillStyle = tint.bg; ctx.fillRect(bx, ry + rowH / 2 - 4 * s, w, 11 * s);
         ctx.fillStyle = tint.fg; ctx.textAlign = 'center';
