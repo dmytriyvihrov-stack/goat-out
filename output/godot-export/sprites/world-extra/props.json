@@ -426,6 +426,41 @@
    "w": 16,
    "h": 32
   },
+  "fish-0": {
+   "file": "props/fish-0.png",
+   "w": 22,
+   "h": 16
+  },
+  "fish-1": {
+   "file": "props/fish-1.png",
+   "w": 22,
+   "h": 16
+  },
+  "fish-2": {
+   "file": "props/fish-2.png",
+   "w": 22,
+   "h": 16
+  },
+  "fish-3": {
+   "file": "props/fish-3.png",
+   "w": 22,
+   "h": 16
+  },
+  "fish-body": {
+   "file": "props/fish-body.png",
+   "w": 9,
+   "h": 5
+  },
+  "fish-broken": {
+   "file": "props/fish-broken.png",
+   "w": 22,
+   "h": 16
+  },
+  "fish-shard": {
+   "file": "props/fish-shard.png",
+   "w": 4,
+   "h": 5
+  },
   "fix-lamp0": {
    "file": "props/fix-lamp0.png",
    "w": 13,
@@ -686,6 +721,16 @@
    "w": 31,
    "h": 26
   },
+  "husky-sing": {
+   "file": "props/husky-sing.png",
+   "w": 27,
+   "h": 23
+  },
+  "husky-stand": {
+   "file": "props/husky-stand.png",
+   "w": 27,
+   "h": 21
+  },
   "junk-gears": {
    "file": "props/junk-gears.png",
    "w": 20,
@@ -900,6 +945,16 @@
    "file": "props/poster-torn.png",
    "w": 46,
    "h": 13
+  },
+  "rabbit-hop": {
+   "file": "props/rabbit-hop.png",
+   "w": 18,
+   "h": 15
+  },
+  "rabbit-sit": {
+   "file": "props/rabbit-sit.png",
+   "w": 17,
+   "h": 16
   },
   "rack-back": {
    "file": "props/rack-back.png",

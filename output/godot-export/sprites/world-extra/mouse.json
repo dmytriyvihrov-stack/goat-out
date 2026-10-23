@@ -1,0 +1,10 @@
+{
+ "note": "PIXEL_ASSETS.units.mouse.idle[0]: one frame for every heading; foot is the point drawn at the entity origin; world px = png px * PIXEL_EXTENT.mouse / target.",
+ "target": 112,
+ "foot": [
+  43,
+  111.6
+ ],
+ "w": 86,
+ "h": 112
+}

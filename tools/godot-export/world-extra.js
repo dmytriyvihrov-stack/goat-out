@@ -7,6 +7,9 @@
 //   factory/floor-<look>.png        THE FACTORY's floors (`FACTORY_PIXELS.FLOORS`): 144 texels square, before `quiet`
 //                                   (the port pulls them to their mean with its own `machine.floor`).
 //   factory/cap-<look>.png          the walls' cap sheets as `FACTORY_PIXELS.wallCap` bakes them (192 px, 3 tiles).
+//   env/<name>.png                  the packed env items as `PIXEL_ENV.study` recolours them (`ENV_STUDY`: the hay a step
+//                                   down, the brazier lit again for THE LIT PASS), one atlas px a px.
+//   mouse.png + mouse.json          the mouse's one frame off the units' atlas (`PIXEL_ART.icon('mouse')`), its foot.
 //   factory/face-<look>.png         the walls' face strip source, one texel a px (`paintFace`'s 480 x 18, IRON's rows).
 // The page code is run as it is, in a sandbox, through a canvas of solid fills (every painter here sets one hex colour
 // per cell, which is all the shim draws). Reads js/*.js, never edits them.
@@ -63,6 +66,11 @@ load('prop-pixels.js', ['PROP_PIXELS']);
 load('factory-props.js', ['FACTORY_PROPS']);
 load('factory-assets.js', ['FACTORY_ASSETS']);
 load('factory-pixels.js', ['FACTORY_PIXELS']);
+// THE FISH's tank pieces (js/beasts-more.js) are PROP_PIXELS sprites too; only its sprites are wanted here, so a load
+// that trips on something of the page's is let go and whatever it registered first is kept.
+try { load('beasts-more.js', []); } catch (e) { console.log('beasts-more.js: ' + e.message.split('\n')[0]); }
+load('pixel-env-assets.js', ['PIXEL_ENV_ASSETS']);
+load('pixel-assets.js', ['PIXEL_ASSETS']);
 
 // ---- every PROP_PIXELS sprite, one PNG each ----
 function props() {
@@ -108,5 +116,32 @@ function factory() {
   return Object.keys(looks).length;
 }
 
+// ---- the packed env items recoloured (`PIXEL_ENV.study`), and the mouse's frame ----
+// ENV_STUDY lives in js/pixel-art.js beside page code; its object literal is cut out and evaluated alone.
+function studies() {
+  const src = fs.readFileSync(path.join(root, 'js', 'pixel-art.js'), 'utf8'), a = src.indexOf('const ENV_STUDY = {'), b = src.indexOf('\n};', a) + 3;
+  const ENV_STUDY = vm.runInNewContext(src.slice(a, b) + '\n;ENV_STUDY', { Math, Uint8ClampedArray });
+  const ids = vm.runInNewContext(src.slice(src.indexOf('const PIXEL_ENV_ID = {'), src.indexOf('\n};', src.indexOf('const PIXEL_ENV_ID = {')) + 3) + '\n;PIXEL_ENV_ID', {});
+  const E = ctx.PIXEL_ENV_ASSETS, png = decode(Buffer.from(E.src.replace(/^data:image\/png;base64,/, ''), 'base64')), dir = mk('env'), meta = {};
+  for (const name in ENV_STUDY) {
+    const R = ENV_STUDY[name], f = E.items[ids[name] || name], a8 = new Uint8ClampedArray(f[2] * f[3] * 4), d = png.data || png.rgba;
+    for (let y = 0; y < f[3]; y++) for (let x = 0; x < f[2]; x++) for (let k = 0; k < 4; k++) a8[(y * f[2] + x) * 4 + k] = d[((f[1] + y) * png.w + f[0] + x) * 4 + k];
+    if (R.v !== undefined) for (let i = 0; i < a8.length; i += 4) {
+      if (!a8[i + 3]) continue;
+      const grey = Math.max(a8[i], a8[i + 1], a8[i + 2]) * (1 - R.s);
+      for (let k = 0; k < 3; k++) a8[i + k] = Math.round((a8[i + k] * R.s + grey) * R.v);
+    }
+    if (R.relight) R.relight(a8, f[2], f[3]);
+    writePng(path.join(dir, name + '.png'), f[2], f[3], Buffer.from(a8));
+    meta[name] = { item: ids[name] || name, w: f[2], h: f[3], pass: R.pass || name };
+  }
+  fs.writeFileSync(path.join(out, 'env.json'), JSON.stringify({ note: 'PIXEL_ENV.study: the packed item recoloured by ENV_STUDY, drawn in its place while ART_PASS[pass] is on.', items: meta }, null, 1));
+  const U = ctx.PIXEL_ASSETS, up = decode(Buffer.from(U.src.replace(/^data:image\/png;base64,/, ''), 'base64')), m = U.units.mouse.idle[0], mr = Buffer.alloc(m[2] * m[3] * 4), ud = up.data || up.rgba;
+  for (let y = 0; y < m[3]; y++) ud.copy(mr, y * m[2] * 4, ((m[1] + y) * up.w + m[0]) * 4, ((m[1] + y) * up.w + m[0] + m[2]) * 4);
+  writePng(path.join(out, 'mouse.png'), m[2], m[3], mr);
+  fs.writeFileSync(path.join(out, 'mouse.json'), JSON.stringify({ note: 'PIXEL_ASSETS.units.mouse.idle[0]: one frame for every heading; foot is the point drawn at the entity origin; world px = png px * PIXEL_EXTENT.mouse / target.', target: U.target, foot: [m[4], m[5]], w: m[2], h: m[3] }, null, 1));
+  return Object.keys(meta).length;
+}
+
 fs.mkdirSync(out, { recursive: true });
-console.log('props', props(), 'factory', factory());
+console.log('props', props(), 'factory', factory(), 'studies', studies());
