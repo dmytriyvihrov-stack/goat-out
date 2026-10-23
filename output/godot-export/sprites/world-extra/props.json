@@ -1,0 +1,1375 @@
+{
+ "note": "PROP_PIXELS.sprites with TUNING and js/factory-props.js loaded, 1 texel = 1 png px; @ is ~ in file names.",
+ "sprites": {
+  "altar": {
+   "file": "props/altar.png",
+   "w": 78,
+   "h": 41
+  },
+  "arm-base": {
+   "file": "props/arm-base.png",
+   "w": 34,
+   "h": 22
+  },
+  "arm-base-dead": {
+   "file": "props/arm-base-dead.png",
+   "w": 34,
+   "h": 22
+  },
+  "armor": {
+   "file": "props/armor.png",
+   "w": 27,
+   "h": 29
+  },
+  "armor-0": {
+   "file": "props/armor-0.png",
+   "w": 22,
+   "h": 25
+  },
+  "armor-1": {
+   "file": "props/armor-1.png",
+   "w": 27,
+   "h": 29
+  },
+  "armor-2": {
+   "file": "props/armor-2.png",
+   "w": 28,
+   "h": 29
+  },
+  "armor-helm": {
+   "file": "props/armor-helm.png",
+   "w": 10,
+   "h": 11
+  },
+  "armor-pauldron": {
+   "file": "props/armor-pauldron.png",
+   "w": 9,
+   "h": 7
+  },
+  "armor-plate": {
+   "file": "props/armor-plate.png",
+   "w": 11,
+   "h": 13
+  },
+  "armor-stand": {
+   "file": "props/armor-stand.png",
+   "w": 27,
+   "h": 29
+  },
+  "armor-stand-0": {
+   "file": "props/armor-stand-0.png",
+   "w": 6,
+   "h": 7
+  },
+  "armor-stand-1": {
+   "file": "props/armor-stand-1.png",
+   "w": 27,
+   "h": 29
+  },
+  "armor-stand-2": {
+   "file": "props/armor-stand-2.png",
+   "w": 28,
+   "h": 29
+  },
+  "banner": {
+   "file": "props/banner.png",
+   "w": 11,
+   "h": 16
+  },
+  "barrel": {
+   "file": "props/barrel.png",
+   "w": 20,
+   "h": 25
+  },
+  "barrel-lie0": {
+   "file": "props/barrel-lie0.png",
+   "w": 26,
+   "h": 17
+  },
+  "barrel-lie0@lit": {
+   "file": "props/barrel-lie0~lit.png",
+   "w": 26,
+   "h": 17
+  },
+  "barrel-lie1": {
+   "file": "props/barrel-lie1.png",
+   "w": 26,
+   "h": 17
+  },
+  "barrel-lie1@lit": {
+   "file": "props/barrel-lie1~lit.png",
+   "w": 26,
+   "h": 17
+  },
+  "barrel-lie2": {
+   "file": "props/barrel-lie2.png",
+   "w": 26,
+   "h": 17
+  },
+  "barrel-lie2@lit": {
+   "file": "props/barrel-lie2~lit.png",
+   "w": 26,
+   "h": 17
+  },
+  "barrel-lie3": {
+   "file": "props/barrel-lie3.png",
+   "w": 26,
+   "h": 17
+  },
+  "barrel-lie3@lit": {
+   "file": "props/barrel-lie3~lit.png",
+   "w": 26,
+   "h": 17
+  },
+  "barrel-lie4": {
+   "file": "props/barrel-lie4.png",
+   "w": 26,
+   "h": 17
+  },
+  "barrel-lie4@lit": {
+   "file": "props/barrel-lie4~lit.png",
+   "w": 26,
+   "h": 17
+  },
+  "barrel-lie5": {
+   "file": "props/barrel-lie5.png",
+   "w": 26,
+   "h": 17
+  },
+  "barrel-lie5@lit": {
+   "file": "props/barrel-lie5~lit.png",
+   "w": 26,
+   "h": 17
+  },
+  "barrel-lie6": {
+   "file": "props/barrel-lie6.png",
+   "w": 26,
+   "h": 17
+  },
+  "barrel-lie6@lit": {
+   "file": "props/barrel-lie6~lit.png",
+   "w": 26,
+   "h": 17
+  },
+  "barrel-lie7": {
+   "file": "props/barrel-lie7.png",
+   "w": 26,
+   "h": 17
+  },
+  "barrel-lie7@lit": {
+   "file": "props/barrel-lie7~lit.png",
+   "w": 26,
+   "h": 17
+  },
+  "barrel-up0": {
+   "file": "props/barrel-up0.png",
+   "w": 17,
+   "h": 26
+  },
+  "barrel-up0@lit": {
+   "file": "props/barrel-up0~lit.png",
+   "w": 17,
+   "h": 26
+  },
+  "barrel-up1": {
+   "file": "props/barrel-up1.png",
+   "w": 17,
+   "h": 26
+  },
+  "barrel-up1@lit": {
+   "file": "props/barrel-up1~lit.png",
+   "w": 17,
+   "h": 26
+  },
+  "barrel-up2": {
+   "file": "props/barrel-up2.png",
+   "w": 17,
+   "h": 26
+  },
+  "barrel-up2@lit": {
+   "file": "props/barrel-up2~lit.png",
+   "w": 17,
+   "h": 26
+  },
+  "barrel-up3": {
+   "file": "props/barrel-up3.png",
+   "w": 17,
+   "h": 26
+  },
+  "barrel-up3@lit": {
+   "file": "props/barrel-up3~lit.png",
+   "w": 17,
+   "h": 26
+  },
+  "barrel-up4": {
+   "file": "props/barrel-up4.png",
+   "w": 17,
+   "h": 26
+  },
+  "barrel-up4@lit": {
+   "file": "props/barrel-up4~lit.png",
+   "w": 17,
+   "h": 26
+  },
+  "barrel-up5": {
+   "file": "props/barrel-up5.png",
+   "w": 17,
+   "h": 26
+  },
+  "barrel-up5@lit": {
+   "file": "props/barrel-up5~lit.png",
+   "w": 17,
+   "h": 26
+  },
+  "barrel-up6": {
+   "file": "props/barrel-up6.png",
+   "w": 17,
+   "h": 26
+  },
+  "barrel-up6@lit": {
+   "file": "props/barrel-up6~lit.png",
+   "w": 17,
+   "h": 26
+  },
+  "barrel-up7": {
+   "file": "props/barrel-up7.png",
+   "w": 17,
+   "h": 26
+  },
+  "barrel-up7@lit": {
+   "file": "props/barrel-up7~lit.png",
+   "w": 17,
+   "h": 26
+  },
+  "barrel@lit": {
+   "file": "props/barrel~lit.png",
+   "w": 20,
+   "h": 25
+  },
+  "bomb": {
+   "file": "props/bomb.png",
+   "w": 14,
+   "h": 15
+  },
+  "broken-iron": {
+   "file": "props/broken-iron.png",
+   "w": 19,
+   "h": 39
+  },
+  "broken-soul": {
+   "file": "props/broken-soul.png",
+   "w": 20,
+   "h": 43
+  },
+  "broken-vault": {
+   "file": "props/broken-vault.png",
+   "w": 19,
+   "h": 41
+  },
+  "broken-wood": {
+   "file": "props/broken-wood.png",
+   "w": 18,
+   "h": 39
+  },
+  "burrow": {
+   "file": "props/burrow.png",
+   "w": 26,
+   "h": 15
+  },
+  "cage-broken": {
+   "file": "props/cage-broken.png",
+   "w": 18,
+   "h": 5
+  },
+  "cage-post": {
+   "file": "props/cage-post.png",
+   "w": 5,
+   "h": 22
+  },
+  "chand-down": {
+   "file": "props/chand-down.png",
+   "w": 34,
+   "h": 16
+  },
+  "chand0": {
+   "file": "props/chand0.png",
+   "w": 29,
+   "h": 29
+  },
+  "chand1": {
+   "file": "props/chand1.png",
+   "w": 29,
+   "h": 29
+  },
+  "cleat": {
+   "file": "props/cleat.png",
+   "w": 10,
+   "h": 14
+  },
+  "cleat-cut": {
+   "file": "props/cleat-cut.png",
+   "w": 10,
+   "h": 12
+  },
+  "coop-back": {
+   "file": "props/coop-back.png",
+   "w": 38,
+   "h": 25
+  },
+  "coop-cracked": {
+   "file": "props/coop-cracked.png",
+   "w": 38,
+   "h": 25
+  },
+  "coop-front": {
+   "file": "props/coop-front.png",
+   "w": 38,
+   "h": 25
+  },
+  "coop-iron": {
+   "file": "props/coop-iron.png",
+   "w": 38,
+   "h": 25
+  },
+  "crate-bit0": {
+   "file": "props/crate-bit0.png",
+   "w": 15,
+   "h": 5
+  },
+  "crate-bit1": {
+   "file": "props/crate-bit1.png",
+   "w": 12,
+   "h": 5
+  },
+  "crate-bit2": {
+   "file": "props/crate-bit2.png",
+   "w": 10,
+   "h": 5
+  },
+  "crate-bit3": {
+   "file": "props/crate-bit3.png",
+   "w": 7,
+   "h": 5
+  },
+  "crate-bit4": {
+   "file": "props/crate-bit4.png",
+   "w": 8,
+   "h": 8
+  },
+  "door-iron": {
+   "file": "props/door-iron.png",
+   "w": 9,
+   "h": 42
+  },
+  "door-soul": {
+   "file": "props/door-soul.png",
+   "w": 9,
+   "h": 42
+  },
+  "door-vault": {
+   "file": "props/door-vault.png",
+   "w": 9,
+   "h": 42
+  },
+  "door-wood": {
+   "file": "props/door-wood.png",
+   "w": 9,
+   "h": 42
+  },
+  "fac-bit-bolt": {
+   "file": "props/fac-bit-bolt.png",
+   "w": 4,
+   "h": 4
+  },
+  "fac-bit-gas": {
+   "file": "props/fac-bit-gas.png",
+   "w": 6,
+   "h": 5
+  },
+  "fac-bit-gear": {
+   "file": "props/fac-bit-gear.png",
+   "w": 7,
+   "h": 7
+  },
+  "fac-bit-knee": {
+   "file": "props/fac-bit-knee.png",
+   "w": 6,
+   "h": 6
+  },
+  "fac-bit-leg": {
+   "file": "props/fac-bit-leg.png",
+   "w": 18,
+   "h": 6
+  },
+  "fac-bit-meat": {
+   "file": "props/fac-bit-meat.png",
+   "w": 6,
+   "h": 5
+  },
+  "fac-bit-pipe": {
+   "file": "props/fac-bit-pipe.png",
+   "w": 8,
+   "h": 7
+  },
+  "fac-bit-plate": {
+   "file": "props/fac-bit-plate.png",
+   "w": 8,
+   "h": 6
+  },
+  "fac-gas": {
+   "file": "props/fac-gas.png",
+   "w": 9,
+   "h": 24
+  },
+  "fac-post": {
+   "file": "props/fac-post.png",
+   "w": 16,
+   "h": 32
+  },
+  "fix-lamp0": {
+   "file": "props/fix-lamp0.png",
+   "w": 13,
+   "h": 13
+  },
+  "fix-lamp1": {
+   "file": "props/fix-lamp1.png",
+   "w": 13,
+   "h": 13
+  },
+  "fix-valve": {
+   "file": "props/fix-valve.png",
+   "w": 13,
+   "h": 15
+  },
+  "fix-vent": {
+   "file": "props/fix-vent.png",
+   "w": 15,
+   "h": 11
+  },
+  "food-apple": {
+   "file": "props/food-apple.png",
+   "w": 7,
+   "h": 8
+  },
+  "food-apple@dim": {
+   "file": "props/food-apple~dim.png",
+   "w": 7,
+   "h": 8
+  },
+  "food-boarhead": {
+   "file": "props/food-boarhead.png",
+   "w": 14,
+   "h": 12
+  },
+  "food-boarhead@dim": {
+   "file": "props/food-boarhead~dim.png",
+   "w": 14,
+   "h": 12
+  },
+  "food-bread": {
+   "file": "props/food-bread.png",
+   "w": 11,
+   "h": 7
+  },
+  "food-bread@dim": {
+   "file": "props/food-bread~dim.png",
+   "w": 11,
+   "h": 7
+  },
+  "food-cheese": {
+   "file": "props/food-cheese.png",
+   "w": 9,
+   "h": 7
+  },
+  "food-cheese@dim": {
+   "file": "props/food-cheese~dim.png",
+   "w": 9,
+   "h": 7
+  },
+  "food-fish": {
+   "file": "props/food-fish.png",
+   "w": 10,
+   "h": 6
+  },
+  "food-fish@dim": {
+   "file": "props/food-fish~dim.png",
+   "w": 10,
+   "h": 6
+  },
+  "food-gapple": {
+   "file": "props/food-gapple.png",
+   "w": 7,
+   "h": 8
+  },
+  "food-gapple@dim": {
+   "file": "props/food-gapple~dim.png",
+   "w": 7,
+   "h": 8
+  },
+  "food-goblet": {
+   "file": "props/food-goblet.png",
+   "w": 7,
+   "h": 7
+  },
+  "food-goblet@dim": {
+   "file": "props/food-goblet~dim.png",
+   "w": 7,
+   "h": 7
+  },
+  "food-grapes": {
+   "file": "props/food-grapes.png",
+   "w": 7,
+   "h": 7
+  },
+  "food-grapes@dim": {
+   "file": "props/food-grapes~dim.png",
+   "w": 7,
+   "h": 7
+  },
+  "food-haunch": {
+   "file": "props/food-haunch.png",
+   "w": 11,
+   "h": 7
+  },
+  "food-haunch@dim": {
+   "file": "props/food-haunch~dim.png",
+   "w": 11,
+   "h": 7
+  },
+  "food-honey": {
+   "file": "props/food-honey.png",
+   "w": 7,
+   "h": 7
+  },
+  "food-honey@dim": {
+   "file": "props/food-honey~dim.png",
+   "w": 7,
+   "h": 7
+  },
+  "food-jug": {
+   "file": "props/food-jug.png",
+   "w": 8,
+   "h": 8
+  },
+  "food-jug@dim": {
+   "file": "props/food-jug~dim.png",
+   "w": 8,
+   "h": 8
+  },
+  "food-leg": {
+   "file": "props/food-leg.png",
+   "w": 9,
+   "h": 7
+  },
+  "food-leg@dim": {
+   "file": "props/food-leg~dim.png",
+   "w": 9,
+   "h": 7
+  },
+  "food-milk": {
+   "file": "props/food-milk.png",
+   "w": 8,
+   "h": 8
+  },
+  "food-milk@dim": {
+   "file": "props/food-milk~dim.png",
+   "w": 8,
+   "h": 8
+  },
+  "food-pear": {
+   "file": "props/food-pear.png",
+   "w": 7,
+   "h": 8
+  },
+  "food-pear@dim": {
+   "file": "props/food-pear~dim.png",
+   "w": 7,
+   "h": 8
+  },
+  "food-plate": {
+   "file": "props/food-plate.png",
+   "w": 9,
+   "h": 5
+  },
+  "food-plate@dim": {
+   "file": "props/food-plate~dim.png",
+   "w": 9,
+   "h": 5
+  },
+  "food-ribs": {
+   "file": "props/food-ribs.png",
+   "w": 12,
+   "h": 8
+  },
+  "food-ribs@dim": {
+   "file": "props/food-ribs~dim.png",
+   "w": 12,
+   "h": 8
+  },
+  "food-roast": {
+   "file": "props/food-roast.png",
+   "w": 14,
+   "h": 9
+  },
+  "food-roast@dim": {
+   "file": "props/food-roast~dim.png",
+   "w": 14,
+   "h": 9
+  },
+  "food-sausage": {
+   "file": "props/food-sausage.png",
+   "w": 15,
+   "h": 7
+  },
+  "food-sausage@dim": {
+   "file": "props/food-sausage~dim.png",
+   "w": 15,
+   "h": 7
+  },
+  "food-stew": {
+   "file": "props/food-stew.png",
+   "w": 12,
+   "h": 8
+  },
+  "food-stew@dim": {
+   "file": "props/food-stew~dim.png",
+   "w": 12,
+   "h": 8
+  },
+  "gong": {
+   "file": "props/gong.png",
+   "w": 29,
+   "h": 29
+  },
+  "gong@lit": {
+   "file": "props/gong~lit.png",
+   "w": 29,
+   "h": 29
+  },
+  "grass-small": {
+   "file": "props/grass-small.png",
+   "w": 17,
+   "h": 16
+  },
+  "grass-small@pass": {
+   "file": "props/grass-small~pass.png",
+   "w": 17,
+   "h": 16
+  },
+  "halberd": {
+   "file": "props/halberd.png",
+   "w": 31,
+   "h": 11
+  },
+  "halberd-bit0": {
+   "file": "props/halberd-bit0.png",
+   "w": 15,
+   "h": 4
+  },
+  "halberd-bit1": {
+   "file": "props/halberd-bit1.png",
+   "w": 19,
+   "h": 11
+  },
+  "halberd@lit": {
+   "file": "props/halberd~lit.png",
+   "w": 31,
+   "h": 11
+  },
+  "healing-grass": {
+   "file": "props/healing-grass.png",
+   "w": 31,
+   "h": 26
+  },
+  "healing-grass@pass": {
+   "file": "props/healing-grass~pass.png",
+   "w": 31,
+   "h": 26
+  },
+  "junk-gears": {
+   "file": "props/junk-gears.png",
+   "w": 20,
+   "h": 14
+  },
+  "key": {
+   "file": "props/key.png",
+   "w": 26,
+   "h": 13
+  },
+  "lantern-0": {
+   "file": "props/lantern-0.png",
+   "w": 9,
+   "h": 22
+  },
+  "lantern-1": {
+   "file": "props/lantern-1.png",
+   "w": 9,
+   "h": 22
+  },
+  "lantern-2": {
+   "file": "props/lantern-2.png",
+   "w": 9,
+   "h": 22
+  },
+  "lantern-3": {
+   "file": "props/lantern-3.png",
+   "w": 9,
+   "h": 22
+  },
+  "lantern-4": {
+   "file": "props/lantern-4.png",
+   "w": 9,
+   "h": 22
+  },
+  "lantern-5": {
+   "file": "props/lantern-5.png",
+   "w": 9,
+   "h": 22
+  },
+  "lantern-6": {
+   "file": "props/lantern-6.png",
+   "w": 9,
+   "h": 22
+  },
+  "lantern-7": {
+   "file": "props/lantern-7.png",
+   "w": 9,
+   "h": 22
+  },
+  "mill-arm": {
+   "file": "props/mill-arm.png",
+   "w": 41,
+   "h": 17
+  },
+  "mill-hub": {
+   "file": "props/mill-hub.png",
+   "w": 41,
+   "h": 41
+  },
+  "mill-tire": {
+   "file": "props/mill-tire.png",
+   "w": 41,
+   "h": 41
+  },
+  "mshield0-b": {
+   "file": "props/mshield0-b.png",
+   "w": 33,
+   "h": 33
+  },
+  "mshield0-bit0": {
+   "file": "props/mshield0-bit0.png",
+   "w": 18,
+   "h": 18
+  },
+  "mshield0-bit1": {
+   "file": "props/mshield0-bit1.png",
+   "w": 18,
+   "h": 18
+  },
+  "mshield0-bit2": {
+   "file": "props/mshield0-bit2.png",
+   "w": 18,
+   "h": 18
+  },
+  "mshield0-bit3": {
+   "file": "props/mshield0-bit3.png",
+   "w": 18,
+   "h": 18
+  },
+  "mshield0-f": {
+   "file": "props/mshield0-f.png",
+   "w": 33,
+   "h": 33
+  },
+  "mshield0-s": {
+   "file": "props/mshield0-s.png",
+   "w": 9,
+   "h": 23
+  },
+  "mshield1-b": {
+   "file": "props/mshield1-b.png",
+   "w": 25,
+   "h": 29
+  },
+  "mshield1-bit0": {
+   "file": "props/mshield1-bit0.png",
+   "w": 14,
+   "h": 16
+  },
+  "mshield1-bit1": {
+   "file": "props/mshield1-bit1.png",
+   "w": 14,
+   "h": 16
+  },
+  "mshield1-bit2": {
+   "file": "props/mshield1-bit2.png",
+   "w": 9,
+   "h": 16
+  },
+  "mshield1-bit3": {
+   "file": "props/mshield1-bit3.png",
+   "w": 9,
+   "h": 16
+  },
+  "mshield1-f": {
+   "file": "props/mshield1-f.png",
+   "w": 25,
+   "h": 29
+  },
+  "mshield1-s": {
+   "file": "props/mshield1-s.png",
+   "w": 9,
+   "h": 20
+  },
+  "mshield2-b": {
+   "file": "props/mshield2-b.png",
+   "w": 29,
+   "h": 27
+  },
+  "mshield2-bit0": {
+   "file": "props/mshield2-bit0.png",
+   "w": 16,
+   "h": 16
+  },
+  "mshield2-bit1": {
+   "file": "props/mshield2-bit1.png",
+   "w": 16,
+   "h": 16
+  },
+  "mshield2-bit2": {
+   "file": "props/mshield2-bit2.png",
+   "w": 15,
+   "h": 14
+  },
+  "mshield2-bit3": {
+   "file": "props/mshield2-bit3.png",
+   "w": 14,
+   "h": 14
+  },
+  "mshield2-f": {
+   "file": "props/mshield2-f.png",
+   "w": 29,
+   "h": 27
+  },
+  "mshield2-s": {
+   "file": "props/mshield2-s.png",
+   "w": 9,
+   "h": 23
+  },
+  "pail": {
+   "file": "props/pail.png",
+   "w": 17,
+   "h": 24
+  },
+  "pail@lit": {
+   "file": "props/pail~lit.png",
+   "w": 17,
+   "h": 24
+  },
+  "platter": {
+   "file": "props/platter.png",
+   "w": 26,
+   "h": 18
+  },
+  "platter-open": {
+   "file": "props/platter-open.png",
+   "w": 36,
+   "h": 14
+  },
+  "poster-breeds": {
+   "file": "props/poster-breeds.png",
+   "w": 46,
+   "h": 36
+  },
+  "poster-cuts": {
+   "file": "props/poster-cuts.png",
+   "w": 46,
+   "h": 36
+  },
+  "poster-scrap": {
+   "file": "props/poster-scrap.png",
+   "w": 11,
+   "h": 9
+  },
+  "poster-shreds": {
+   "file": "props/poster-shreds.png",
+   "w": 15,
+   "h": 10
+  },
+  "poster-torn": {
+   "file": "props/poster-torn.png",
+   "w": 46,
+   "h": 13
+  },
+  "rack-back": {
+   "file": "props/rack-back.png",
+   "w": 24,
+   "h": 24
+  },
+  "rack-base": {
+   "file": "props/rack-base.png",
+   "w": 24,
+   "h": 24
+  },
+  "roast-back": {
+   "file": "props/roast-back.png",
+   "w": 40,
+   "h": 16
+  },
+  "roast-back@lit": {
+   "file": "props/roast-back~lit.png",
+   "w": 40,
+   "h": 16
+  },
+  "roast-croc": {
+   "file": "props/roast-croc.png",
+   "w": 72,
+   "h": 20
+  },
+  "roast-front": {
+   "file": "props/roast-front.png",
+   "w": 40,
+   "h": 16
+  },
+  "roast-front@lit": {
+   "file": "props/roast-front~lit.png",
+   "w": 40,
+   "h": 16
+  },
+  "roast-sticks": {
+   "file": "props/roast-sticks.png",
+   "w": 80,
+   "h": 36
+  },
+  "sconce-f0": {
+   "file": "props/sconce-f0.png",
+   "w": 7,
+   "h": 17
+  },
+  "sconce-f1": {
+   "file": "props/sconce-f1.png",
+   "w": 7,
+   "h": 17
+  },
+  "sconce-f2": {
+   "file": "props/sconce-f2.png",
+   "w": 7,
+   "h": 17
+  },
+  "sconce-f3": {
+   "file": "props/sconce-f3.png",
+   "w": 7,
+   "h": 17
+  },
+  "sconce-f4": {
+   "file": "props/sconce-f4.png",
+   "w": 7,
+   "h": 17
+  },
+  "sconce-f5": {
+   "file": "props/sconce-f5.png",
+   "w": 7,
+   "h": 17
+  },
+  "sconce-f6": {
+   "file": "props/sconce-f6.png",
+   "w": 7,
+   "h": 17
+  },
+  "sconce-f7": {
+   "file": "props/sconce-f7.png",
+   "w": 7,
+   "h": 17
+  },
+  "sconce-s0": {
+   "file": "props/sconce-s0.png",
+   "w": 11,
+   "h": 17
+  },
+  "sconce-s1": {
+   "file": "props/sconce-s1.png",
+   "w": 11,
+   "h": 17
+  },
+  "sconce-s2": {
+   "file": "props/sconce-s2.png",
+   "w": 11,
+   "h": 17
+  },
+  "sconce-s3": {
+   "file": "props/sconce-s3.png",
+   "w": 11,
+   "h": 17
+  },
+  "sconce-s4": {
+   "file": "props/sconce-s4.png",
+   "w": 11,
+   "h": 17
+  },
+  "sconce-s5": {
+   "file": "props/sconce-s5.png",
+   "w": 11,
+   "h": 17
+  },
+  "sconce-s6": {
+   "file": "props/sconce-s6.png",
+   "w": 11,
+   "h": 17
+  },
+  "sconce-s7": {
+   "file": "props/sconce-s7.png",
+   "w": 11,
+   "h": 17
+  },
+  "shield": {
+   "file": "props/shield.png",
+   "w": 18,
+   "h": 19
+  },
+  "shield-bit0": {
+   "file": "props/shield-bit0.png",
+   "w": 8,
+   "h": 18
+  },
+  "shield-bit1": {
+   "file": "props/shield-bit1.png",
+   "w": 9,
+   "h": 19
+  },
+  "shield-bit2": {
+   "file": "props/shield-bit2.png",
+   "w": 7,
+   "h": 18
+  },
+  "shield@lit": {
+   "file": "props/shield~lit.png",
+   "w": 18,
+   "h": 19
+  },
+  "soul-wisp": {
+   "file": "props/soul-wisp.png",
+   "w": 15,
+   "h": 21
+  },
+  "spikes-arming": {
+   "file": "props/spikes-arming.png",
+   "w": 24,
+   "h": 20
+  },
+  "spikes-idle": {
+   "file": "props/spikes-idle.png",
+   "w": 24,
+   "h": 20
+  },
+  "spikes-up": {
+   "file": "props/spikes-up.png",
+   "w": 24,
+   "h": 20
+  },
+  "spire": {
+   "file": "props/spire.png",
+   "w": 22,
+   "h": 23
+  },
+  "stall-back": {
+   "file": "props/stall-back.png",
+   "w": 72,
+   "h": 60
+  },
+  "stall-cracked": {
+   "file": "props/stall-cracked.png",
+   "w": 72,
+   "h": 60
+  },
+  "stall-front": {
+   "file": "props/stall-front.png",
+   "w": 72,
+   "h": 60
+  },
+  "stand-bit0": {
+   "file": "props/stand-bit0.png",
+   "w": 18,
+   "h": 12
+  },
+  "stand-bit1": {
+   "file": "props/stand-bit1.png",
+   "w": 4,
+   "h": 17
+  },
+  "stand-bit2": {
+   "file": "props/stand-bit2.png",
+   "w": 22,
+   "h": 6
+  },
+  "stool": {
+   "file": "props/stool.png",
+   "w": 14,
+   "h": 11
+  },
+  "suit": {
+   "file": "props/suit.png",
+   "w": 28,
+   "h": 42
+  },
+  "suit-0": {
+   "file": "props/suit-0.png",
+   "w": 24,
+   "h": 42
+  },
+  "suit-bare": {
+   "file": "props/suit-bare.png",
+   "w": 26,
+   "h": 42
+  },
+  "suit-bare-0": {
+   "file": "props/suit-bare-0.png",
+   "w": 22,
+   "h": 31
+  },
+  "sword": {
+   "file": "props/sword.png",
+   "w": 19,
+   "h": 7
+  },
+  "sword-bit0": {
+   "file": "props/sword-bit0.png",
+   "w": 13,
+   "h": 7
+  },
+  "sword-bit1": {
+   "file": "props/sword-bit1.png",
+   "w": 9,
+   "h": 5
+  },
+  "sword-up": {
+   "file": "props/sword-up.png",
+   "w": 7,
+   "h": 19
+  },
+  "sword-up@lit": {
+   "file": "props/sword-up~lit.png",
+   "w": 7,
+   "h": 19
+  },
+  "sword@lit": {
+   "file": "props/sword~lit.png",
+   "w": 19,
+   "h": 7
+  },
+  "table-e": {
+   "file": "props/table-e.png",
+   "w": 27,
+   "h": 36
+  },
+  "table-n": {
+   "file": "props/table-n.png",
+   "w": 46,
+   "h": 26
+  },
+  "table-s": {
+   "file": "props/table-s.png",
+   "w": 46,
+   "h": 25
+  },
+  "table-w": {
+   "file": "props/table-w.png",
+   "w": 27,
+   "h": 36
+  },
+  "trophy": {
+   "file": "props/trophy.png",
+   "w": 24,
+   "h": 23
+  },
+  "trophy-blood": {
+   "file": "props/trophy-blood.png",
+   "w": 24,
+   "h": 23
+  },
+  "trophy-tips": {
+   "file": "props/trophy-tips.png",
+   "w": 24,
+   "h": 9
+  },
+  "vbarrel": {
+   "file": "props/vbarrel.png",
+   "w": 20,
+   "h": 25
+  },
+  "vbarrel-lie0": {
+   "file": "props/vbarrel-lie0.png",
+   "w": 26,
+   "h": 17
+  },
+  "vbarrel-lie0@lit": {
+   "file": "props/vbarrel-lie0~lit.png",
+   "w": 26,
+   "h": 17
+  },
+  "vbarrel-lie1": {
+   "file": "props/vbarrel-lie1.png",
+   "w": 26,
+   "h": 17
+  },
+  "vbarrel-lie1@lit": {
+   "file": "props/vbarrel-lie1~lit.png",
+   "w": 26,
+   "h": 17
+  },
+  "vbarrel-lie2": {
+   "file": "props/vbarrel-lie2.png",
+   "w": 26,
+   "h": 17
+  },
+  "vbarrel-lie2@lit": {
+   "file": "props/vbarrel-lie2~lit.png",
+   "w": 26,
+   "h": 17
+  },
+  "vbarrel-lie3": {
+   "file": "props/vbarrel-lie3.png",
+   "w": 26,
+   "h": 17
+  },
+  "vbarrel-lie3@lit": {
+   "file": "props/vbarrel-lie3~lit.png",
+   "w": 26,
+   "h": 17
+  },
+  "vbarrel-lie4": {
+   "file": "props/vbarrel-lie4.png",
+   "w": 26,
+   "h": 17
+  },
+  "vbarrel-lie4@lit": {
+   "file": "props/vbarrel-lie4~lit.png",
+   "w": 26,
+   "h": 17
+  },
+  "vbarrel-lie5": {
+   "file": "props/vbarrel-lie5.png",
+   "w": 26,
+   "h": 17
+  },
+  "vbarrel-lie5@lit": {
+   "file": "props/vbarrel-lie5~lit.png",
+   "w": 26,
+   "h": 17
+  },
+  "vbarrel-lie6": {
+   "file": "props/vbarrel-lie6.png",
+   "w": 26,
+   "h": 17
+  },
+  "vbarrel-lie6@lit": {
+   "file": "props/vbarrel-lie6~lit.png",
+   "w": 26,
+   "h": 17
+  },
+  "vbarrel-lie7": {
+   "file": "props/vbarrel-lie7.png",
+   "w": 26,
+   "h": 17
+  },
+  "vbarrel-lie7@lit": {
+   "file": "props/vbarrel-lie7~lit.png",
+   "w": 26,
+   "h": 17
+  },
+  "vbarrel-up0": {
+   "file": "props/vbarrel-up0.png",
+   "w": 17,
+   "h": 26
+  },
+  "vbarrel-up0@lit": {
+   "file": "props/vbarrel-up0~lit.png",
+   "w": 17,
+   "h": 26
+  },
+  "vbarrel-up1": {
+   "file": "props/vbarrel-up1.png",
+   "w": 17,
+   "h": 26
+  },
+  "vbarrel-up1@lit": {
+   "file": "props/vbarrel-up1~lit.png",
+   "w": 17,
+   "h": 26
+  },
+  "vbarrel-up2": {
+   "file": "props/vbarrel-up2.png",
+   "w": 17,
+   "h": 26
+  },
+  "vbarrel-up2@lit": {
+   "file": "props/vbarrel-up2~lit.png",
+   "w": 17,
+   "h": 26
+  },
+  "vbarrel-up3": {
+   "file": "props/vbarrel-up3.png",
+   "w": 17,
+   "h": 26
+  },
+  "vbarrel-up3@lit": {
+   "file": "props/vbarrel-up3~lit.png",
+   "w": 17,
+   "h": 26
+  },
+  "vbarrel-up4": {
+   "file": "props/vbarrel-up4.png",
+   "w": 17,
+   "h": 26
+  },
+  "vbarrel-up4@lit": {
+   "file": "props/vbarrel-up4~lit.png",
+   "w": 17,
+   "h": 26
+  },
+  "vbarrel-up5": {
+   "file": "props/vbarrel-up5.png",
+   "w": 17,
+   "h": 26
+  },
+  "vbarrel-up5@lit": {
+   "file": "props/vbarrel-up5~lit.png",
+   "w": 17,
+   "h": 26
+  },
+  "vbarrel-up6": {
+   "file": "props/vbarrel-up6.png",
+   "w": 17,
+   "h": 26
+  },
+  "vbarrel-up6@lit": {
+   "file": "props/vbarrel-up6~lit.png",
+   "w": 17,
+   "h": 26
+  },
+  "vbarrel-up7": {
+   "file": "props/vbarrel-up7.png",
+   "w": 17,
+   "h": 26
+  },
+  "vbarrel-up7@lit": {
+   "file": "props/vbarrel-up7~lit.png",
+   "w": 17,
+   "h": 26
+  },
+  "vbarrel@lit": {
+   "file": "props/vbarrel~lit.png",
+   "w": 20,
+   "h": 25
+  },
+  "vent-top": {
+   "file": "props/vent-top.png",
+   "w": 14,
+   "h": 14
+  },
+  "vent-top-open": {
+   "file": "props/vent-top-open.png",
+   "w": 14,
+   "h": 14
+  }
+ }
+}

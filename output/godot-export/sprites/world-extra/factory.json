@@ -1,0 +1,61 @@
+{
+ "note": "floors: 144 texels a 6 x 6 patch of tiles, before quiet (TUNING.machine.floor). caps: 192 px = 3 tiles of 64. faces: one texel a px, stretched to a tile row of F64 px (IRON: its 70-wide rows laid end to end).",
+ "floors": [
+  "PLATES",
+  "CONCRETE",
+  "GRATE",
+  "BRICK",
+  "RUST"
+ ],
+ "walls": [
+  "IRON",
+  "FURNACE",
+  "CORRUGATED"
+ ],
+ "sizes": {
+  "floor-PLATES": [
+   144,
+   144
+  ],
+  "floor-CONCRETE": [
+   144,
+   144
+  ],
+  "floor-GRATE": [
+   144,
+   144
+  ],
+  "floor-BRICK": [
+   144,
+   144
+  ],
+  "floor-RUST": [
+   144,
+   144
+  ],
+  "cap-IRON": [
+   192,
+   192
+  ],
+  "face-IRON": [
+   70,
+   21
+  ],
+  "cap-FURNACE": [
+   192,
+   192
+  ],
+  "face-FURNACE": [
+   480,
+   18
+  ],
+  "cap-CORRUGATED": [
+   192,
+   192
+  ],
+  "face-CORRUGATED": [
+   480,
+   18
+  ]
+ }
+}
