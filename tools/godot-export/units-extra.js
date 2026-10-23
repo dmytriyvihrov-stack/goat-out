@@ -5,6 +5,7 @@
 // nothing is redrawn by hand. The page is this file's own (PAGE below), so the export stays one script. Reads js/*.js, never edits them.
 //
 // What it writes (all under units-extra/):
+//   horse.png|json, pig.png|json  every frame of HORSE_PIXELS / PIG_PIXELS (frameAt's 1..n, the buck, the jaw), 8 directions
 //   beasts/<name>.png          PROP_PIXELS sprites made by js/beasts-more.js (rabbit, husky, fish tank), 1 texel = 1 png px
 //   goat-dress.png|json        overlays on each frame of units/goat.json, at the goat's own png px (worldPerPx the same):
 //                              mark (THE MARK's bolt), wound<n> (n hearts lost), armour (the tortoise's iron),
@@ -79,6 +80,24 @@ function goatDress() {
   return { cells, info: { worldPerPx: k, note: 'Overlays on units/goat.json frames: anim <layer>_<goat anim>, the same dir; foot is the goat foot. mark: THE MARK (markOn). wound<n>: n hearts lost (TUNING.goat.wounds, alpha baked). armour: the tortoise\'s iron (prop.tortoise.armour, alpha baked). horns_<moose|gazelle|none>_<antlers 0|1>_<lava|venom|none>: PIXEL_ART.horns at t of the frame (glow pulse and the venom drip are frozen there); with a shape the goat frame under it is bare_.' } };
 }
 
+
+// ---------- the horse and the pig, every frame frameAt can show (sprites.js's bake stopped one short of the gallop: frameAt is 1..n) ----------
+const mirrored = (c) => { const m = mkc(c.width, c.height), x = m.getContext('2d'); x.translate(c.width, 0); x.scale(-1, 1); x.imageSmoothingEnabled = false; x.drawImage(c, 0, 0); return m; };
+function beastSheet(O) {
+  const cells = [];
+  for (const d of DIRS) {
+    const kind = O.VIEWS[d][0];
+    const poses = [['run', undefined, O.FRAMES[kind]], ['kick', 'kick', 0], ['eat', 'eat', (O.FRAMES.eat || 2) - 1]];
+    for (const [name, pose, last] of poses) for (let f = 0; f <= last; f++) {
+      const sp = O.sprite(d, pose, f); let c = O.canvas(sp); if (sp.flip) c = mirrored(c);
+      cells.push({ c, foot: [c.width / 2, O.FOOT * c.height / O.H], dir: d, anim: name + '_f' + f });
+    }
+  }
+  const zoom = cells[0].c.width / (O.W * O.TX);
+  return { cells, info: { kind: 'built', texelWorld: O.TX, zoom, worldPerPx: 1 / zoom, W: O.W, H: O.H, FOOT: O.FOOT, frames: O.FRAMES,
+    note: 'png px = 4 per texel, drawn smoothed (HORSE_PIXELS.draw); world px = png px / zoom; foot at the hooves. run_f0 stands, run_f1..fN the gallop/trot (frameAt), kick_f0 the buck, eat_f0..1 the jaw.' } };
+}
+
 async function emit(name, cells, info) {
   const seen = new Map(), uniq = [];
   for (const c of cells) { const key = hashOf(c.c); if (seen.has(key)) c.same = seen.get(key); else { seen.set(key, c); uniq.push(c); } }
@@ -138,8 +157,10 @@ function data() {
   await loadAll(); log('scripts ok');
   for (let i = 0; i < 400 && !(PIXEL_ART.ready && PIXEL_ART.marks); i++) await new Promise((r) => setTimeout(r, 50));
   if (!PIXEL_ART.ready) { log('atlas not ready'); return; }
+  const only = (new URLSearchParams(location.search).get('only') || '').split(',').filter(Boolean), want = (n) => !only.length || only.includes(n);
   const b = await beasts(); log('beasts ' + Object.keys(b).join(' '));
-  const gd = goatDress(); log(await emit('goat-dress', gd.cells, gd.info));
+  for (const [n, O] of [['horse', HORSE_PIXELS], ['pig', PIG_PIXELS]]) if (want(n)) { const r = beastSheet(O); log(await emit(n, r.cells, r.info)); }
+  if (want('goat-dress')) { const gd = goatDress(); log(await emit('goat-dress', gd.cells, gd.info)); }
   const hv = await heaven(); log('heaven gods ' + Object.keys(hv.gods).join(' ') + ', sils ' + Object.keys(hv.sils).length);
   const D = data(); D.beasts = b; D.heavenBaked = hv;
   await put('data.json', JSON.stringify(D, null, 1));
