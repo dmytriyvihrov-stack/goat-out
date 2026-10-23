@@ -15,6 +15,7 @@
 //   heaven/white-wisp.png      Heaven.whiteWisp: the soul a sacrifice is counted in
 //   heaven/world/*.png        Heaven.art(Heaven.level()): the islands (HEAVEN_ART.K world px a cell), the sea tile, the sky column,
 //                              the wisps, the earth (its pen, yard and torches in data.json heavenWorld)
+//   heaven/overlook/*.png     Heaven.bakeOverlook's layers (sky, far, near, hills, castle, the cloud strips); towers in data.json
 //   data.json                  the cell art Godot paints itself, because JS paints it live: CAPE_PIXELS (views coloured per
 //                              cape, the wind, the clasp, the charms), PIXEL_FACE / PIXEL_NECK / PIXEL_FACE_ART, the collar,
 //                              HEAVEN_CRACKS, MIRROR_GLYPHS, the halo, the sign and the ask mark's grids
@@ -152,6 +153,16 @@ async function heavenWorld() {
   return meta;
 }
 
+
+// ---------- THE OVERLOOK's world below (Heaven.bakeOverlook): its layers, each M texels wider either side, and the towers ----------
+async function overlook() {
+  const O = Heaven.bakeOverlook(), meta = { W: O.W, H: O.H, M: O.M, towers: O.towers, layers: {} };
+  for (const n of ['sky', 'far', 'near', 'hills', 'castle', 'cFar', 'cMid', 'cNear', 'bank']) {
+    const c = O[n]; await png('heaven/overlook/' + n + '.png', c); meta.layers[n] = [c.width, c.height];
+  }
+  return meta;
+}
+
 // ---------- the cell art Godot paints itself ----------
 function data() {
   const C = CAPE_PIXELS, capes = {};
@@ -186,6 +197,7 @@ function data() {
   if (want('goat-dress')) { const gd = goatDress(); log(await emit('goat-dress', gd.cells, gd.info)); }
   const hv = await heaven(); log('heaven gods ' + Object.keys(hv.gods).join(' ') + ', sils ' + Object.keys(hv.sils).length);
   const D = data(); D.beasts = b; D.heavenBaked = hv;
+  D.overlook = await overlook(); log('overlook ' + Object.keys(D.overlook.layers).join(' '));
   D.heavenWorld = await heavenWorld(); log('heaven world ' + D.heavenWorld.W + 'x' + D.heavenWorld.H);
   await put('data.json', JSON.stringify(D, null, 1));
   window.BAKE_DONE = true; log('DONE');
