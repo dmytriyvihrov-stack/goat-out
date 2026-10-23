@@ -13,6 +13,8 @@
 //   heaven/god-<kind>.png      Heaven.animalGod: the animal lit from inside and ringed in gold (headY in heaven.json)
 //   heaven/sil-<kind>-<live>.png  Heaven.animalSil: the stand's pictogram, lit / dim / ghost (box and fit in heaven.json)
 //   heaven/white-wisp.png      Heaven.whiteWisp: the soul a sacrifice is counted in
+//   heaven/world/*.png        Heaven.art(Heaven.level()): the islands (HEAVEN_ART.K world px a cell), the sea tile, the sky column,
+//                              the wisps, the earth (its pen, yard and torches in data.json heavenWorld)
 //   data.json                  the cell art Godot paints itself, because JS paints it live: CAPE_PIXELS (views coloured per
 //                              cape, the wind, the clasp, the charms), PIXEL_FACE / PIXEL_NECK / PIXEL_FACE_ART, the collar,
 //                              HEAVEN_CRACKS, MIRROR_GLYPHS, the halo, the sign and the ask mark's grids
@@ -135,6 +137,21 @@ async function heaven() {
   return meta;
 }
 
+
+// ---------- heaven's world: the islands of cloud, the far sea, the sky's bands, the passing wisps, the earth far below ----------
+async function heavenWorld() {
+  const L = Heaven.level(), B = Heaven.art(L), meta = { K: HEAVEN_ART.K, W: L.W, H: L.H, tile: TILE, edge: HEAVEN_MAP.edge, drop: HEAVEN_MAP.drop, throne: HEAVEN_MAP.throne };
+  await png('heaven/world/island.png', B.island.canvas);
+  await png('heaven/world/sea.png', B.sea);
+  await png('heaven/world/sky.png', B.sky);
+  for (let i = 0; i < B.wisps.length; i++) await png('heaven/world/wisp-' + i + '.png', B.wisps[i]);
+  const E = B.earth; await png('heaven/world/earth.png', E.canvas);
+  meta.earth = { K: E.K, W: E.W, H: E.H, pen: E.pen, yard: E.yard, torches: E.torches };
+  meta.wisps = B.wisps.length;
+  meta.tiles = Array.from(L.tiles);
+  return meta;
+}
+
 // ---------- the cell art Godot paints itself ----------
 function data() {
   const C = CAPE_PIXELS, capes = {};
@@ -169,6 +186,7 @@ function data() {
   if (want('goat-dress')) { const gd = goatDress(); log(await emit('goat-dress', gd.cells, gd.info)); }
   const hv = await heaven(); log('heaven gods ' + Object.keys(hv.gods).join(' ') + ', sils ' + Object.keys(hv.sils).length);
   const D = data(); D.beasts = b; D.heavenBaked = hv;
+  D.heavenWorld = await heavenWorld(); log('heaven world ' + D.heavenWorld.W + 'x' + D.heavenWorld.H);
   await put('data.json', JSON.stringify(D, null, 1));
   window.BAKE_DONE = true; log('DONE');
 })().catch((e) => { log('ERROR ' + e.message + '\n' + e.stack); window.BAKE_ERR = String(e); });
