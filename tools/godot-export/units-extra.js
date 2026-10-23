@@ -73,11 +73,17 @@ function goatDress() {
       for (const shape of shapes) for (const ant of [0, 1]) for (const look of looks) {
         if (!shape && !ant && !look) continue;
         const mods = { antlers: !!ant, horn: shape ? { look: shape } : null, bomb: look === 'lava', splash: look === 'venom' };
-        add('horns_' + (shape || 'none') + '_' + ant + '_' + (look || 'none'), shot((x) => PIXEL_ART.horns(x, 'goat', a, moving, t, 0, mods)));
+        const hr = shot((x) => PIXEL_ART.horns(x, 'goat', a, moving, t, 0, mods));
+        // the venom's drip leaves each horn's tip (PIXEL_ART.horns, the short and antlered horns only): the tips in world px off the foot
+        if (hr && look === 'venom' && !shape) {
+          const [dd, flip] = PIXEL_ART.facing('goat', a), f = moving && u.walk ? u.walk[dd][Math.floor(t * 8) % 4] : u.idle[dd];
+          hr.tips = PIXEL_ART.hornsOf(f, PIXEL_ART.hornFix('goat', dd, f)).map((h) => [+(((h.tip[0] - f[4]) * k) * (flip ? -1 : 1)).toFixed(2), +((h.tip[1] - f[5]) * k).toFixed(2), h.base[0]]);
+        }
+        add('horns_' + (shape || 'none') + '_' + ant + '_' + (look || 'none'), hr);
       }
     }
   }
-  return { cells, info: { worldPerPx: k, note: 'Overlays on units/goat.json frames: anim <layer>_<goat anim>, the same dir; foot is the goat foot. mark: THE MARK (markOn). wound<n>: n hearts lost (TUNING.goat.wounds, alpha baked). armour: the tortoise\'s iron (prop.tortoise.armour, alpha baked). horns_<moose|gazelle|none>_<antlers 0|1>_<lava|venom|none>: PIXEL_ART.horns at t of the frame (glow pulse and the venom drip are frozen there); with a shape the goat frame under it is bare_.' } };
+  return { cells, info: { worldPerPx: k, note: 'Overlays on units/goat.json frames: anim <layer>_<goat anim>, the same dir; foot is the goat foot. mark: THE MARK (markOn). wound<n>: n hearts lost (TUNING.goat.wounds, alpha baked). armour: the tortoise\'s iron (prop.tortoise.armour, alpha baked). horns_<moose|gazelle|none>_<antlers 0|1>_<lava|venom|none>: PIXEL_ART.horns at t of the frame (the glow frozen there; a venom frame of the short or antlered horns carries tips: [x, y world px off the foot, root x] for the drip); with a shape the goat frame under it is bare_.' } };
 }
 
 
@@ -104,7 +110,7 @@ async function emit(name, cells, info) {
   let W = 2048, x = 1, y = 1, rowH = 0; uniq.sort((a, b) => b.c.height - a.c.height);
   for (const c of uniq) { if (x + c.c.width + 1 > W) { x = 1; y += rowH + 1; rowH = 0; } c.rect = [x, y, c.c.width, c.c.height]; x += c.c.width + 1; rowH = Math.max(rowH, c.c.height); }
   const sheet = mkc(W, y + rowH + 1), sx = sheet.getContext('2d'); for (const c of uniq) sx.drawImage(c.c, c.rect[0], c.rect[1]);
-  const frames = cells.map((c) => ({ dir: c.dir, anim: c.anim, rect: (c.same || c).rect, foot: c.foot.map((v) => +v.toFixed(3)) }));
+  const frames = cells.map((c) => Object.assign({ dir: c.dir, anim: c.anim, rect: (c.same || c).rect, foot: c.foot.map((v) => +v.toFixed(3)) }, c.tips ? { tips: c.tips } : {}));
   await png(name + '.png', sheet);
   await put(name + '.json', JSON.stringify(Object.assign({ unit: name, sheet: name + '.png', sheetSize: [sheet.width, sheet.height], frameCount: cells.length, uniqueFrames: uniq.length }, info, { frames })));
   return name + ' ' + cells.length + ' frames, ' + uniq.length + ' unique, ' + sheet.width + 'x' + sheet.height;
