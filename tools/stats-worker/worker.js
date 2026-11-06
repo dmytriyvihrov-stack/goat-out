@@ -1,6 +1,7 @@
 // RUN STATS' receiver (1 Oct 2026): a Cloudflare Worker over a D1 database. The game (js/stats.js)
 // POSTs one life's report to /report and the funnel's steps (`Stats.step`) to /steps; tools/stats.html
-// GETs them back from /reports and /steps with the secret READ_KEY. Nothing else is served. Deployed with wrangler (see README.md beside this file).
+// GETs them back from /reports and /steps with the secret READ_KEY. Since 5 Nov 2026 it also serves that page itself
+// at /dash (the data still needs the key; the page alone shows nothing). Deployed with wrangler (see README.md beside this file).
 //
 // The address is in the game's code, so anyone can post to it: everything that arrives is checked
 // for shape and size, one address may post `RATE` reports a minute, and a report is stored by its
@@ -9,6 +10,8 @@
 // ended: the fullest copy is kept (`fuller`), and only the player who sent a life may replace it.
 // Reading needs the key, which is never in the game. No IP is stored, only a salted hash of it for
 // the rate limit, dropped after a day.
+
+import DASH from '../stats.html';
 
 const MAX_BODY = 60000;      // bytes: a long life's report is ~10 KB
 // Posts a minute from one address, reports and steps together. One player sends a few at most (13 Oct 2026, with the
@@ -215,7 +218,10 @@ export default {
       return reply(200, '[' + results.map((x) => x.report).join(',') + ']', 'application/json', { 'X-Oldest-Got': String(oldest) });
     }
 
-    if (url.pathname === '/') return reply(200, 'goat stats: alive', 'text/plain');
+    // The stats page (tools/stats.html), so it has an address of its own: https://goat-stats.dimache.workers.dev/dash
+    if (req.method === 'GET' && (url.pathname === '/dash' || url.pathname === '/dash/'))
+      return new Response(DASH, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
+    if (url.pathname === '/') return reply(200, 'goat stats: alive · the page is at /dash', 'text/plain');
     return reply(404, { error: 'nothing here' });
   },
 };

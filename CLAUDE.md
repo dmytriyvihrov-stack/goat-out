@@ -4,7 +4,8 @@ Instructions for any session picking this project up. Read this first, then `CON
 game is trying to be (it is the design truth). `README.md` is for a player, this file is for whoever is
 building it. `MARKET.md` is the commercial picture: comparables, the 2026 storefront and the open
 positioning decisions. `BACKLOG.md` is what playtesting has asked for and has not got yet, read it
-before inventing work. `ART_HANDOFF.md` is for whoever is generating and packing art: what is already
+before inventing work. `IDEAS.md` is not the backlog (21 Oct 2026, his line: the backlog is nine in ten built, ideas
+one in five): references and brainstorms to think over, never built without his pick. `ART_HANDOFF.md` is for whoever is generating and packing art: what is already
 drawn and wired in, what is still a placeholder, and how the pipeline works. `VISUAL_REFERENCE.md` is
 the research behind the art style, how big a pixel should read at this camera and TILE size, and which
 games are the real genre neighbors. Read it before starting a fresh art pass. `ENGINE.md` is for a
@@ -13,7 +14,7 @@ maps onto it. Nothing in it is scheduled.
 
 **THE JS BUILD IS FROZEN** (20 Oct 2026, from the Godot repo's first commit `dae4bdc`, the user's principle 1 of the
 move). No system is added or changed here: only a crash fix for itch testers, and the ВЫГРУЗКА (export) scripts of the
-port, which live in `tools/godot-export/` and write to `output/godot-export/` only. New ideas go to `BACKLOG.md`. No JS
+port, which live in `tools/godot-export/` and write to `output/godot-export/` only. His new asks go to `BACKLOG.md`, ideas to `IDEAS.md`. No JS
 deploys: the itch page is replaced at the end of the move. The port is `C:\Godot\projects\doomed-goat` (its own
 `CLAUDE.md`), worked session by session from https://claude.ai/code/artifact/a6568cbc-47a4-4e3b-a0e6-51a95eb5bc03.
 
@@ -209,9 +210,6 @@ Always update that same URL rather than publishing a new artifact (see *Publishi
 | `PLAYTEST.md` | The first itch.io playtest as a runnable plan: the three questions, the form, the observation sheet, how the numbers are counted, and the go / no-go for the build. |
 | `PLAYTEST_QUESTIONS.md` | The eight short questions sent to a tester after playing, English and Ukrainian, ready to paste. |
 | `ITCH_PAGE.md` | The itch.io page description as approved (1 Oct 2026), ready to paste, plus the tags. Every line in it is something the build does. |
-| `output/audit-2026-09-24/` | The six audits behind that day's `BACKLOG.md` batch, with their probes. Reference, never loaded. |
-| `tools/backlog-questions.html` | The open backlog as a questionnaire, published as its own artifact with a db (answers under `answers/<item id>`). |
-| `ART_TODO_GPT.md` | The image-brief format (`asset-spec`). Every sheet in it shipped as hand-placed pixels in 1.63–1.64; the ominous decals went in in 1.74 (`js/decal-pixels.js`). |
 | `ART_HANDOFF.md` | What art is wired in vs. placeholder, and how to make the next thing. |
 
 ---
@@ -2178,7 +2176,7 @@ means here. ⚠ Personal skills do not load in cloud sessions.
 | a playtester's notes, a friend's message, an AI persona's report | `playtest-report` | then a dated batch in `BACKLOG.md`, tagged as usual |
 | prepare or run the itch.io playtest | `playtest-report`, `launch-checklist` | `PLAYTEST.md` is the kit (the 23 Sep plan made runnable); results come back as a dated `BACKLOG.md` batch |
 | art weight, a newly packed atlas, a data URI | `asset-audit` | `js/*-assets.js` are generated: fix the source and re-pack |
-| a new image brief, or a music or SFX brief for the composer | `asset-spec` | the `ART_TODO_GPT.md` format; `MUSIC.md` |
+| a new image brief, or a music or SFX brief for the composer | `asset-spec` | the old `ART_TODO_GPT.md` format (removed 5 Nov 2026, `git show 99912a3:ART_TODO_GPT.md`); `MUSIC.md` |
 | add or change a hook | `project-hooks` | `tools/hooks/`, see *Publishing* |
 | write the weekly itch / Discord post (Monday to Sunday) | `devlog` | `devlog/<Sunday>/` holds `itch.md`, `discord.md` and the shots; only what is on itch goes in |
 | improve the art, compare colours, fix a strange floor | `art-pass` | the ART tab (checklist + `ART_PASS` switches), `tools/art-study.js`, `FLOOR_SHEET`, `PIXEL_STUDY`; originals stay on the switch |

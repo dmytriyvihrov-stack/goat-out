@@ -264,7 +264,7 @@ class Game {
         // Keyed on where it threw, not the message: a canvas error quotes its bad value, so a throw
         // every frame with a different radius was a new key (and a new line) every frame.
         const k = String(e && e.name) + '@' + String(e && e.stack || e).split('\n')[1];
-        if (!this.frameErrs.has(k) && this.frameErrs.size < 200) { this.frameErrs.add(k); console.error(e); }
+        if (!this.frameErrs.has(k) && this.frameErrs.size < 200) { this.frameErrs.add(k); console.error(e); RELEASE.report(e, 'frame'); }
         // Unwind the canvas: a throw between a save() and its restore() left that frame's clip, alpha
         // or filter at the bottom of the stack, and every frame after drew through it until a reload.
         const c = this.renderer && this.renderer.ctx;

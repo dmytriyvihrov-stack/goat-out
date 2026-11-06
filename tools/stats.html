@@ -97,6 +97,7 @@
   <button id="local">THIS BROWSER</button>
   <span class="bpick"><button id="buildBtn" aria-haspopup="listbox" aria-expanded="false" title="Pick a build; the pointer on one shows what was in it">ALL BUILDS &#9662;</button><div id="buildList" class="blist" hidden></div></span>
   <label class="chk"><input id="easy" type="checkbox"> with easy mode</label>
+  <label class="chk" title="The JS builds from before the Godot port (5 Nov 2026: hidden as out of date; they stay on the server)"><input id="old" type="checkbox"> with old JS builds</label>
   <span class="range"><label for="from">FROM</label><input id="from" type="date"><label for="to">TO</label><input id="to" type="date"><button id="allTime" title="Every date">ALL DATES</button><button id="wkPrev" title="A week back">&#8249;</button><button id="wkThis" title="Monday to Sunday of this week">THIS WEEK</button><button id="wkNext" title="A week on">&#8250;</button><span id="wkName" style="font:13px Alegreya,serif;color:var(--dim)"></span></span>
   <span id="status"></span>
 </header>
@@ -127,6 +128,13 @@ const FLOOR_ORDER = (f) => (f[0] === 'L' ? 0 : 0.5) + parseInt(f.slice(1), 10) *
 let REPORTS = [];
 // The funnel's steps, by player: { step: { at, build } }, the earliest of every source kept.
 const STEPS = Object.create(null);   // every map keyed by what came off the wire has no prototype: a player or key named __proto__ blanked the page
+// Before the Godot port (5 Nov 2026, "clean the pre-Godot data, it is out of date"): the Godot game names its builds
+// g<version> (core/run/run_stats.gd), so anything else is the old JS game. Hidden unless "with old JS builds" is ticked;
+// nothing is deleted on the server.
+const OLD_KEY = 'goatout.stats.old';
+let SHOW_OLD = false;
+try { SHOW_OLD = localStorage.getItem(OLD_KEY) === '1'; } catch (e) {}
+const isOld = (b) => !/^g\d/.test(String(b || ''));
 const STEP_NAMES = /^(open|start|death|restart|clear1|win|reach\d{1,2})$/;
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -202,6 +210,7 @@ function addSteps(list) {
   for (const raw of list) {
     const player = S(raw.player), step = S(raw.step, 12), at = N(raw.at), build = S(raw.build, 16) || '?';
     if (!player || !step || !STEP_NAMES.test(step) || at < 1e12 || at > 4e12) continue;
+    if (!SHOW_OLD && isOld(build)) continue;
     const P = STEPS[player] = STEPS[player] || Object.create(null);
     if (!P[step] || P[step].at > at) { P[step] = { at, build }; n++; }
   }
@@ -219,6 +228,7 @@ function add(list, label) {
   for (const raw of list) {
     let r = null; try { r = sanitize(raw); } catch (e) { r = null; }
     if (!r) { bad++; continue; }
+    if (!SHOW_OLD && isOld(r.build)) continue;
     newest = Math.max(newest, r.done || r.at);
     const i = at.get(r.id);
     if (i === undefined) { at.set(r.id, REPORTS.length); REPORTS.push(r); n++; }
@@ -271,8 +281,11 @@ async function fromServer(ask, auto) {
   let srv = null;
   try { srv = JSON.parse(localStorage.getItem(SRV_KEY) || 'null'); } catch (e) {}
   if (auto && !srv) return;
+  // Served by the worker itself (https://goat-stats.dimache.workers.dev/dash, 5 Nov 2026): it is the address, only the key is asked.
+  const here = /\.workers\.dev$/.test(location.hostname) ? location.origin : '';
+  if (here && srv && srv.url !== here) srv = { url: here, key: srv.key };
   if (!srv || ask) {
-    const url = prompt('Worker address (https://goat-stats.<you>.workers.dev):', srv ? srv.url : (typeof TUNING !== 'undefined' && TUNING.stats && TUNING.stats.url) || '');
+    const url = here || prompt('Worker address (https://goat-stats.<you>.workers.dev):', srv ? srv.url : (typeof TUNING !== 'undefined' && TUNING.stats && TUNING.stats.url) || '');
     if (!url) return;
     const key = prompt('READ_KEY:', srv ? srv.key : '');
     if (!key) return;
@@ -309,6 +322,8 @@ $('files').onchange = async (e) => { for (const f of e.target.files) { try { con
 document.addEventListener('dragover', (e) => e.preventDefault());
 document.addEventListener('drop', async (e) => { e.preventDefault(); for (const f of e.dataTransfer.files) { try { const x = JSON.parse(await f.text()); addSteps(stepsOf(x)); add(reportsOf(x), f.name); } catch (err) {} } });
 $('easy').onchange = draw;
+$('old').checked = SHOW_OLD;
+$('old').onchange = () => { try { localStorage.setItem(OLD_KEY, $('old').checked ? '1' : '0'); } catch (e) {} location.reload(); };
 // The dates to look at (6 Oct 2026: "let me pick from when to look"): FROM and TO are whole days in this
 // browser's own time, either may be empty, and the pick is kept in this browser.
 const RANGE_KEY = 'goatout.stats.range';

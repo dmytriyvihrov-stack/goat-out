@@ -10,3 +10,9 @@ database_id = "e9b22095-c05e-4b31-a94b-fbbcdfd914ee"
 
 # READ_KEY (what tools/stats.html sends to read reports) and SALT (for the rate limit's address
 # hash) are secrets, set once with `npx wrangler secret put READ_KEY` / `SALT`, never written here.
+
+# tools/stats.html bundled in as text, served at /dash.
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
+fallthrough = true

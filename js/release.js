@@ -10,6 +10,23 @@ const RELEASE = {
   on: typeof window !== 'undefined' && !!window.GOAT_RELEASE,
   flag: '<script>window.GOAT_RELEASE = true;</script>',
   busy: false,
+  // A player's black screen has no console to read (20 Oct 2026 itch report: "any button, black screen"): in the itch
+  // build the first thrown error is written over the page as plain text, so a screenshot says what broke. A DOM box,
+  // never the canvas, which is the thing that may be broken; click it to dismiss.
+  shown: 0,
+  report(err, where) {
+    if (!RELEASE.on || RELEASE.shown >= 3 || typeof document === 'undefined' || !document.body) return;
+    try {
+      RELEASE.shown++;
+      const e = err && err.stack ? err : { stack: String(err && err.message || err) };
+      const box = document.createElement('pre');
+      box.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;max-height:45vh;overflow:auto;margin:0;padding:8px 10px;z-index:99999;'
+        + 'background:rgba(20,0,0,0.92);color:#ffb4a8;font:12px/1.35 monospace;white-space:pre-wrap;border:1px solid #a33;cursor:pointer';
+      box.textContent = `DOOMED GOAT ERROR (${where || 'frame'}), click to hide, send a screenshot\n${String(e.stack).slice(0, 1400)}`;
+      box.onclick = () => box.remove();
+      document.body.appendChild(box);
+    } catch (x) { /* nothing left to tell it with */ }
+  },
   // The itch build ships its scripts minified (1 Oct 2026: "so it is not so easy to pull out with
   // Claude"): no comments, local names cut short. A nuisance, not protection, the code still runs in
   // the open. Top-level names are kept, because the scripts share them as globals; property names
@@ -151,3 +168,7 @@ const RELEASE = {
     } finally { RELEASE.busy = false; }
   },
 };
+if (RELEASE.on && typeof window !== 'undefined') {
+  window.addEventListener('error', (e) => RELEASE.report(e.error || e.message, 'script'));
+  window.addEventListener('unhandledrejection', (e) => RELEASE.report(e.reason, 'promise'));
+}
