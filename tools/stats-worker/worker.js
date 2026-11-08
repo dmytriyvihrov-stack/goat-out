@@ -86,6 +86,7 @@ function check(r) {
   if (!numOr(e.room) || !numOr(e.rooms) || !strOrNull(e.role, 12)) return null;
   if (!numOr(r.dryMax) || !numOr(r.dryEnd)) return null;
   if (!numOr(r.seq) || (r.seq !== undefined && (r.seq < 0 || r.seq > 1e6)) || !numOr(r.upto)) return null;
+  if (!numOr(r.played)) return null;   // the Godot build's whole time with the game, seconds
   if (r.heaven !== undefined && !(Array.isArray(r.heaven) && r.heaven.length === 2 && r.heaven.every(num))) return null;
   return r;
 }

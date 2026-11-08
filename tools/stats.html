@@ -191,6 +191,7 @@ function sanitize(r) {
   // when it was last heard of, and `seq` how many times it had been sent (the fuller copy wins in `add`).
   return { id, player, build, at, done: N(r.done) || N(r.upto) || at, upto: N(r.upto), seq: N(r.seq), flags: S(r.flags, 8) || '', release: !!r.release, floors,
     mirror: (Array.isArray(r.mirror) ? r.mirror : []).slice(0, 40).map((x) => S(x, 30)).filter(Boolean),
+    played: N(r.played),   // seconds this player has had the game open and in focus, every session together, as of this life (the Godot build, since 8 Nov 2026)
     heaven: Array.isArray(r.heaven) && r.heaven.length === 2 ? [N(r.heaven[0]), N(r.heaven[1])] : null,   // [visits, seconds] up there before this life
     dryMax: typeof r.dryMax === 'number' && Number.isFinite(r.dryMax) ? r.dryMax : null, dryEnd: typeof r.dryEnd === 'number' && Number.isFinite(r.dryEnd) ? r.dryEnd : null,
     end: { how: S(E.how, 8) || '?', f: S(E.f, 4), by: S(E.by, 24), kills: N(E.kills), t: N(E.t), room: N(E.room), code: S(E.code, 120),
@@ -933,7 +934,7 @@ function draw() {
   if (VIEW === 'player') { $('main').innerHTML = playerView(R, clean); return; }
   const tf = $('tagf') ? $('tagf').value : TAGF;
   const RT = tf ? R.filter((r) => skillOf(clean, r.player).tag === tf) : R;
-  $('main').innerHTML = funnel + playersSection(R, clean) + (RT.length ? body(RT) : '<div class="empty">No lives of that kind of player here.</div>');
+  $('main').innerHTML = funnel + timeChart(R) + playersSection(R, clean) + (RT.length ? body(RT) : '<div class="empty">No lives of that kind of player here.</div>');
 }
 // Everything under the funnel, for any set of lives: every player (SUMMARY) or one (PLAYERS).
 function body(R) {
@@ -1076,6 +1077,39 @@ function skillOf(clean, player) {
 }
 const dayOf = (t) => t ? new Date(t).toLocaleDateString() : '-';
 // SUMMARY's table of players: one row each, the newest first; a click opens him.
+// ---------- time played (8 Nov 2026, his, off Steam's "Users bucketed by time played") ----------
+// A player's whole time with the game, in minutes. Every life carries its floors' seconds and the heaven before it, so this
+// is known back to the first report; the game's own counter (`played`, the Godot build) also has the menus, and wins when it
+// says more. A date or build filter only leaves out lives from the sum; the counter is his total up to that life.
+function playerMinutes(R) {
+  const by = Object.create(null);
+  for (const r of R) {
+    const o = by[r.player] || (by[r.player] = { sum: 0, played: 0 });
+    o.sum += (r.floors || []).reduce((n, F) => n + (F.time || 0), 0) + (r.heaven ? r.heaven[1] : 0);
+    o.played = Math.max(o.played, r.played || 0);
+  }
+  return Object.values(by).map((o) => Math.max(o.sum, o.played) / 60);
+}
+function timeChart(R) {
+  const STEP = 10, TOP = 200, mins = playerMinutes(R);
+  if (!mins.length) return '';
+  const B = Array.from({ length: TOP / STEP + 1 }, () => 0);
+  for (const m of mins) B[Math.min(TOP / STEP, Math.floor(m / STEP))]++;
+  const label = (i) => i === TOP / STEP ? TOP + '+ min' : (i * STEP) + '-' + ((i + 1) * STEP) + ' min';
+  const hi = Math.max(...B), tick = hi <= 5 ? 1 : hi <= 10 ? 2 : hi <= 25 ? 5 : hi <= 50 ? 10 : hi <= 250 ? 50 : 100, top = Math.ceil(hi / tick) * tick;
+  const W = 1120, H = 300, L = 42, R0 = 8, T = 10, BT = 74, pw = W - L - R0, ph = H - T - BT, bw = pw / B.length, y = (v) => T + ph - ph * v / top;
+  let s = '';
+  for (let v = 0; v <= top; v += tick) s += `<line x1="${L}" x2="${W - R0}" y1="${y(v)}" y2="${y(v)}" stroke="rgba(239,230,208,${v ? 0.1 : 0.35})"/><text x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
+  B.forEach((n, i) => {
+    const x = L + i * bw, cx = x + bw / 2;
+    if (n) { const x0 = x + 1, x1 = x + bw - 1, y0 = y(n), y1 = y(0), r = Math.min(4, y1 - y0); s += `<path d="M${x0} ${y1}V${y0 + r}Q${x0} ${y0} ${x0 + r} ${y0}H${x1 - r}Q${x1} ${y0} ${x1} ${y0 + r}V${y1}Z" fill="#e0ac3e"/>`; }
+    s += `<text transform="translate(${cx + 4} ${y(0) + 10}) rotate(-90)" text-anchor="end">${label(i)}</text>`;
+    s += `<rect x="${x}" y="${T}" width="${bw}" height="${ph + BT - 4}" fill="transparent"><title>${label(i)}: ${n} player${n === 1 ? '' : 's'} (${Math.round(100 * n / mins.length)}%)</title></rect>`;
+  });
+  const avg = mins.reduce((a, b) => a + b, 0) / mins.length;
+  return '<div style="margin-bottom:14px">' + sec('Users bucketed by time played', `Each player once, by his whole time with the game over every life these filters keep. <b>${mins.length}</b> players, average <b>${Math.round(avg)} min</b>, median <b>${Math.round(med(mins))} min</b>. Floors and heaven, counted back to the first report; builds that carry the game's own counter add the menus. A player who opened the game and never started a life is not here.`,
+    `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Players by total minutes played">${s}</svg>`) + '</div>';
+}
 function playersSection(R, clean) {
   const ids = [...new Set(R.map((r) => r.player))];
   const rows = ids.map((id) => { const L = R.filter((r) => r.player === id); return { id, sk: skillOf(clean, id), p: playerFacts(L) }; }).sort((a, b) => b.p.last - a.p.last);
