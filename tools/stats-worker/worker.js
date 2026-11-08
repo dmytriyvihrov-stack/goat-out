@@ -21,7 +21,8 @@ const MAX_BODY = 60000;      // bytes: a long life's report is ~10 KB
 const RATE = 20;
 const MAX_FLOORS = 20;
 // The funnel's step names (js/stats.js `step`); anything else is refused.
-const STEP = /^(open|start|death|restart|clear1|win|reach\d{1,2})$/;
+// The second half (8 Nov 2026) is the Godot build's buttons: `demo_end` the demo's last screen seen, the rest a press on them.
+const STEP = /^(open|start|death|restart|clear1|win|reach\d{1,2}|demo_end|wishlist_(title|pause|demo)|discord_(title|pause))$/;
 // The ids the game writes (js/stats.js): 'p-' and 'r-' then base 36 (a random run and a clock tail).
 // Anything else is a forger's, and a player id is what the funnel counts people by, so a made-up one
 // is a made-up person.

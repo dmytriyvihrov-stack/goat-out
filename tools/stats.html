@@ -839,6 +839,12 @@ function byDay(R) {
 const REACH = (typeof TUNING !== 'undefined' && TUNING.stats && TUNING.stats.reach) || [4, 8];
 const FUNNEL = [['open', 'Opened the game'], ['start', 'Started a run'], ['death', 'Died for the first time'], ['restart', 'Played again after a death'],
   ['clear1', 'Cleared floor 1']].concat(REACH.map((n) => ['reach' + n, 'Reached floor ' + n]), [['win', 'Escaped']]);
+// The Godot build's buttons (8 Nov 2026): who saw the demo's last screen and who pressed what. No part of the run's funnel:
+// a press on the title says nothing about having started a run.
+const CLICKS = [['demo_end', "Saw the demo's last screen", 0], ['wishlist_demo', 'Wishlist, from that screen', 'demo_end'],
+  ['wishlist_title', 'Wishlist, from the title', 0], ['discord_title', 'Discord, from the title', 0],
+  ['wishlist_pause', 'Wishlist, from the pause', 0], ['discord_pause', 'Discord, from the pause', 0]];
+const IS_CLICK = (k) => CLICKS.some((c) => c[0] === k);
 // Each player's steps: what the game sent (`STEPS`), filled in from the lives wherever it sent nothing
 // (lives from before the steps existed, a step lost on the way). Anyone with a step opened the game, and
 // anyone past it started a run. `R` is every life of every build; `build` keeps the players who came in
@@ -875,7 +881,7 @@ function funnelOf(R, build, rg, onlyNew) {
     if (rg && rg.on && (onlyNew ? !rg.has(first.at) : !(played[pl] || Object.values(o).some((v) => rg.has(v.at))))) continue;
     players++;
     const keys = new Set(Object.keys(o).filter((k) => !rg || rg.to == null || o[k].at <= rg.to).concat('open'));
-    if ([...keys].some((k) => k !== 'open')) keys.add('start');
+    if ([...keys].some((k) => k !== 'open' && !IS_CLICK(k))) keys.add('start');
     for (const k of keys) out[k] = (out[k] || 0) + 1;
   }
   return { n: out, players };
@@ -887,6 +893,15 @@ function funnelTable(F) {
     const step = i && prev ? `${Math.round(100 * v / prev)}% of the row above` : '';
     return `<tr><td class="lab">${esc(label)}</td><td class="track"><span class="fb" style="width:${100 * v / top}%"></span></td>` +
       `<td class="n"><b>${v}</b></td><td class="n">${Math.round(100 * v / top)}%</td><td class="drop">${step}</td></tr>`;
+  }).join('') + '</table>';
+}
+
+function clicksTable(F) {
+  const top = Math.max(1, F.n.open || 0);
+  return '<table>' + CLICKS.map(([k, label, of]) => {
+    const v = F.n[k] || 0, base = of ? F.n[of] || 0 : 0;
+    return `<tr><td class="lab">${esc(label)}</td><td class="track"><span class="fb" style="width:${100 * v / top}%"></span></td>` +
+      `<td class="n"><b>${v}</b></td><td class="n">${Math.round(100 * v / top)}%</td><td class="drop">${base ? `${Math.round(100 * v / base)}% of those who saw it` : ''}</td></tr>`;
   }).join('') + '</table>';
 }
 
@@ -911,7 +926,7 @@ function draw() {
   const fnew = rg.on ? ` <label class="chk" style="display:inline-flex"><input id="fnew" type="checkbox"${FNEW ? ' checked' : ''}> only players whose first step falls in these dates</label>` : '';
   const funnel = `<section class="funnel"><h2>The funnel${dates}</h2><p class="sub">${FN.players} players${b ? ' who came in on ' + esc(b) : ''}${rg.on ? (FNEW ? ' whose first step falls in these dates' : ' who played in these dates (a life or a step inside them), with every step each had taken by TO') : ''}, each counted once at every step taken.
     Only players who said yes to the title's question are counted (itch.io's own page counts everyone who opened it).
-    Dying and clearing floor 1 can come in either order.${fnew}</p>${left}${funnelTable(FN)}</section>`;
+    Dying and clearing floor 1 can come in either order.${fnew}</p>${left}${funnelTable(FN)}<h3>Wishlist and Discord</h3><p class="sub">Players, each counted once a place. The second percent is of all who opened the game.</p>${clicksTable(FN)}</section>`;
   if (!R.length && FN.players && !(rg.on && clean.length)) { $('main').innerHTML = funnel; return; }
   if (!R.length && rg.on && clean.length) { $('main').innerHTML = funnel + '<div class="empty">No lives in these dates. Press ALL DATES to see every life.</div>'; return; }
   if (!R.length) { $('main').innerHTML = '<div class="empty">No lives here yet. Play one, press THIS BROWSER, or open a file the dev drawer\'s SAVE STATS wrote, or press SERVER.</div>'; return; }
