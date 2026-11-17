@@ -22,7 +22,9 @@ const RATE = 20;
 const MAX_FLOORS = 20;
 // The funnel's step names (js/stats.js `step`); anything else is refused.
 // The second half (8 Nov 2026) is the Godot build's buttons: `demo_end` the demo's last screen seen, the rest a press on them.
-const STEP = /^(open|start|death|restart|clear1|win|reach\d{1,2}|demo_end|wishlist_(title|pause|demo)|discord_(title|pause))$/;
+// 17 Nov 2026: the demo's floors cleared (`demo_clear2`..`5`) and the meta funnel (`meta_death2`, `meta_pond` the pond's
+// first upgrade, `meta_run` the run after it).
+const STEP = /^(open|start|death|restart|clear1|win|reach\d{1,2}|demo_end|wishlist_(title|pause|demo)|discord_(title|pause)|demo_clear[2-5]|meta_(death2|pond|run))$/;
 // The ids the game writes (js/stats.js): 'p-' and 'r-' then base 36 (a random run and a clock tail).
 // Anything else is a forger's, and a player id is what the funnel counts people by, so a made-up one
 // is a made-up person.

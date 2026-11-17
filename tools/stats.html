@@ -137,7 +137,7 @@ try { SHOW_OLD = localStorage.getItem(OLD_KEY) === '1'; } catch (e) {}
 const isOld = (b) => !/^g\d/.test(String(b || ''));
 // The worker's own list (tools/stats-worker/worker.js `STEP`), the Godot build's buttons included: a step dropped here
 // was a Wishlist or Discord row that read 0 whatever arrived (13 Nov 2026).
-const STEP_NAMES = /^(open|start|death|restart|clear1|win|reach\d{1,2}|demo_end|wishlist_(title|pause|demo)|discord_(title|pause))$/;
+const STEP_NAMES = /^(open|start|death|restart|clear1|win|reach\d{1,2}|demo_end|wishlist_(title|pause|demo)|discord_(title|pause)|demo_clear[2-5]|meta_(death2|pond|run))$/;
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -840,8 +840,15 @@ function byDay(R) {
 }
 // ---------- the funnel ----------
 const REACH = (typeof TUNING !== 'undefined' && TUNING.stats && TUNING.stats.reach) || [4, 8];
-const FUNNEL = [['open', 'Opened the game'], ['start', 'Started a run'], ['death', 'Died for the first time'], ['restart', 'Played again after a death'],
-  ['clear1', 'Cleared floor 1']].concat(REACH.map((n) => ['reach' + n, 'Reached floor ' + n]), [['win', 'Escaped']]);
+// The demo's funnel (17 Nov 2026, his: "redo the table for the demo's stats, by floors from the first to the fifth"): a run
+// through THE DEMO's five floors, floor by floor (`clear1`, then `demo_clear2`..`5`, which the Godot build sends).
+const DEMO_FLOORS = 5;
+const FUNNEL = [['open', 'Opened the game'], ['start', 'Started a run'], ['clear1', 'Cleared floor 1']]
+  .concat(Array.from({ length: DEMO_FLOORS - 1 }, (_, i) => ['demo_clear' + (i + 2), 'Cleared floor ' + (i + 2) + (i + 2 === DEMO_FLOORS ? ", the demo's last" : '')]));
+// The meta progression (same day, his list): everyone, the first death, a run after it, the second death, an upgrade bought
+// in the pond, the run after that.
+const META = [['open', 'Everyone who opened the game'], ['death', 'Died for the first time'], ['restart', 'Played again after a death'],
+  ['meta_death2', 'Died a second time'], ['meta_pond', 'Bought an upgrade in the pond'], ['meta_run', 'Started a run after the pond']];
 // The Godot build's buttons (8 Nov 2026): who saw the demo's last screen and who pressed what. No part of the run's funnel:
 // a press on the title says nothing about having started a run.
 const CLICKS = [['demo_end', "Saw the demo's last screen", 0], ['wishlist_demo', 'Wishlist, from that screen', 'demo_end'],
@@ -862,17 +869,21 @@ function funnelOf(R, build, rg, onlyNew) {
   const lives = Object.create(null);
   for (const r of R) (lives[r.player] = lives[r.player] || []).push(r);
   for (const [pl, L] of Object.entries(lives)) {
-    let died = false;
+    let died = 0, pond = false;
     for (const r of L.sort((a, b) => a.at - b.at)) {
       const end = r.done || r.at;
       put(pl, 'start', r.at, r.build);
       if (died) put(pl, 'restart', r.at, r.build);
+      // a life carries the pond's upgrades bought before it (`mirror`): bought, and this is the run after
+      if (Array.isArray(r.mirror) && r.mirror.length) { pond = true; put(pl, 'meta_pond', r.at, r.build); }
+      if (pond) put(pl, 'meta_run', r.at, r.build);
       for (const F of r.floors) {
         const n = parseInt(F.f.slice(1), 10);
         if (n === 1 && F.cleared) put(pl, 'clear1', end, r.build);
+        if (n >= 2 && n <= DEMO_FLOORS && F.cleared) put(pl, 'demo_clear' + n, end, r.build);
         for (const m of REACH) if (n >= m) put(pl, 'reach' + m, r.at, r.build);
       }
-      if (r.end.how === 'death') { died = true; put(pl, 'death', end, r.build); }
+      if (r.end.how === 'death') { died++; put(pl, 'death', end, r.build); if (died === 2) put(pl, 'meta_death2', end, r.build); }
       if (r.end.how === 'win') put(pl, 'win', end, r.build);
     }
   }
@@ -889,10 +900,10 @@ function funnelOf(R, build, rg, onlyNew) {
   }
   return { n: out, players };
 }
-function funnelTable(F) {
+function funnelTable(F, rows = FUNNEL) {
   const top = Math.max(1, F.n.open || 0);
-  return '<table>' + FUNNEL.map(([k, label], i) => {
-    const v = F.n[k] || 0, prev = i ? F.n[FUNNEL[i - 1][0]] || 0 : 0;
+  return '<table>' + rows.map(([k, label], i) => {
+    const v = F.n[k] || 0, prev = i ? F.n[rows[i - 1][0]] || 0 : 0;
     const step = i && prev ? `${Math.round(100 * v / prev)}% of the row above` : '';
     return `<tr><td class="lab">${esc(label)}</td><td class="track"><span class="fb" style="width:${100 * v / top}%"></span></td>` +
       `<td class="n"><b>${v}</b></td><td class="n">${Math.round(100 * v / top)}%</td><td class="drop">${step}</td></tr>`;
@@ -929,7 +940,7 @@ function draw() {
   const fnew = rg.on ? ` <label class="chk" style="display:inline-flex"><input id="fnew" type="checkbox"${FNEW ? ' checked' : ''}> only players whose first step falls in these dates</label>` : '';
   const funnel = `<section class="funnel"><h2>The funnel${dates}</h2><p class="sub">${FN.players} players${b ? ' who came in on ' + esc(b) : ''}${rg.on ? (FNEW ? ' whose first step falls in these dates' : ' who played in these dates (a life or a step inside them), with every step each had taken by TO') : ''}, each counted once at every step taken.
     Only players who said yes to the title's question are counted (itch.io's own page counts everyone who opened it).
-    Dying and clearing floor 1 can come in either order.${fnew}</p>${left}${funnelTable(FN)}<h3>Wishlist and Discord</h3><p class="sub">Players, each counted once a place. The second percent is of all who opened the game.</p>${clicksTable(FN)}</section>`;
+    The demo's five floors, one row each.${fnew}</p>${left}${funnelTable(FN)}<h3>Meta progression</h3><p class="sub">The same players through deaths, the pond and the run after it. The first percent is of all who opened the game, the second of the row above.</p>${funnelTable(FN, META)}<h3>Wishlist and Discord</h3><p class="sub">Players, each counted once a place. The second percent is of all who opened the game.</p>${clicksTable(FN)}</section>`;
   if (!R.length && FN.players && !(rg.on && clean.length)) { $('main').innerHTML = funnel; return; }
   if (!R.length && rg.on && clean.length) { $('main').innerHTML = funnel + '<div class="empty">No lives in these dates. Press ALL DATES to see every life.</div>'; return; }
   if (!R.length) { $('main').innerHTML = '<div class="empty">No lives here yet. Play one, press THIS BROWSER, or open a file the dev drawer\'s SAVE STATS wrote, or press SERVER.</div>'; return; }
