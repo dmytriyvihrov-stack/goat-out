@@ -29,6 +29,8 @@
   .funnel table td { padding: 5px 6px; }
   .funnel .fb { height: 18px; background: #e0ac3e; display: block; min-width: 2px; }
   .funnel td.lab { width: 32%; } .funnel td.track { width: 40%; }
+  .survey-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; margin-top: 10px; }
+  .survey h4 { margin: 12px 0 4px; font-size: 13px; } .survey .tiles { margin: 6px 0; }
   .funnel td.drop { color: var(--dim); }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(520px, 100%), 1fr)); gap: 14px; }
   section { background: var(--panel); padding: 12px 14px; border-left: 3px solid #e0ac3e; min-width: 0; }
@@ -195,9 +197,60 @@ function sanitize(r) {
     mirror: (Array.isArray(r.mirror) ? r.mirror : []).slice(0, 40).map((x) => S(x, 30)).filter(Boolean),
     played: N(r.played),   // seconds this player has had the game open and in focus, every session together, as of this life (the Godot build, since 8 Nov 2026)
     heaven: Array.isArray(r.heaven) && r.heaven.length === 2 ? [N(r.heaven[0]), N(r.heaven[1])] : null,   // [visits, seconds] up there before this life
+    survey: surveyOf(r.survey),   // THE SURVEYS (Godot 0.128, 18 Nov 2026): the answer given in this life, or null
     dryMax: typeof r.dryMax === 'number' && Number.isFinite(r.dryMax) ? r.dryMax : null, dryEnd: typeof r.dryEnd === 'number' && Number.isFinite(r.dryEnd) ? r.dryEnd : null,
     end: { how: S(E.how, 8) || '?', f: S(E.f, 4), by: S(E.by, 24), kills: N(E.kills), t: N(E.t), room: N(E.room), code: S(E.code, 120),
       role: S(E.role, 12), rooms: N(E.rooms) } };
+}
+// A survey as the Godot build writes it (core/run/survey.gd `record`, RunStats.survey): its segment, the answers (a 1-5 `score`,
+// chosen words, typed words), the page it was skipped on (-1: to the end), and the seconds played when it was asked.
+function surveyOf(v) {
+  const o = O(v);
+  const seg = S(o.seg, 16);
+  if (!seg || !SURVEY_SEGS.some(([k]) => k === seg)) return null;
+  const a = O(o.a), ans = {};
+  for (const [k, x] of Object.entries(a).slice(0, 12)) {
+    if (typeof x === 'number' && Number.isFinite(x)) ans[S(k, 16)] = x;
+    else if (typeof x === 'string') ans[S(k, 16)] = x.slice(0, 300);
+  }
+  return { seg, a: ans, skip: N(o.skip), played: N(o.played), floor: N(o.floor), deaths: N(o.deaths), at: N(o.at) };
+}
+const SURVEY_SEGS = [['quit_short', 'Quit, under 10 min'], ['quit_long', 'Quit, 10 min or more'], ['demo_end', 'End of the demo']];
+const SURVEY_Q = [['why', 'Why are you stopping?'], ['buy', 'Would you buy it? (rated 4 or 5)'], ['better', 'What would make it better?'], ['friend', 'Recommend to a friend? (bought YES)']];
+const PLAY_BUCKETS = [[0, 600, 'under 10 min'], [600, 1800, '10 to 30 min'], [1800, 3600, '30 to 60 min'], [3600, Infinity, '1 hour or more']];
+// THE SURVEYS, every segment apart (his: "so the quick quitters, the randoms and the ones really into it never mix"): who answered
+// or skipped, the same first question's mean / median / spread and its 1-5 bars, every other question's answers, the score by time
+// played, and what they typed. Off the lives the filters leave, so the dates and the build pick the surveys too.
+function surveySection(R) {
+  const all = R.map((r) => r.survey).filter(Boolean);
+  if (!all.length) return '';
+  const sd = (xs) => { const m = xs.reduce((a, b) => a + b, 0) / xs.length; return Math.sqrt(xs.reduce((a, b) => a + (b - m) * (b - m), 0) / xs.length); };
+  const pct = (n, of) => of ? Math.round(100 * n / of) + '%' : '';
+  const bars = (counts, of) => '<table>' + counts.map(([label, n]) => `<tr><td class="lab">${esc(label)}</td><td class="track"><span class="fb" style="width:${of ? 100 * n / of : 0}%"></span></td><td class="n"><b>${n}</b></td><td class="n">${pct(n, of)}</td></tr>`).join('') + '</table>';
+  const cols = SURVEY_SEGS.map(([seg, label]) => {
+    const L = all.filter((s) => s.seg === seg);
+    if (!L.length) return `<div><h3>${esc(label)}</h3><p class="sub">No answers yet.</p></div>`;
+    const sc = L.map((s) => s.a.score).filter((x) => typeof x === 'number' && x >= 1 && x <= 5);
+    const first = L.filter((s) => s.skip === 0).length, done = L.filter((s) => s.skip === -1).length;
+    const head = `<p class="sub">${L.length} asked: ${done} answered to the end, ${first} skipped at once, ${L.length - done - first} part way. Played ${mmss(med(L.map((s) => s.played)))} when asked (median).</p>`;
+    const tiles = sc.length ? `<div class="tiles"><div class="tile"><b>${(sc.reduce((a, b) => a + b, 0) / sc.length).toFixed(2)}</b><span>mean</span></div><div class="tile"><b>${med(sc)}</b><span>median</span></div><div class="tile"><b>${sd(sc).toFixed(2)}</b><span>standard deviation</span></div><div class="tile"><b>${sc.length}</b><span>rated</span></div></div>` : '';
+    const scale = sc.length ? '<h4>How do you like it so far?</h4>' + bars([5, 4, 3, 2, 1].map((n) => [String(n), sc.filter((x) => x === n).length]), sc.length) : '';
+    const rest = SURVEY_Q.map(([k, q]) => {
+      const got = L.map((s) => s.a[k]).filter((x) => typeof x === 'string' && x);
+      if (!got.length) return '';
+      const c = Object.create(null); for (const x of got) c[x] = (c[x] || 0) + 1;
+      return `<h4>${esc(q)}</h4>` + bars(Object.entries(c).sort((a, b) => b[1] - a[1]), got.length);
+    }).join('');
+    return `<div><h3>${esc(label)}</h3>${head}${tiles}${scale}${rest}</div>`;
+  }).join('');
+  const byTime = '<table><tr><th>Played when asked</th><th class="n">Rated</th><th class="n">Mean</th><th class="n">Median</th></tr>' + PLAY_BUCKETS.map(([lo, hi, label]) => {
+    const sc = all.filter((s) => s.played >= lo && s.played < hi).map((s) => s.a.score).filter((x) => typeof x === 'number');
+    return `<tr><td>${esc(label)}</td><td class="n">${sc.length}</td><td class="n">${sc.length ? (sc.reduce((a, b) => a + b, 0) / sc.length).toFixed(2) : ''}</td><td class="n">${sc.length ? med(sc) : ''}</td></tr>`;
+  }).join('') + '</table>';
+  const typed = all.filter((s) => s.a.liked || s.a.more).sort((a, b) => b.at - a.at).slice(0, 40).map((s) =>
+    `<tr><td>${esc((SURVEY_SEGS.find(([k]) => k === s.seg) || [0, s.seg])[1])}</td><td class="n">${s.a.score || ''}</td><td class="n">${mmss(s.played)}</td><td>${esc(s.a.liked || '')}</td><td>${esc(s.a.more || '')}</td></tr>`).join('');
+  return `<section class="funnel survey"><h2>The surveys</h2><p class="sub">${all.length} surveys in these lives, each segment apart. The first question is the same in all three, on the same 1 to 5 scale. Asked once a player on QUIT TO TITLE (short under 10 minutes of play, long past it) and at the demo's end.</p>
+    <div class="survey-cols">${cols}</div><h3>The score by time played</h3>${byTime}${typed ? `<h3>In their own words</h3><div class="scroll"><table><tr><th>Segment</th><th class="n">Score</th><th class="n">Played</th><th>Liked most</th><th>Anything else</th></tr>${typed}</table></div>` : ''}</section>`;
 }
 // Steps in any shape they come: the worker's rows, this browser's store, a SAVE STATS file.
 function stepsOf(x) {
@@ -947,7 +1000,7 @@ function draw() {
   if (VIEW === 'player') { $('main').innerHTML = playerView(R, clean); return; }
   const tf = $('tagf') ? $('tagf').value : TAGF;
   const RT = tf ? R.filter((r) => skillOf(clean, r.player).tag === tf) : R;
-  $('main').innerHTML = funnel + timeChart(R) + playersSection(R, clean) + (RT.length ? body(RT) : '<div class="empty">No lives of that kind of player here.</div>');
+  $('main').innerHTML = funnel + surveySection(R) + timeChart(R) + playersSection(R, clean) + (RT.length ? body(RT) : '<div class="empty">No lives of that kind of player here.</div>');
 }
 // Everything under the funnel, for any set of lives: every player (SUMMARY) or one (PLAYERS).
 function body(R) {
