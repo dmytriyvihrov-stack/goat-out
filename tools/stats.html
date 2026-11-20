@@ -895,7 +895,9 @@ const FUNNEL = [['open', 'Opened the game'], ['start', 'Started a run'], ['clear
 // The meta progression (same day, his list): everyone, the first death, a run after it, the second death, an upgrade bought
 // in the pond, the run after that.
 const META = [['open', 'Everyone who opened the game'], ['death', 'Died for the first time'], ['restart', 'Played again after a death'],
-  ['meta_death2', 'Died a second time'], ['meta_pond', 'Bought an upgrade in the pond'], ['meta_run', 'Started a run after the pond']];
+  ['meta_death2', 'Died a second time'], ['meta_pond', 'Bought an upgrade in the pond'], ['meta_run', 'Started a run after the pond'],
+  // 20 Nov 2026, his: a second upgrade, bought after he jumped back down, and the god's horns opened
+  ['meta_pond2', 'Bought another upgrade after that run'], ['meta_horns', 'Unlocked the horns']];
 // The Godot build's buttons (8 Nov 2026): who saw the demo's last screen and who pressed what. No part of the run's funnel:
 // a press on the title says nothing about having started a run.
 const CLICKS = [['demo_end', "Saw the demo's last screen", 0], ['wishlist_demo', 'Wishlist, from that screen', 'demo_end'],
@@ -922,7 +924,8 @@ function funnelOf(R, build, rg, onlyNew) {
       put(pl, 'start', r.at, r.build);
       if (died) put(pl, 'restart', r.at, r.build);
       // a life carries the pond's upgrades bought before it (`mirror`): bought, and this is the run after
-      if (Array.isArray(r.mirror) && r.mirror.length) { pond = true; put(pl, 'meta_pond', r.at, r.build); }
+      // a life that carries upgrades again once the pond was already bought from: bought on a later visit
+      if (Array.isArray(r.mirror) && r.mirror.length) { if (pond) put(pl, 'meta_pond2', r.at, r.build); pond = true; put(pl, 'meta_pond', r.at, r.build); }
       if (pond) put(pl, 'meta_run', r.at, r.build);
       for (const F of r.floors) {
         const n = parseInt(F.f.slice(1), 10);
